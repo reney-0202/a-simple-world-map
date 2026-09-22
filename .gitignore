@@ -1,0 +1,10 @@
+# world1980 公开仓库 .gitignore
+# 本仓库只含游戏本体（out/ + engine/ + pipeline/ + README.md）
+
+# Python
+__pycache__/
+*.pyc
+
+# 日志
+*.log
+*.err

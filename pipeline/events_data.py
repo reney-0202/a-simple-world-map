@@ -1,0 +1,77 @@
+# -*- coding: utf-8 -*-
+"""M6 事件剧本数据源（唯一事实源；s6_export 导出 out/data/events.js）。
+
+事件为**数据驱动**：到达 (y,m) 时由前端事件层应用效果。
+效果类型：
+  mod      : 对 targets 加性增速修正（百分点/年），持续到 (end_y,end_m)（缺省=到终点）【GDP 侧】
+  popmod   : 对 targets 人口加性增速修正（百分点/年），持续到 (end_y,end_m)（缺省=到终点）【人口侧，机制批次③】
+  shock    : 一次性产出冲击 {key: 乘数}
+  dissolve : 标记 targets 已解体（仅显示/统计层；成员经济本就独立结算，栅格不变）
+  kind=info: 仅通知，无数值效果
+
+⚠️ 数值修正（mod/shock/popmod）为**量级估计**，非精确史实回归；事件本身（日期/名称）为公认史实。
+   溯源状态见 docs/SIM.md §5。popmod 量级由 work/pop_fit.js 引擎 oracle 反解（机制批次③，tasks/011）。
+"""
+
+EVENTS = [
+    {"id": "iran_iraq_war", "y": 1980, "m": 9, "end_y": 1988, "end_m": 8, "kind": "war",
+     "zh": "两伊战争爆发", "targets": ["IRQ", "IRN"], "mod": -3.0,
+     "note": "战争拖累双方产出（估计 -3pp/年，至 1988-08 停火）"},
+    {"id": "latin_debt", "y": 1982, "m": 1, "end_y": 1985, "end_m": 12, "kind": "crisis",
+     "zh": "拉美债务危机", "targets": ["MEX", "BRA", "ARG", "VEN", "CHL", "COL", "PER"], "mod": -2.0,
+     "note": "债务危机压制增长（估计 -2pp/年，1982-1985）"},
+    {"id": "oil_crash", "y": 1986, "m": 1, "kind": "info",
+     "zh": "油价崩盘", "targets": [], "mod": None,
+     "note": "1986 油价崩盘；引擎油价双端通道（机制批次①，tasks/009）已含出口国响应，此处仅通知"},
+    {"id": "perestroika", "y": 1986, "m": 1, "kind": "reform",
+     "zh": "苏联改革（加速/公开性）", "targets": ["SUN"], "mod": -0.5,
+     "note": "改革期动荡拖累（估计 -0.5pp/年，至终点）"},
+    {"id": "east_europe", "y": 1989, "m": 1, "end_y": 1991, "end_m": 12, "kind": "crisis",
+     "zh": "东欧剧变", "targets": ["POL", "HUN", "CSK", "DDR", "ROU", "BGR"], "mod": -2.0,
+     "note": "转型阵痛（估计 -2pp/年，1989-1991）"},
+    {"id": "liberian_civil_war", "y": 1989, "m": 1, "end_y": 1989, "end_m": 12, "kind": "war",
+     "zh": "利比里亚内战爆发", "targets": ["LBR"], "mod": -24.655,
+     "note": "内战 1989-12-24 爆发为公认史实；但 WB 序列 1989 全年已 -26.7%（Doe 政权末期崩溃在先），"
+             "数据等效为年初起修。mod 覆盖 1989-02..12（11 个月），数值由引擎 oracle 反解（work/war_fit.js）。量级估计。"},
+    {"id": "liberian_civil_war_1990", "y": 1990, "m": 1, "end_y": 1990, "end_m": 12, "kind": "war",
+     "zh": "利比里亚全面内战", "targets": ["LBR"], "mod": -66.731,
+     "note": "1990 年产出近乎腰斩（参照 -51%）。1991 年参照 -14.2% 与基线偏差 +6.5%，无需事件。量级估计。"},
+    {"id": "iran_iraq_aftermath", "y": 1990, "m": 1, "kind": "war",
+     "zh": "两伊停火 · 伊拉克重建反弹", "targets": [], "shock": {"IRQ": 1.583},
+     "note": "1988-08 停火后石油出口恢复；参照 1990 年 +58%。数据等效为年初一次性冲击"
+             "（年内任意时点触发对年末水平无影响）。旧版漏建此反弹、且把 IRQ -10% 误放在 1990。量级估计。"},
+    {"id": "gulf_war", "y": 1990, "m": 8, "kind": "war",
+     "zh": "海湾战争 · 入侵科威特", "targets": [], "shock": {"KWT": 0.735},
+     "note": "伊拉克入侵科威特；科威特 1990 年产出 -26%（参照）。伊拉克的破坏在 1991 年（见 gulf_war_1991）——"
+             "旧版把 IRQ -10% 放在 1990 是时点错误，已按参照重配（work/war_fit.js 反解）。量级估计。"},
+    {"id": "gulf_war_1991", "y": 1991, "m": 1, "kind": "war",
+     "zh": "海湾战争 · 空袭与地面战", "targets": [], "shock": {"IRQ": 0.353, "KWT": 0.582},
+     "note": "多国部队空袭 + 地面战 + 科威特油田纵火；IRQ 1991 参照 -64% / KWT -41%。一次性冲击乘数。量级估计。"},
+    {"id": "ussr_dissolution", "y": 1991, "m": 12, "kind": "dissolution",
+     "zh": "苏联解体", "targets": ["SUN"], "dissolve": True,
+     "note": "SUN 标记为已解体；15 加盟共和国经济独立结算（栅格不变）"},
+
+    # ---- 机制批次③（tasks/011）人口侧冲击：popmod（人口加性修正 pp/年，只进 pop 行）----
+    # 量级由 work/pop_fit.js 引擎 oracle 反解（配重拟后的 KWT/AFG 基线）；史实日期保留。
+    # KWT 基线已从 -0.981 重拟为 +4.399（1980s 繁荣期参照均值），骤降年靠事件表达。
+    {"id": "kuwait_gulf_exodus", "y": 1990, "m": 1, "end_y": 1990, "end_m": 12, "kind": "war",
+     "zh": "海湾战争 · 科威特外籍劳工撤离", "targets": ["KWT"], "popmod": -34.351,
+     "note": "伊拉克入侵后外籍劳工撤离；KWT 1990 人口参照 -24%。popmod 覆盖 1990-02..12（11 个月），"
+             "量级由 work/pop_fit.js 反解。量级估计。"},
+    {"id": "kuwait_gulf_exodus_1991", "y": 1991, "m": 1, "end_y": 1991, "end_m": 12, "kind": "war",
+     "zh": "海湾战争 · 科威特人口流失持续", "targets": ["KWT"], "popmod": -28.650,
+     "note": "战后重建期滞留境外/未返；KWT 1991 人口参照 -19.8%。量级估计。"},
+    {"id": "afghan_refugee", "y": 1981, "m": 1, "end_y": 1982, "end_m": 12, "kind": "war",
+     "zh": "苏联入侵 · 阿富汗难民潮", "targets": ["AFG"], "popmod": -10.658,
+     "note": "苏军入侵（1979-12）后难民外流；AFG 1981/1982 人口参照 -9.3%/-7.9%。AFG 基线已从 -0.666 重拟为 +1.210"
+             "（战后恢复期参照均值），难民年靠此事件压平。跨年 mod，oracle 折中两年。量级估计。"},
+    {"id": "somali_civil_war_pop", "y": 1991, "m": 1, "end_y": 1991, "end_m": 12, "kind": "war",
+     "zh": "索马里内战 · 人口冲击", "targets": ["SOM"], "popmod": -5.584,
+     "note": "巴雷政权倒台、内战爆发；SOM 1991 人口参照 -3.8%。量级估计。"},
+    {"id": "liberian_civil_war_pop", "y": 1990, "m": 1, "end_y": 1990, "end_m": 12, "kind": "war",
+     "zh": "利比里亚内战 · 难民外流", "targets": ["LBR"], "popmod": -13.611,
+     "note": "全面内战难民；LBR 1990 人口参照 -11.7%。量级估计。"},
+    {"id": "liberian_civil_war_pop_1991", "y": 1991, "m": 1, "end_y": 1991, "end_m": 12, "kind": "war",
+     "zh": "利比里亚内战 · 人口流失持续", "targets": ["LBR"], "popmod": -14.014,
+     "note": "内战持续；LBR 1991 人口参照 -12.0%。量级估计。"},
+]

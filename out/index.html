@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>1980 冷战世界 · Equal Earth 等面积省界地图</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="map"></canvas>
+  <canvas id="overlay"></canvas>
+</div>
+
+<header id="topbar">
+  <div class="res date" id="r-date">1980年1月</div>
+  <div class="res pl" id="r-player" title="你的国家">⚑ 旁观</div>
+  <div class="res time" id="r-time">
+    <button class="btn tctl" id="t-play" title="暂停 / 继续（空格）">▶</button>
+    <button class="btn tctl spd" data-spd="1" title="1 倍速">1×</button>
+    <button class="btn tctl spd" data-spd="2" title="2 倍速">2×</button>
+    <button class="btn tctl spd" data-spd="4" title="4 倍速">4×</button>
+    <button class="btn tctl" id="t-reset" title="重置到 1980-01">↺</button>
+  </div>
+  <div class="axis" id="r-axis" title="时间轴：1980-01 → 1991-12（12 年 / 144 月）"><i id="r-axis-fill"></i><b class="tk" style="left:0%"></b><b class="tk" style="left:9.09%"></b><b class="tk" style="left:18.18%"></b><b class="tk" style="left:27.27%"></b><b class="tk" style="left:36.36%"></b><b class="tk" style="left:45.45%"></b><b class="tk" style="left:54.55%"></b><b class="tk" style="left:63.64%"></b><b class="tk" style="left:72.73%"></b><b class="tk" style="left:81.82%"></b><b class="tk" style="left:90.91%"></b><b class="tk" style="left:100%"></b></div>
+  <div class="res"><span class="k">产出增速</span><span class="v" id="r-grw" title="同比增速（近 12 个月实际产出）；需满 13 个月历史，此前显示 —">–</span></div>
+  <div class="res"><span class="k">人口</span><span class="v" id="r-pop">–</span></div>
+  <div class="res"><span class="k">GDP</span><span class="v" id="r-gdp">–</span></div>
+  <div class="res"><span class="k">工业产值</span><span class="v" id="r-ind">–</span></div>
+  <div class="res"><span class="k">省份数</span><span class="v" id="r-prov">–</span></div>
+  <div class="res"><span class="k">国家数</span><span class="v" id="r-ctry">–</span></div>
+  <div class="spacer"></div>
+  <div class="tools">
+    <input id="search" placeholder="搜索国家…" autocomplete="off">
+    <button class="btn" id="b-stats">统计</button>
+    <button class="btn" id="b-inbox" title="事件收件箱">🔔<span id="b-inbox-n"></span></button>
+    <button class="btn" id="b-save" title="存档到本地（localStorage）">存档</button>
+    <button class="btn" id="b-load" title="读取本地存档">读档</button>
+    <button class="btn" id="b-export">导出 PNG</button>
+    <button class="btn" id="b-help">帮助</button>
+  </div>
+</header>
+
+<div id="modes"></div>
+<div id="legend"></div>
+<div id="layers"></div>
+
+<aside id="panel">
+  <div class="hd">
+    <span class="sw" id="p-sw"></span>
+    <div><div class="nm" id="p-name">–</div><div class="en" id="p-en"></div></div>
+    <span class="bd" id="p-bloc"></span>
+  </div>
+  <table>
+    <tr><td>人口 <span class="u">约</span></td><td id="p-pop">–</td></tr>
+    <tr><td>GDP <span class="u">1980 名义·估算</span></td><td id="p-gdp">–</td></tr>
+    <tr><td>工业产值 <span class="u">估算</span></td><td id="p-ind">–</td></tr>
+    <tr><td>人均 GDP</td><td id="p-pc">–</td></tr>
+    <tr><td>工业占 GDP</td><td id="p-ip">–</td></tr>
+    <tr><td>国土面积</td><td id="p-area">–</td></tr>
+    <tr><td>省份数</td><td id="p-pv">–</td></tr>
+    <tr><td>首都</td><td id="p-cap">–</td></tr>
+  </table>
+  <div class="btns">
+    <button class="btn" id="p-loc">定位首都</button>
+    <button class="btn" id="p-only">仅高亮该国</button>
+    <button class="btn" id="p-reset">重置</button>
+  </div>
+  <div class="diss" id="p-diss" style="display:none"></div>
+  <div class="spark" id="p-spark"></div>
+  <div class="mil" id="p-milbox">
+    <div class="mh">你的国家 · 决策</div>
+    <div id="p-mil-none" class="mn"><span id="p-mil-other">尚未选择你的国家</span>
+      <button class="btn" id="p-mkplayer">设为本国</button></div>
+    <div id="p-mil-ctl" style="display:none">
+      <label for="p-mil">军费占比 <b id="p-mil-v">0</b>%</label>
+      <input type="range" id="p-mil" min="0" max="10" step="0.5" value="0">
+      <div class="mt">每 +1% 使本国年产出增速 <b>-1pp</b>（持续生效，立即计入轨迹）</div>
+      <button class="btn" id="p-mil-off">取消本国</button>
+    </div>
+  </div>
+  <div class="note">数值为 1980 年前后近似估算，量级正确即可。</div>
+</aside>
+
+<div id="mini">
+  <div class="cap">世界 · 小地图</div>
+  <canvas id="minic" width="496" height="242"></canvas>
+  <div id="miniview"></div>
+</div>
+
+<div id="hint">
+  <span class="k">省份</span><span class="v" id="h-prov">–</span>
+  <span class="k">所属</span><span class="v" id="h-ctry">–</span>
+  <span class="k">约人口</span><span class="v" id="h-pop">–</span>
+  <span class="k">面积</span><span class="v" id="h-area">–</span>
+  <span class="k" style="margin-left:auto">滚轮缩放 · 拖动平移 · 双击放大 · M 切模式</span>
+</div>
+
+<div class="fl" id="stats">
+  <div class="hd">排行榜 · 前 15 <span class="x" data-close="stats">✕</span></div>
+  <div class="tabs">
+    <button class="btn on" data-sort="pop_m">人口</button>
+    <button class="btn" data-sort="gdp_bn">GDP</button>
+    <button class="btn" data-sort="industry_bn">工业</button>
+    <button class="btn" data-sort="area_km2">面积</button>
+  </div>
+  <div class="bd"><table id="stats-t"></table></div>
+</div>
+
+<div class="fl" id="inbox">
+  <div class="hd">事件收件箱 · 1980–1991 <span class="x" data-close="inbox">✕</span></div>
+  <div class="bd"><div id="inbox-list"></div></div>
+</div>
+
+<div class="fl" id="end">
+  <div class="hd">1991-12 · 终局结算 <span class="x" data-close="end">✕</span></div>
+  <div class="bd" id="end-body"></div>
+  <div class="ft">
+    <button class="btn" id="e-again">重开一局（1980）</button>
+    <button class="btn" id="e-close">关闭（继续看地图）</button>
+  </div>
+</div>
+
+<div class="fl" id="help">
+  <div class="hd">帮助 · 关于 <span class="x" data-close="help">✕</span></div>
+  <div class="bd">
+    <h4>投影与“现实大小”</h4>
+    <div>投影：<b>Equal Earth</b>（等面积，非 Mercator / Miller）。画布
+      <code id="k-base">–</code>，宽高比 <code id="k-aspect">–</code>，
+      面积换算 <code>km²/px = (Δx/W)²·R²</code> = <code id="k-km2">–</code>。</div>
+    <div class="chk" id="k-lintest">等面积自检：–</div>
+    <div class="chk" id="k-land">全球非南极陆地总面积 ≈ – 亿 km²（真实约 1.35 亿）</div>
+    <div>因此屏幕上的面积即真实面积：格陵兰 &lt; 阿尔及利亚，苏联 &gt; 加拿大 &gt; 中国 &gt; 美国。
+      <span id="k-rank" class="chk"></span></div>
+    <h4>1980 年政区处理</h4>
+    <div>合并：苏联 = 15 加盟共和国；南斯拉夫含科索沃；捷克斯洛伐克统一；埃塞俄比亚含厄立特里亚；
+      苏丹含南苏丹；印尼含东帝汶（1975–99 占领）。</div>
+    <div>切分：<b>西德 / 东德</b> 与 <b>北也门 / 南也门</b> 用 CShapes 2.0 的 1980-06-30 边界切开。</div>
+    <div>近似：现代 Natural Earth 边界代替 1980 边界（除上述）；西德首都用波恩、东德用东柏林、
+      也门南北用萨那/亚丁、南非用比勒陀利亚；南极洲为无主权灰色不可点。</div>
+    <h4>本版范围</h4>
+    <div>地图底座建模全部 <b>133</b> 国（§4 表 TIER 1 + TIER 2），灰色只剩 §3 忽略的微型政体与南极
+      （无主权，不可点击）。游戏层为 <b>54</b> 个可玩实体（31 独立国 + 23 联邦/殖民集团）：
+      1980-01 → 1991-12 月度仿真、7 件史实事件、存档/难度/教程、<b>1991-12 终局结算</b>。</div>
+    <h4>性能</h4>
+    <div id="k-perf">–</div>
+    <div id="k-sum">–</div>
+    <div class="btns" style="margin-top:10px"><button class="btn" id="b-tut" style="flex:1">重看教程</button></div>
+  </div>
+</div>
+
+<div id="boot">正在加载 1980 世界…<span id="boot-s">初始化</span></div>
+<div id="err"></div>
+<div id="toasts"></div>
+
+<div id="welcome">
+  <div class="w-card">
+    <div class="w-title">1980 冷战世界</div>
+    <div class="w-rule"></div>
+    <div class="w-sub">Great Strategy Simulation · Equal Earth · 1980 → 1991</div>
+    <div class="w-stamp">绝密 · TOP SECRET · 仅供战略推演</div>
+    <div class="w-sect">
+      <b>操作</b>：拖动平移 · 滚轮缩放 · 双击放大 · 点国家看面板 · 空格 暂停/继续 · M 切模式<br>
+      <b>时间</b>：▶ 播放 · 1×/2×/4× 倍速 · ↺ 重置 · 顶部实时显示日期与世界总量
+    </div>
+    <div class="w-sect">
+      <b>看变化</b>：模式 <b>6「变化」</b>按产出较 1980 的涨跌上色 · 顶栏 <b>🔔</b> 是事件收件箱 ·
+      国家面板含 1980 → 当期的实际产出轨迹
+    </div>
+    <div class="w-sect">
+      <b>选择你的国家</b>（可留空旁观）<br>
+      <select id="w-ctry"></select>
+      <div class="w-hint">选定后可在国家面板调整<b>军费占比</b> —— 这是你的第一笔决策，会立即改变本国经济轨迹。</div>
+    </div>
+    <div class="w-sect">
+      <b>波动幅度（难度）</b><br>
+      <button class="btn w-vol" data-v="1" title="平稳：noiseSigma = 1pp">平稳<span class="era">Détente</span></button>
+      <button class="btn w-vol on" data-v="3" title="标准：noiseSigma = 3pp（引擎标定 σ=0.45 的 6.7 倍）">标准<span class="era">Standard</span></button>
+      <button class="btn w-vol" data-v="6" title="剧烈：noiseSigma = 6pp">剧烈<span class="era">Brinkmanship</span></button>
+    </div>
+    <div class="w-btns">
+      <button class="btn" id="w-start">开始游戏</button>
+      <button class="btn" id="w-load">读取存档</button>
+    </div>
+  </div>
+</div>
+
+<div id="coach">
+  <div class="spot" id="c-spot"></div>
+  <div class="tip" id="c-tip">
+    <div class="tx" id="c-tx"></div>
+    <div class="col" id="c-col">1 / 5</div>
+    <div class="cbtns">
+      <button class="btn" id="c-skip">跳过教程</button>
+      <button class="btn" id="c-next">下一步</button>
+    </div>
+  </div>
+</div>
+
+<script src="data/countries.js"></script>
+<script src="data/provinces.js"></script>
+<script src="data/cities.js"></script>
+<script src="data/borders_province.js"></script>
+<script src="data/borders_country.js"></script>
+<script src="data/sim.js"></script>
+<script src="data/events.js"></script>
+<script src="engine/sim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
