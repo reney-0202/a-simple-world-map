@@ -110,12 +110,12 @@ load().then(() => {
     r.pmodSUN = SIM.S.P.pmods.SUN === undefined ? null : SIM.S.P.pmods.SUN;
     r.histLenBefore = SIM.S.hist.gdp.SUN.length;
     r.evLog = EV.log.slice();
-    r.saved = simSave();
+    r.saved = simSave().ok;
     try { r.saveBytes = localStorage.getItem(SAVE_KEY).length; } catch (e) { r.saveBytes = -1; }
     simReset();
     r.sunAfterReset = +simVal("SUN").gdp_bn.toFixed(2);
     ST.mil = 0; applyPlayerDecisions(); r.tamperedMil = ST.mil;   // 故意篡改 → 读档应还原为存档里的 8
-    r.loaded = simLoad();
+    r.loaded = simLoad().ok;
     r.dateAfterLoad = SIM.S.year + "-" + Math.max(1, SIM.S.month);
     r.sunAfterLoad = +simVal("SUN").gdp_bn.toFixed(2);
     r.gdpAfterLoad = +SIM.S.gdp.SUN.toFixed(9);
@@ -129,6 +129,67 @@ load().then(() => {
     r.evLogAfterLoad = EV.log.slice();
     r.detOk = (r.sunBefore === r.sunAfterLoad) && (r.evLog.join(",") === r.evLogAfterLoad.join(","));
     r.allOk = r.rngStateOk && r.exactOk && r.milRestored && r.detOk;
+
+    // ---- C（存档评审）：失败必须显式报出，不许静默 -------------------------
+    // 1) 多槽：写槽位 2 再读回，槽位互不串扰
+    const sv2 = simSave(2);
+    r.slot2Saved = sv2.ok && sv2.key === SAVE_KEY + "_s2";
+    const lv2 = simLoad(2);
+    r.slot2Loaded = lv2.ok && lv2.slot === "2";
+    r.slot2Isolated = (simLoad(1).reason === "empty");      // 槽位 1 从未写过 → 明确「该槽位没有存档」
+    // 2) JSON 损坏：写入损坏内容后，simLoad 必须返回 reason=corrupt（而非笼统失败/静默）
+    const goodRaw = localStorage.getItem(SAVE_KEY);
+    try { localStorage.setItem(SAVE_KEY, "{ not json"); } catch (e) {}
+    const lc = simLoad();
+    r.corruptReason = lc.ok ? null : lc.reason;
+    r.corruptReported = (!lc.ok && lc.reason === "corrupt");
+    r.corruptReasonZh = saveReasonZh(lc);
+    // 3) 版本不符：合法 JSON 但版本号错误 → reason=version 且报出实际版本号
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 99, S: {} })); } catch (e) {}
+    const lvv = simLoad();
+    r.versionReason = lvv.ok ? null : lvv.reason;
+    r.versionReported = (!lvv.ok && lvv.reason === "version");
+    r.versionDetail = lvv.detail || "";
+    // 4) 空槽 → reason=empty
+    const lve = simLoad(3);
+    r.emptyReason = lve.ok ? null : lve.reason;
+    r.emptyReported = (!lve.ok && lve.reason === "empty");
+    // 5) 导入校验：损坏文本 / 错版本文本都必须被拒绝并给出 reason
+    r.importRejectsCorrupt = !saveImportInto(1, "nope").ok && saveImportInto(1, "nope").reason === "corrupt";
+    r.importRejectsVersion = !saveImportInto(1, JSON.stringify({ v: 7, S: {} })).ok
+      && saveImportInto(1, JSON.stringify({ v: 7, S: {} })).reason === "version";
+    // 6) 槽位摘要：损坏槽必须标出 reason，空槽标 empty
+    const si = saveSlotInfo(2);
+    r.slot2InfoOk = !si.empty && si.year === 1985 && si.month === 6;
+    const siCorrupt = saveSlotInfo(0);
+    r.slotInfoFlagsCorrupt = !!siCorrupt.reason;
+    // 7) 删除槽位
+    r.slot2DeleteOk = saveDelete(2).ok && saveSlotInfo(2).empty;
+    // 8) 配额失败：setItem 抛 QuotaExceededError 时 simSave 必须返回 reason=quota
+    const realSet = Storage.prototype.setItem;
+    let quotaSeen = false;
+    try {
+      Storage.prototype.setItem = function () { const e = new Error("quota"); e.name = "QuotaExceededError"; throw e; };
+      const sq = simSave();
+      quotaSeen = !sq.ok && sq.reason === "quota";
+      r.quotaReasonZh = saveReasonZh(sq);
+    } catch (e) { quotaSeen = false; }
+    finally { Storage.prototype.setItem = realSet; }
+    r.quotaReported = quotaSeen;
+    // 9) 迁移表可读（v1→v2 状态为 dropped）
+    r.migrationNote = saveFormatNote();
+    // 10) 恢复现场：把好存档写回，确认一切功能正常
+    try { if (goodRaw) localStorage.setItem(SAVE_KEY, goodRaw); } catch (e) {}
+    const lr3 = simLoad();
+    r.recoveredAfterCorruption = lr3.ok;
+    r.allOk = r.allOk && r.slot2Saved && r.slot2Loaded && r.slot2Isolated
+      && r.corruptReported && r.versionReported && r.emptyReported
+      && r.importRejectsCorrupt && r.importRejectsVersion
+      && r.slot2InfoOk && r.slotInfoFlagsCorrupt && r.slot2DeleteOk
+      && r.quotaReported && r.recoveredAfterCorruption;
+    // 供无头断言判负：任一失败诊断缺失即显式 FAIL（runner 匹配字符串约定）
+    r.diag = r.allOk ? "ok" : "FAIL 存档失败诊断缺失";
+    // ----------------------------------------------------------------------
     const dd = document.createElement("div"); dd.id = "saveprobe"; dd.style.display = "none";
     dd.textContent = "SAVEPROBE " + JSON.stringify(r);
     document.body.appendChild(dd);

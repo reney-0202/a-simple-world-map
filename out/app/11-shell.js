@@ -666,8 +666,9 @@ function buildUI() {
   const ecopy = $("e-copy"); if (ecopy) ecopy.onclick = () => copyMemoirs(endStats());
   wireEndTabs();
   $("b-export").onclick = exportPNG;
-  $("b-save").onclick = () => { if (simSave()) toast({ y: SIM.S.year, m: Math.max(1, SIM.S.month), zh: "已存档（本地）", note: "" }); else toast({ y: "—", m: "", zh: "存档失败", note: "" }); };
-  $("b-load").onclick = () => { if (!simLoad()) toast({ y: "—", m: "", zh: "无存档", note: "" }); };
+  $("b-save").onclick = () => { saveFromUi(0); };
+  $("b-load").onclick = () => { loadFromUi(0); };
+  wireSavesPanel();
   document.querySelectorAll(".fl .hd .x").forEach((x) => x.onclick = () => $(x.dataset.close).classList.remove("open"));
   document.querySelectorAll("#stats .tabs .btn").forEach((b) => b.onclick = () => {
     ST.sortKey = b.dataset.sort;

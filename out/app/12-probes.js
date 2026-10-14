@@ -100,10 +100,10 @@ function runSanProbe() {
     r.selfRatio = +(r.selfGdpAfter / r.selfGdpBase - 1).toFixed(4);
   }
   // 存档往返：save → 篡改名单 → load → 名单回落 + 成员级 gdp 9 位逐位一致
-  r.saved = simSave();
+  const sv = simSave(); r.saved = sv.ok;
   r.gdpBefore = +(SIM.S.gdp[ekT.length ? ekT[0] : (ekP[0] || "SUN")]).toFixed(9);
   ST.sanctions = []; ST.aid = [];
-  r.loaded = simLoad();
+  const lv = simLoad(); r.loaded = lv.ok;
   r.sanctionsRestored = JSON.stringify(ST.sanctions) === JSON.stringify(keepSan) &&
     JSON.stringify(ST.aid) === JSON.stringify(keepAid);
   r.pmodAfterLoad = ekT.length ? gv(ekT[0]) : null;
@@ -222,9 +222,9 @@ function runBlocProbe(b) {
     r.shareShifted = r.shareTargetWith > r.shareTargetBase && r.shareOrigWith < r.shareOrigBase;
     // 存档往返：save → 篡改 {} → load → override 与 blocSince 还原
     setBloc(b);
-    r.saved = simSave();
+    const sv = simSave(); r.saved = sv.ok;
     ST.blocOverride = {}; ST.blocSince = null; rebuildBlocTable();
-    r.loaded = simLoad();
+    const lv = simLoad(); r.loaded = lv.ok;
     r.overrideRestored = ST.blocOverride[ST.player] === b;
     r.blocSinceRestored = typeof ST.blocSince === "number";
     // 收尾：回 1980-01 并保留请求的迁移态（?bloc=NATO&c=SUN 可见迁移后 UI；?t= 等后续钩子从干净 1980-01 起）
@@ -302,16 +302,14 @@ function runFrontlineProbe() {
       "setHint(1684) 文本应包含【交战控制：伊拉克】，实际为：" + hintTxt);
 
     // 6. 存档/读档往返一致性
-    const saved = simSave();
-    assert("saveOk", saved === true, "simSave 应成功执行");
+    assert("saveOk", simSave().ok, "simSave 应成功执行");
 
     // 临时篡改清除内存
     setFrontline(1684, null);
     assert("tamperCleared", !hasFrontlines && flMap[1684] === 0, "置空后前线应被清除");
 
     // 读档还原
-    const loaded = simLoad();
-    assert("loadOk", loaded === true, "simLoad 应成功还原");
+    assert("loadOk", simLoad().ok, "simLoad 应成功还原");
     assert("loadHasFrontlines", hasFrontlines === true, "读档后 hasFrontlines 应为 true");
     assert("loadFlObjRestored", ST.frontlines[1684] && ST.frontlines[1684].occupier === "IRQ",
       "读档后 ST.frontlines[1684].occupier 应还原为 IRQ");
@@ -401,10 +399,10 @@ function runWarProbe() {
 
     // 6. 存档与读档无损验证（1985-06 战事拉锯中途）
     simFastForward(1985, 6);
-    assert("t5_saveOk", simSave() === true, "1985-06 simSave 应成功");
+    assert("t5_saveOk", simSave().ok, "1985-06 simSave 应成功");
     clearFrontlines();
     assert("t5_tamperCleared", !hasFrontlines, "清空后应无前线");
-    assert("t5_loadOk", simLoad() === true, "simLoad 应成功");
+    assert("t5_loadOk", simLoad().ok, "simLoad 应成功");
     assert("t5_basraRestored", ST.frontlines[1692] && ST.frontlines[1692].occupier === "IRN", "读档后巴士拉战线应准确还原");
     assert("t5_flMapRestored", flMap[1692] === irnId, "读档后 flMap 应恢复为 IRN");
 
@@ -625,13 +623,13 @@ function runTradeProbe() {
 
     // 4. 存档与读档无损还原验证（Save/Load Idempotence）
     const saveOk = simSave();
-    assert("simSaveReturnedTrue", saveOk === true, "simSave 应成功落盘");
+    assert("simSaveReturnedTrue", saveOk.ok, "simSave 应成功落盘");
     // 故意修改状态
     ST.tradeRoutes = [];
     ST.reserves.SAU.usd = 9999;
     ST.reserves.SUN.trb = 1111;
     const loadOk = simLoad();
-    assert("simLoadReturnedTrue", loadOk === true, "simLoad 应成功读取");
+    assert("simLoadReturnedTrue", loadOk.ok, "simLoad 应成功读取");
     assert("routesRestored", ST.tradeRoutes.length >= 18, "读档后贸易航线完整还原");
     assert("sauUsdRestored", Math.abs(ST.reserves.SAU.usd - sauUsd1) < 1e-4, "沙特外汇储备读档还原精确无误");
     assert("sunTrbRestored", Math.abs(ST.reserves.SUN.trb - sunTrb1) < 1e-4, "苏联TRB储备读档还原精确无误");
@@ -804,14 +802,14 @@ function runEmbargoProbe() {
     ST.chokepoints.hormuz = "blocked";
     ST.smuggle.tr_deu_sun_tech = false;
     const saveOk = simSave();
-    assert("saveRoundtripSuccess", saveOk === true, "simSave 成功持久化经济战状态");
+    assert("saveRoundtripSuccess", saveOk.ok, "simSave 成功持久化经济战状态");
 
     simReset();
     assert("resetCleanDefaults", ST.cocom.strict === false && ST.chokepoints.hormuz === "open" &&
       ST.smuggle.tr_deu_sun_tech === true, "simReset 成功还原经济战基准状态");
 
     const loadOk = simLoad();
-    assert("loadRoundtripSuccess", loadOk === true, "simLoad 成功反序列化");
+    assert("loadRoundtripSuccess", loadOk.ok, "simLoad 成功反序列化");
     assert("cocomStrictRestored", ST.cocom.strict === true, "巴统极限制裁状态成功恢复");
     assert("hormuzBlockedRestored", ST.chokepoints.hormuz === "blocked", "霍尔木兹封锁状态成功恢复");
     assert("smuggleStateRestored", ST.smuggle.tr_deu_sun_tech === false, "特种走私开关成功恢复");
@@ -930,14 +928,14 @@ function runAIProbe() {
     sanctionSet("SUN", 1);
     const cableCountBefore = ST.ai.cables.length;
     const saveOk = simSave();
-    assert("saveSuccess", saveOk === true, "simSave 成功执行");
+    assert("saveSuccess", saveOk.ok, "simSave 成功执行");
 
     ST.sanctions = [];
     simReset();
     assert("resetCleanAI", (!ST.ai.decisions.SUN || ST.ai.decisions.SUN.sanctions.length === 0) && ST.ai.cables.length === 0, "simReset 干净重置 AI 决策与照会");
 
     const loadOk = simLoad();
-    assert("loadSuccess", loadOk === true, "simLoad 成功反序列化");
+    assert("loadSuccess", loadOk.ok, "simLoad 成功反序列化");
     assert("aiDecisionsRestored", ST.ai.decisions.SUN && ST.ai.decisions.SUN.sanctions.length === 1, "读档后苏联反制裁决策完美还原");
     assert("cablesRestored", ST.ai.cables.length === cableCountBefore, "读档后外交照会档案完美还原");
 
@@ -1045,13 +1043,13 @@ function runSummitProbe() {
     signTreaty("start", "SUN");
     const treatyCountBefore = ST.ai.treaties.length;
     const saveOk = simSave();
-    assert("saveSuccess", saveOk === true, "simSave 成功执行");
+    assert("saveSuccess", saveOk.ok, "simSave 成功执行");
 
     simReset();
     assert("resetClearsTreaties", ST.ai.treaties.length === 0, "simReset 干净重置军控条约列表");
 
     const loadOk = simLoad();
-    assert("loadSuccess", loadOk === true, "simLoad 成功反序列化");
+    assert("loadSuccess", loadOk.ok, "simLoad 成功反序列化");
     assert("treatiesRestored", ST.ai.treaties.length === treatyCountBefore, "读档后军控条约状态完美还原");
     assert("startTreatyPreserved", ST.ai.treaties.some((t) => t.id === "start" && t.status === "active"), "削减战略核武器条约状态完好");
 
@@ -1179,13 +1177,13 @@ function runUNSCProbe() {
     const passedCountBefore = ST.ai.unsc.passed.length;
     const historyCountBefore = ST.ai.unsc.history.length;
     const saveOk = simSave();
-    assert("saveSuccess", saveOk === true, "simSave 成功执行");
+    assert("saveSuccess", saveOk.ok, "simSave 成功执行");
 
     simReset();
     assert("resetClearsUNSC", ST.ai.unsc.passed.length === 0 && ST.ai.unsc.history.length === 0, "simReset 干净重置安理会决议状态");
 
     const loadOk = simLoad();
-    assert("loadSuccess", loadOk === true, "simLoad 成功反序列化");
+    assert("loadSuccess", loadOk.ok, "simLoad 成功反序列化");
     assert("unscPassedRestored", ST.ai.unsc.passed.length === passedCountBefore, "读档后安理会生效决议完美还原");
     assert("unscHistoryRestored", ST.ai.unsc.history.length === historyCountBefore, "读档后安理会历史记录完整保留");
 

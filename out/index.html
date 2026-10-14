@@ -36,8 +36,9 @@
     <button class="btn" id="b-unsc" title="联合国安全理事会 (UNSC)">🌐安理会</button>
     <button class="btn" id="b-sound" title="时代音效控制 (静音/开启)">🔊</button>
     <button class="btn" id="b-inbox" title="事件收件箱">🔔<span id="b-inbox-n"></span></button>
-    <button class="btn" id="b-save" title="存档到本地（localStorage）">存档</button>
+    <button class="btn" id="b-save" title="存档到本地（localStorage，默认槽）">存档</button>
     <button class="btn" id="b-load" title="读取本地存档">读档</button>
+    <button class="btn" id="b-saves" title="存档管理：多槽位 / 导出 / 导入 / 删除">存档管理</button>
     <button class="btn" id="b-export">导出 PNG</button>
     <button class="btn" id="b-help">帮助</button>
   </div>
@@ -159,6 +160,17 @@
 <div class="fl" id="inbox">
   <div class="hd">事件收件箱 · 1980–1991 <span class="x" data-close="inbox">✕</span></div>
   <div class="bd"><div id="inbox-list"></div></div>
+</div>
+
+<div class="fl" id="saves">
+  <div class="hd">存档管理 <span class="x" data-close="saves">✕</span></div>
+  <div class="bd"><div id="saves-list"></div>
+    <div class="saves-foot">
+      <span id="saves-quota"></span>
+      <button class="btn" id="saves-import">导入存档文件</button>
+      <input type="file" id="saves-file" accept="application/json,.json" style="display:none">
+    </div>
+  </div>
 </div>
 
 <div class="fl" id="end">

@@ -891,13 +891,13 @@ function runSoundProbe() {
     ST.sound.muted = true;
     ST.sound.vol = 0.35;
     const saveOk = simSave();
-    assert("simSaveIncludesSound", saveOk === true, "simSave 成功序列化包含 sound 字段");
+    assert("simSaveIncludesSound", saveOk.ok, "simSave 成功序列化包含 sound 字段");
 
     ST.sound.muted = false;
     ST.sound.vol = 0.9;
     assert("stateTamperedBeforeLoad", ST.sound.muted === false && Math.abs(ST.sound.vol - 0.9) < 0.001, "读档前状态篡改确认");
     const loadOk = simLoad();
-    assert("simLoadSucceeds", loadOk === true, "simLoad 成功执行");
+    assert("simLoadSucceeds", loadOk.ok, "simLoad 成功执行");
     assert("simLoadRestoresSound", ST.sound.muted === true && Math.abs(ST.sound.vol - 0.35) < 0.001, "simLoad 成功完整往返还原 sound.muted 与 sound.vol");
 
     // 8. 旁观模式零漂移铁律
@@ -1023,9 +1023,9 @@ function runAssetsProbe() {
 
     // 10. 存档往返验证
     const saveOk = simSave();
-    assert("simSaveSucceeds", saveOk === true, "simSave 成功执行");
+    assert("simSaveSucceeds", saveOk.ok, "simSave 成功执行");
     const loadOk = simLoad();
-    assert("simLoadSucceeds", loadOk === true, "simLoad 成功执行");
+    assert("simLoadSucceeds", loadOk.ok, "simLoad 成功执行");
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);

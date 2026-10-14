@@ -238,9 +238,10 @@ function evRebuild(y, m) {
   }
   renderInbox();
 }
-function simSave() {
-  if (!SIM.ready) return false;
-  const d = { v: 2, S: W1980_SIM.serialize(SIM.S),
+function simSave(slot) {
+  if (!SIM.ready) return { ok: false, reason: "not-ready" };
+  const key = saveKeyFor(slot);
+  const d = { v: 2, slot: slotKeyOf(slot), S: W1980_SIM.serialize(SIM.S),
     player: ST.player, mil: ST.mil, vol: SIM.vol, speed: SIM.speed,
     sanctions: ST.sanctions, aid: ST.aid,             // R5C'：对外决策名单（单一事实源，pmods 由名单重建）
     blocOverride: ST.blocOverride,                    // R5E：阵营迁移（旧档缺省 = 原阵营）
@@ -260,22 +261,39 @@ function simSave() {
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
     cr: CR.choices,                                   // R5D：十字路口选择记录（读档重建 deny/active）
-    view: { x: view.x, y: view.y, s: view.s } };
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) { return false; }
-  return true;
+    view: { x: view.x, y: view.y, s: view.s },
+    savedAt: new Date().toISOString() };               // C（存档评审）：多槽展示用存档时间戳
+  let json = null;
+  try { json = JSON.stringify(d); } catch (e) { return { ok: false, reason: "serialize", detail: String(e && e.message || e) }; }
+  try { localStorage.setItem(key, json); }
+  catch (e) {
+    // C（存档评审）：配额超限/隐私模式等写入失败必须显式报出，不再静默 return false
+    const q = quotaInfo();
+    return { ok: false, reason: (e && e.name === "QuotaExceededError") ? "quota" : "storage", detail: String(e && e.message || e), quota: q };
+  }
+  return { ok: true, bytes: json.length, key: key, quota: quotaInfo() };
 }
-function simLoad() {
+function simLoad(slot) {
   let d = null;
-  try { d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return false; }
-  if (!d || d.v !== 2 || !d.S) return false;
-  loadPlayerProfile(d);        // R5C'/R5E/R7A：玩家决策、阵营迁移与领袖军力
+  const key = saveKeyFor(slot);
+  let raw = null;
+  try { raw = localStorage.getItem(key); } catch (e) { return { ok: false, reason: "storage", detail: String(e && e.message || e) }; }
+  if (raw === null) return { ok: false, reason: "empty" };
+  try { d = JSON.parse(raw); } catch (e) { return { ok: false, reason: "corrupt", detail: String(e && e.message || e), bytes: raw.length }; }
+  if (!d || typeof d !== "object") return { ok: false, reason: "corrupt", detail: "存档不是对象", bytes: raw.length };
+  // C（存档评审）：版本迁移表——未知版本号一律拒绝并显式报出（不许静默当 v2 解析）
+  if (d.v !== 2 || !d.S) return { ok: false, reason: "version", detail: "存档版本 v" + (d && d.v) + " 不被支持（当前 v2）", bytes: raw.length };
+  loadPlayerProfile(d);        // R5C'/R5E/R7A：玩家决策、阵营迁移与领袖军费
   loadFrontlineState(d);       // R8A：交战前线占领态
   loadEconomyState(d);         // R9B/R9C：贸易航线、双轨储备与经济战
   loadAiState(d);              // R10A/B/C：反应式 AI、条约与安理会
   loadSocietyStates(d);        // R12A/B/C + R13A/B/C：内政/议程/危机/谍战/阿富汗/音效
-  if (!hydrateSaveCore(d)) return false;   // §4.4 还原契约（顺序固定 hydrate→evRebuild→crRebuild→applyPlayerDecisions）
+  if (!hydrateSaveCore(d)) {   // §4.4 还原契约（顺序固定 hydrate→evRebuild→crRebuild→applyPlayerDecisions）
+    // C（存档评审）：hydrate 抛错/被引擎拒绝时要报出原因，而不是让调用方统一显示「无存档」
+    return { ok: false, reason: "hydrate", detail: "引擎拒绝还原该存档（状态结构不兼容或已损坏）" };
+  }
   loadUiPreferences(d);        // 速度/模式/图层/视角/选中
-  return true;
+  return { ok: true, slot: slotKeyOf(slot), bytes: raw.length, savedAt: d.savedAt || null };
 }
 
 // ---- simLoad 子模块：按子系统还原存档（v2 格式，顺序即还原契约） ----
@@ -448,7 +466,207 @@ function loadUiPreferences(d) {
   select(d.sel && CM.countries[d.sel] ? d.sel : null);
   updateDate();
 }
-function simHasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+// ---- C（存档评审）：多槽 + 配额/失败诊断 + 版本迁移表 -------------------------
+// 槽位布局：0 = 默认槽（键名保持 w1980_save_v2，向后兼容旧存档与既有探针），
+// 1..3 = 扩展槽 w1980_save_v2_s1 .. _s3。SAVE_KEY_V1 是 v1 旧档，只读提示、不再加载。
+const SAVE_SLOTS = 4;                       // 总槽位数（含默认槽）
+const SAVE_VERSION = 2;                     // 当前存档格式版本（迁移表见 saveFormatNote）
+function saveKeyFor(slot) {
+  const i = slotIdx(slot);
+  return i === 0 ? SAVE_KEY : SAVE_KEY + "_s" + i;
+}
+function slotIdx(slot) {
+  const n = Number(slot);
+  if (!isFinite(n) || n < 1) return 0;
+  return Math.min(SAVE_SLOTS - 1, Math.floor(n));
+}
+function slotKeyOf(slot) { return String(slotIdx(slot)); }
+// 版本迁移表：v1（重放式存档，无玩家决策）→ 故意不支持，只提示；
+// v2 = 全量序列化（当前）。任何其他版本号一律拒绝并报出版本号。
+const SAVE_MIGRATIONS = [
+  { from: 1, to: 2, status: "dropped", note: "v1 为「同种子重放」式存档，与 v2 全量序列化是两条真相（SIM.md §10），故不再迁移" }
+];
+function saveFormatNote() { return SAVE_MIGRATIONS.map((m) => "v" + m.from + "→v" + m.to + ": " + m.status).join("；"); }
+// 配额估算：navigator.storage.estimate() 可用时给出真实用量，否则回退为本地已用字节
+function quotaInfo() {
+  try {
+    let used = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf("w1980_") === 0) used += (localStorage.getItem(k) || "").length + k.length;
+    }
+    return { used: used };
+  } catch (e) { return { used: -1 }; }
+}
+// 槽位摘要（存档面板用）：只做一次 JSON.parse 取头部字段，失败返回 reason
+function saveSlotInfo(slot) {
+  const key = saveKeyFor(slot);
+  let raw = null;
+  try { raw = localStorage.getItem(key); } catch (e) { return { slot: slotIdx(slot), key: key, ok: false, reason: "storage" }; }
+  if (raw === null) return { slot: slotIdx(slot), key: key, empty: true };
+  try {
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== "object" || d.v !== SAVE_VERSION || !d.S) {
+      return { slot: slotIdx(slot), key: key, empty: true, reason: d && d.v !== SAVE_VERSION ? "version" : "corrupt", detail: d && d.v !== SAVE_VERSION ? "版本 v" + d.v : "结构损坏" };
+    }
+    return { slot: slotIdx(slot), key: key, empty: false, bytes: raw.length, savedAt: d.savedAt || null,
+      year: d.S && typeof d.S.year === "number" ? d.S.year : null,
+      month: d.S && typeof d.S.month === "number" ? d.S.month : null,
+      player: d.player || null, mil: typeof d.mil === "number" ? d.mil : null };
+  } catch (e) { return { slot: slotIdx(slot), key: key, empty: true, reason: "corrupt", detail: String(e && e.message || e) }; }
+}
+function saveSlots() { const a = []; for (let i = 0; i < SAVE_SLOTS; i++) a.push(saveSlotInfo(i)); return a; }
+function saveDelete(slot) {
+  const key = saveKeyFor(slot);
+  try { localStorage.removeItem(key); return { ok: true }; }
+  catch (e) { return { ok: false, reason: "storage", detail: String(e && e.message || e) }; }
+}
+// 导出/导入文件：导出 = 把该槽 JSON 交给 Blob 下载；导入 = 读文件后写入该槽（仍走 simLoad 校验）
+function saveExportBlob(slot) {
+  const key = saveKeyFor(slot);
+  let raw = null;
+  try { raw = localStorage.getItem(key); } catch (e) { return null; }
+  if (!raw) return null;
+  try { return new Blob([raw], { type: "application/json" }); } catch (e) { return null; }
+}
+function saveImportInto(slot, text) {
+  if (typeof text !== "string" || !text.trim()) return { ok: false, reason: "corrupt", detail: "文件为空" };
+  let d = null;
+  try { d = JSON.parse(text); } catch (e) { return { ok: false, reason: "corrupt", detail: String(e && e.message || e) }; }
+  if (!d || typeof d !== "object" || d.v !== SAVE_VERSION || !d.S) {
+    return { ok: false, reason: "version", detail: "导入文件版本 v" + (d && d.v) + " 不被支持（当前 v" + SAVE_VERSION + "）" };
+  }
+  try { localStorage.setItem(saveKeyFor(slot), text); }
+  catch (e) { return { ok: false, reason: (e && e.name === "QuotaExceededError") ? "quota" : "storage", detail: String(e && e.message || e) }; }
+  return { ok: true, slot: slotIdx(slot) };
+}
+// 失败原因 → 中文（调用方共用，保证各处提示一致）
+function saveReasonZh(r) {
+  switch (r && r.reason) {
+    case "empty": return "该槽位没有存档";
+    case "corrupt": return "存档已损坏（JSON 解析失败）";
+    case "version": return r.detail || "存档版本不兼容";
+    case "hydrate": return "存档无法还原（引擎状态不兼容）";
+    case "quota": return "本地存储空间已满，请删除旧存档或导出后清理";
+    case "storage": return "浏览器拒绝了本地存储访问（隐私模式？）";
+    case "serialize": return "存档序列化失败";
+    case "not-ready": return "模拟尚未就绪";
+    default: return "存档操作失败";
+  }
+}
+// ------------------------------------------------------------------------------
+
+// ---- C（存档评审）：UI 侧存档/读档（失败必须显式报出原因） --------------------
+function saveFromUi(slot) {
+  const r = simSave(slot);
+  if (r.ok) {
+    const y = SIM.S && SIM.S.year, m = SIM.S && Math.max(1, SIM.S.month);
+    toast({ y: y, m: m, zh: "已存档（槽位 " + r.key + "）", note: r.bytes + " 字节" });
+    refreshSavesPanel();
+  } else {
+    toast({ y: "—", m: "", zh: "存档失败：" + saveReasonZh(r), note: r.detail || "" });
+  }
+  return r;
+}
+function loadFromUi(slot) {
+  const r = simLoad(slot);
+  if (r.ok) toast({ y: SIM.S.year, m: Math.max(1, SIM.S.month), zh: "已读档（槽位 " + slotKeyOf(slot) + "）", note: "" });
+  else toast({ y: "—", m: "", zh: "读档失败：" + saveReasonZh(r), note: r.detail || "" });
+  return r;
+}
+function openSaves() {
+  const el = $("saves"); if (!el) return;
+  refreshSavesPanel();
+  el.classList.add("open");
+}
+function refreshSavesPanel() {
+  const box = $("saves-list"); if (!box) return;
+  const slots = saveSlots();
+  box.innerHTML = "";
+  for (const s of slots) {
+    const row = document.createElement("div");
+    row.className = "sv";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = s.slot === 0 ? "默认槽" : "槽位 " + s.slot;
+    const mt = document.createElement("span");
+    mt.className = "mt";
+    if (s.empty && !s.reason) mt.innerHTML = "<span style='color:var(--dim)'>空</span>";
+    else if (s.reason) mt.innerHTML = "<span class='bad'>不可用：" + saveReasonZh(s) + "</span>";
+    else mt.textContent = (s.savedAt ? new Date(s.savedAt).toLocaleString("zh-CN", { hour12: false }) + " · " : "")
+      + (s.year ? s.year + "-" + String(s.month).padStart(2, "0") : "?")
+      + (s.player ? " · " + (CM.countries[s.player] ? CM.countries[s.player].zh : s.player) : " · 旁观")
+      + (typeof s.mil === "number" ? " · 军费 " + s.mil + "%" : "")
+      + " · " + (s.bytes / 1024).toFixed(1) + " KB";
+    row.appendChild(nm); row.appendChild(mt);
+    const mk = (label, title, fn, cls) => {
+      const b = document.createElement("button");
+      b.className = "btn" + (cls ? " " + cls : "");
+      b.textContent = label; b.title = title;
+      b.onclick = fn;
+      row.appendChild(b);
+    };
+    mk("存", "保存到该槽位", () => saveFromUi(s.slot));
+    if (!s.empty || s.reason) mk("读", "从该槽位读取", () => loadFromUi(s.slot));
+    if (!s.empty) {
+      mk("导出", "下载该槽位存档文件", () => {
+        const blob = saveExportBlob(s.slot);
+        if (!blob) { toast({ y: "—", m: "", zh: "导出失败：该槽位为空", note: "" }); return; }
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "w1980-save-slot" + s.slot + "-" + new Date().toISOString().slice(0, 10) + ".json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      });
+      mk("删", "删除该槽位存档", () => {
+        const r = saveDelete(s.slot);
+        toast({ y: "—", m: "", zh: r.ok ? "已删除槽位 " + s.slot : "删除失败：" + saveReasonZh(r), note: "" });
+        refreshSavesPanel();
+      });
+    }
+    box.appendChild(row);
+  }
+  const q = $("saves-quota");
+  if (q) {
+    const info = quotaInfo();
+    q.textContent = "本地已用 " + (info.used < 0 ? "未知" : (info.used / 1024).toFixed(1) + " KB")
+      + " · " + saveFormatNote();
+  }
+}
+function wireSavesPanel() {
+  const b = $("b-saves");
+  if (b) b.onclick = () => {
+    const el = $("saves");
+    if (el) el.classList.toggle("open");
+    if (el && el.classList.contains("open")) refreshSavesPanel();
+  };
+  const imp = $("saves-import"), file = $("saves-file");
+  if (imp && file) {
+    imp.onclick = () => file.click();
+    file.onchange = () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        // C：导入写入当前显示的第一个空槽；没有空槽则写默认槽（覆盖前由调用方确认）
+        let slot = 0;
+        const slots = saveSlots();
+        const empty = slots.find((s) => s.empty);
+        if (empty) slot = empty.slot;
+        else if (!confirm("没有空槽位，导入将覆盖「默认槽」。继续？")) { file.value = ""; return; }
+        const r = saveImportInto(slot, String(rd.result || ""));
+        toast({ y: "—", m: "", zh: r.ok ? "已导入到槽位 " + slot : "导入失败：" + saveReasonZh(r), note: r.detail || "" });
+        refreshSavesPanel();
+        file.value = "";
+      };
+      rd.onerror = () => toast({ y: "—", m: "", zh: "导入失败：无法读取文件", note: "" });
+      rd.readAsText(f);
+    };
+  }
+}
+// ------------------------------------------------------------------------------
+
+function simHasSave(slot) { try { return !!localStorage.getItem(saveKeyFor(slot)); } catch (e) { return false; } }
 function simHasV1() { try { return !!localStorage.getItem(SAVE_KEY_V1); } catch (e) { return false; } }
 
 function welcome() {
@@ -465,8 +683,7 @@ function welcome() {
     ws.value = ST.player || "";
     ws.onchange = () => setPlayer(ws.value || null);
   }
-  if (!simHasSave() && simHasV1()) toast({ y: "—", m: "", zh: "检测到旧版存档（v1，不含决策），已忽略", note: "v2 存档才支持玩家决策" });
-  const set = (v) => { SIM.vol = v; if (SIM.S) SIM.S.noiseSigma = v;
+  if (!simHasSave() && simHasV1()) toast({ y: "—", m: "", zh: "检测到旧版存档（v1，不含决策），已忽略", note: "v2 存档才支持玩家决策" });  const set = (v) => { SIM.vol = v; if (SIM.S) SIM.S.noiseSigma = v;
     document.querySelectorAll("#welcome .w-vol").forEach((b) => b.classList.toggle("on", +b.dataset.v === v)); };
   document.querySelectorAll("#welcome .w-vol").forEach((b) => b.onclick = () => set(+b.dataset.v));
   $("w-start").onclick = () => { w.style.display = "none";
@@ -476,7 +693,8 @@ function welcome() {
     tutStart(0); };
   $("w-load").onclick = () => { w.style.display = "none";
     try { localStorage.setItem(SEEN_KEY, "1"); } catch (e) {}
-    if (!simLoad()) toast({ y: "—", m: "", zh: "无存档", note: "" }); };
+    const lr = simLoad();
+    if (!lr.ok) toast({ y: "—", m: "", zh: "读档失败：" + saveReasonZh(lr), note: lr.detail || "" }); };
   $("w-load").style.display = simHasSave() ? "" : "none";
 }
 function maybeWelcome() {

@@ -210,8 +210,16 @@ button,input{font:inherit;color:inherit}
 .fl .hd .x:hover{color:var(--gold2)}
 .fl .bd{padding:9px 11px;max-height:60vh;overflow:auto}
 
-#stats{top:52px;left:132px;width:330px}#stats .tabs{display:flex;gap:4px;padding:7px 11px 0}
-#stats .tabs .btn{padding:3px 8px;font-size:10px}
+#saves{top:52px;left:132px;width:360px}
+#saves .sv{display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #23282c}
+#saves .sv .nm{font-weight:700;min-width:52px}
+#saves .sv .mt{color:var(--dim);font-size:10.5px;flex:1;line-height:1.4}
+#saves .sv .mt .bad{color:#e0a35a}
+#saves .sv .btn{padding:2px 7px;font-size:10px}
+#saves .saves-foot{display:flex;align-items:center;gap:8px;padding-top:8px;font-size:10.5px;color:var(--dim)}
+#saves #saves-quota{flex:1;font-variant-numeric:tabular-nums}
+
+#stats{top:52px;left:132px;width:330px}#stats .tabs{display:flex;gap:4px;padding:7px 11px 0}#stats .tabs .btn{padding:3px 8px;font-size:10px}
 #stats table{width:100%;border-collapse:collapse;font-size:12px}
 #stats tr{cursor:pointer}
 #stats tr:hover td{background:#2b3035}
