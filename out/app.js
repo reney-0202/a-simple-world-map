@@ -621,6 +621,15 @@
       }
     };
 
+    timelineIranIraq(now, silent, syncFl);
+    timelineFalklands(now, silent, syncFl);
+    timelineGulfWar(now, silent, syncFl);
+    if (changed) timelineRepaint();
+    return changed;
+  }
+
+  // ---- 历史战线按月推演：三段战线各自封装，syncFl 回调写回 changed ----
+  function timelineIranIraq(now, silent, syncFl) {
     // 1. 两伊战争（iran_iraq，1980-09 ~ 1988-08）
     const iranIraqDenied = !!(CR.deny && CR.deny.has("iran_iraq_war"));
     const res598Passed = !!(isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed) && ST.ai.unsc.passed.includes("res_598"));
@@ -683,6 +692,8 @@
       }
     }
 
+  }
+  function timelineFalklands(now, silent, syncFl) {
     // 2. 马岛战役（falklands，1982-04 ~ 1982-05）
     const res502Passed = !!(isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed) && ST.ai.unsc.passed.includes("res_502"));
     const sARG = getInterventionScore("ARG");
@@ -719,6 +730,8 @@
       }
     }
 
+  }
+  function timelineGulfWar(now, silent, syncFl) {
     // 3. 海湾战争（gulf_war，1990-08 ~ 1991-02）
     const res660Passed = !!(isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed) && ST.ai.unsc.passed.includes("res_660"));
     const sGulfIRQ = getInterventionScore("IRQ");
@@ -748,18 +761,19 @@
       }
     }
 
-    if (changed) {
-      rebuildFrontlinesMap();
-      if (bakedNow === "political" || bakedNow === "bloc") {
-        bakeNow(bakedNow);
-        render();
-        drawMini();
-        drawOverlay();
-      }
-      if (ST.hover) setHint(ST.hover);
-      if (ST.sel) refreshWarBox(ST.sel);
+  }
+
+  // ---- 战线变化后的统一重绘（R8A：政治/阵营底图热更新 + 悬浮/选中联动） ----
+  function timelineRepaint() {
+    rebuildFrontlinesMap();
+    if (bakedNow === "political" || bakedNow === "bloc") {
+      bakeNow(bakedNow);
+      render();
+      drawMini();
+      drawOverlay();
     }
-    return changed;
+    if (ST.hover) setHint(ST.hover);
+    if (ST.sel) refreshWarBox(ST.sel);
   }
 
   // ---- R8C：战局态势与地缘前线面板反馈 ----
@@ -1137,31 +1151,41 @@
     const mUsd = flows.netUsd / 12;
     const mTrb = flows.netTrb / 12;
 
-    let badgeText = "贸易平衡";
-    let badgeColor = "#7ba4d9";
-    if (actualKey === "SUN") {
-      badgeText = "双轨清算枢纽";
-      badgeColor = "var(--gold2)";
-    } else if (flows.netUsd > 20) {
-      badgeText = "巨额顺差出超";
-      badgeColor = "#7bc67e";
-    } else if (flows.netUsd > 5) {
-      badgeText = "外贸顺差";
-      badgeColor = "#7bc67e";
-    } else if (flows.netUsd < -20) {
-      badgeText = "巨额逆差承压";
-      badgeColor = "#e07a5a";
-    } else if (flows.netUsd < -5) {
-      badgeText = "外贸逆差入超";
-      badgeColor = "#e07a5a";
-    }
+    const badge = tradeBadge(actualKey, flows);
 
     const hasTrb = res.trb > 0 || flows.exportTrb > 0 || flows.importTrb > 0 || c.bloc === "WP" || c.bloc === "SOV";
 
     let h = '<div class="th"><span>🌐 贸易与硬通货清算</span>' +
-      '<span class="t-badge" style="color:' + badgeColor + '; border-color:' + badgeColor + '">' + badgeText + '</span></div>';
+      '<span class="t-badge" style="color:' + badge.color + '; border-color:' + badge.color + '">' + badge.text + '</span></div>';
 
-    h += '<div class="t-reserves"><span>USD 自由外汇：<b class="' + (res.usd < 0 ? "bad" : "") + '">' +
+    h += tradeReservesHtml(res, flows, mUsd, mTrb, hasTrb);
+    h += tradeRoutesHtml(flows);
+
+    // R9C：经济战与咽喉航道安全态势展示
+    h += tradeEmbargoHtml(actualKey);
+
+    const isMine = !!ST.player && ST.sel === ST.player;
+    if (isMine) h += tradeActionsHtml(actualKey, c);
+    h += '</div>';
+
+    box.innerHTML = h;
+    box.style.display = "block";
+
+    if (isMine) wireTradeActions();
+  }
+
+  // ---- R9C：贸易面板构造与玩家行动接线（refreshTradeBox 的专注子步骤） ----
+  function tradeBadge(actualKey, flows) {
+    if (actualKey === "SUN") return { text: "双轨清算枢纽", color: "var(--gold2)" };
+    if (flows.netUsd > 20) return { text: "巨额顺差出超", color: "#7bc67e" };
+    if (flows.netUsd > 5) return { text: "外贸顺差", color: "#7bc67e" };
+    if (flows.netUsd < -20) return { text: "巨额逆差承压", color: "#e07a5a" };
+    if (flows.netUsd < -5) return { text: "外贸逆差入超", color: "#e07a5a" };
+    return { text: "贸易平衡", color: "#7ba4d9" };
+  }
+
+  function tradeReservesHtml(res, flows, mUsd, mTrb, hasTrb) {
+    let h = '<div class="t-reserves"><span>USD 自由外汇：<b class="' + (res.usd < 0 ? "bad" : "") + '">' +
       res.usd.toFixed(1) + ' 亿</b></span>' +
       '<span style="font-size:9px; color:' + (mUsd >= 0 ? "#7bc67e" : "#e07a5a") + '">' +
       (mUsd >= 0 ? "+" : "") + mUsd.toFixed(2) + ' 亿/月</span></div>';
@@ -1176,12 +1200,16 @@
         (flows.netUsd >= 0 ? "+" : "") + flows.netUsd.toFixed(1) + ' 亿</b></span>' +
         '<span style="font-size:9px; color:var(--dim)">' + (flows.netUsd >= 0 ? "顺差出超" : "外贸赤字") + '</span></div>';
     }
+    return h;
+  }
 
+  function tradeRoutesHtml(flows) {
+    const T = window.W1980_TRADE;
     const allRoutes = [];
     flows.exportRoutes.forEach((r) => allRoutes.push({ dir: "exp", r: r }));
     flows.importRoutes.forEach((r) => allRoutes.push({ dir: "imp", r: r }));
 
-    h += '<div class="t-sub">跨国大宗贸易大动脉 (' + allRoutes.length + ')：</div>';
+    let h = '<div class="t-sub">跨国大宗贸易大动脉 (' + allRoutes.length + ')：</div>';
     h += '<div class="t-list">';
 
     const RES_NAME = { oil: "原油", min: "矿产", agr: "农粮", tech: "技术" };
@@ -1213,10 +1241,11 @@
           '</span></div>';
       }
     }
-    h += '</div>';
+    return h + '</div>';
+  }
 
-    // R9C：经济战与咽喉航道安全态势展示
-    h += '<div class="t-embargo">' +
+  function tradeEmbargoHtml(actualKey) {
+    let h = '<div class="t-embargo">' +
       '<div class="t-embargo-header"><span>⚡ 经济战与航道安全态势</span><span style="font-size:8.5px; color:var(--dim)">冷战战略封锁</span></div>' +
       '<div class="t-embargo-grid">' +
       '<div class="t-embargo-item"><span>巴统高技术禁运</span><span class="badge ' + (ST.cocom.active ? (ST.cocom.strict ? "bad" : "warn") : "ok") + '">' +
@@ -1230,100 +1259,61 @@
     if (rp.penalty < 0) {
       h += '<div class="t-shock">⚠️ <b>能源危机预警</b>：霍尔木兹海峡受阻导致原油自给满足率跌至 ' + Math.round(rp.ratio * 100) + '%，工业增长承受 <b>' + rp.penalty.toFixed(2) + 'pp/年</b> 结构性震荡折损！</div>';
     }
+    return h;
+  }
 
-    const isMine = !!ST.player && ST.sel === ST.player;
-    if (isMine) {
-      h += '<div class="t-actions">';
-      // 西方阵营操作
-      if (c.bloc === "NATO" || c.bloc === "W") {
-        h += '<button class="t-btn-sub" id="p-btn-cocom">' + (ST.cocom.strict ? "放宽巴统管制" : "升级巴统极限制裁") + '</button>';
-        h += '<button class="t-btn-sub" id="p-btn-escort">' + (ST.chokepoints.hormuz === "blocked" ? "护航行动：解除海峡封锁" : ST.chokepoints.hormuz === "contested" ? "护航行动：驱散威胁" : "海峡常态护航巡航") + '</button>';
-      } else if (c.bloc === "WP" || c.bloc === "SOV") {
-        h += '<button class="t-btn-sub ' + (ST.smuggle.tr_deu_sun_tech ? "active" : "") + '" id="p-btn-smuggle">' + (ST.smuggle.tr_deu_sun_tech ? "关闭特种技术走私" : "开启特种技术走私 (1.5×USD)") + '</button>';
-      } else if (actualKey === "IRN" || actualKey === "IRQ") {
-        h += '<button class="t-btn-sub ' + (ST.chokepoints.hormuz === "blocked" ? "active" : "") + '" id="p-btn-hormuz">' + (ST.chokepoints.hormuz === "blocked" ? "撤销海峡封锁" : "发动霍尔木兹袭船/封锁") + '</button>';
-      }
-      h += '</div>';
-      h += '<button class="t-btn-add" id="p-trade-add">+ 开辟新跨国战略经贸走廊</button>';
+  function tradeActionsHtml(actualKey, c) {
+    let h = '<div class="t-actions">';
+    // 西方阵营操作
+    if (c.bloc === "NATO" || c.bloc === "W") {
+      h += '<button class="t-btn-sub" id="p-btn-cocom">' + (ST.cocom.strict ? "放宽巴统管制" : "升级巴统极限制裁") + '</button>';
+      h += '<button class="t-btn-sub" id="p-btn-escort">' + (ST.chokepoints.hormuz === "blocked" ? "护航行动：解除海峡封锁" : ST.chokepoints.hormuz === "contested" ? "护航行动：驱散威胁" : "海峡常态护航巡航") + '</button>';
+    } else if (c.bloc === "WP" || c.bloc === "SOV") {
+      h += '<button class="t-btn-sub ' + (ST.smuggle.tr_deu_sun_tech ? "active" : "") + '" id="p-btn-smuggle">' + (ST.smuggle.tr_deu_sun_tech ? "关闭特种技术走私" : "开启特种技术走私 (1.5×USD)") + '</button>';
+    } else if (actualKey === "IRN" || actualKey === "IRQ") {
+      h += '<button class="t-btn-sub ' + (ST.chokepoints.hormuz === "blocked" ? "active" : "") + '" id="p-btn-hormuz">' + (ST.chokepoints.hormuz === "blocked" ? "撤销海峡封锁" : "发动霍尔木兹袭船/封锁") + '</button>';
     }
     h += '</div>';
+    h += '<button class="t-btn-add" id="p-trade-add">+ 开辟新跨国战略经贸走廊</button>';
+    return h;
+  }
 
-    box.innerHTML = h;
-    box.style.display = "block";
+  function wireTradeActions() {
+    const toastNow = (zh, note) => toast({
+      y: SIM.S ? SIM.S.year : 1980,
+      m: SIM.S ? Math.max(1, SIM.S.month) : 1,
+      zh: zh,
+      note: note
+    });
+    const after = () => { applyPlayerDecisions(); refreshMilBox(); refreshTradeBox(ST.sel); };
+    const wireBtn = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
 
-    if (isMine) {
-      const btnAdd = $("p-trade-add");
-      if (btnAdd) {
-        btnAdd.onclick = () => {
-          toast({
-            y: SIM.S ? SIM.S.year : 1980,
-            m: SIM.S ? Math.max(1, SIM.S.month) : 1,
-            zh: "跨国战略贸易走廊",
-            note: "大宗物资长期经贸协定在冷战阵营与地缘条约框架内自动清算维系。"
-          });
-        };
-      }
-      const btnCocom = $("p-btn-cocom");
-      if (btnCocom) {
-        btnCocom.onclick = () => {
-          ST.cocom.strict = !ST.cocom.strict;
-          toast({
-            y: SIM.S ? SIM.S.year : 1980,
-            m: SIM.S ? Math.max(1, SIM.S.month) : 1,
-            zh: "巴统禁运委员会 · " + (ST.cocom.strict ? "升级全面极限制裁" : "恢复标准管制清单"),
-            note: ST.cocom.strict ? "严格彻查一切中立口岸技术转口，彻底切断一切对东方秘密通道。" : "维持标准高新技术禁运清单管制。"
-          });
-          applyPlayerDecisions();
-          refreshMilBox();
-          refreshTradeBox(ST.sel);
-        };
-      }
-      const btnEscort = $("p-btn-escort");
-      if (btnEscort) {
-        btnEscort.onclick = () => {
-          ST.chokepoints.hormuz = "open";
-          toast({
-            y: SIM.S ? SIM.S.year : 1980,
-            m: SIM.S ? Math.max(1, SIM.S.month) : 1,
-            zh: "挚诚意志护航行动 · 霍尔木兹恢复通航",
-            note: "西方特遣舰队进驻波斯湾主航道武装护航，压制水雷与袭船威胁，海峡油轮运力完全恢复。"
-          });
-          applyPlayerDecisions();
-          refreshMilBox();
-          refreshTradeBox(ST.sel);
-        };
-      }
-      const btnSmuggle = $("p-btn-smuggle");
-      if (btnSmuggle) {
-        btnSmuggle.onclick = () => {
-          ST.smuggle.tr_deu_sun_tech = !ST.smuggle.tr_deu_sun_tech;
-          toast({
-            y: SIM.S ? SIM.S.year : 1980,
-            m: SIM.S ? Math.max(1, SIM.S.month) : 1,
-            zh: "东方情报外贸局 · " + (ST.smuggle.tr_deu_sun_tech ? "启动特种秘密技术转口" : "暂停秘密技术走私通道"),
-            note: ST.smuggle.tr_deu_sun_tech ? "通过中立国空壳企业支付 150% 自由外汇溢价突围采购精密铣床与技术设备。" : "避免外汇储备快速失血，暂停特种采购。"
-          });
-          applyPlayerDecisions();
-          refreshMilBox();
-          refreshTradeBox(ST.sel);
-        };
-      }
-      const btnHormuz = $("p-btn-hormuz");
-      if (btnHormuz) {
-        btnHormuz.onclick = () => {
-          ST.chokepoints.hormuz = (ST.chokepoints.hormuz === "blocked" ? "open" : "blocked");
-          toast({
-            y: SIM.S ? SIM.S.year : 1980,
-            m: SIM.S ? Math.max(1, SIM.S.month) : 1,
-            zh: "波斯湾军事令 · " + (ST.chokepoints.hormuz === "blocked" ? "宣布封锁霍尔木兹海峡" : "撤销海峡封锁令"),
-            note: ST.chokepoints.hormuz === "blocked" ? "在咽喉航道布设大面积水雷与岸基反舰导弹，切断波斯湾外运，重创全球能源供应！" : "撤销战时封锁管制，允许中立国油轮恢复通航。"
-          });
-          applyPlayerDecisions();
-          refreshMilBox();
-          refreshTradeBox(ST.sel);
-        };
-      }
-    }
+    wireBtn("p-trade-add", () =>
+      toastNow("跨国战略贸易走廊", "大宗物资长期经贸协定在冷战阵营与地缘条约框架内自动清算维系。"));
+    wireBtn("p-btn-cocom", () => {
+      ST.cocom.strict = !ST.cocom.strict;
+      toastNow("巴统禁运委员会 · " + (ST.cocom.strict ? "升级全面极限制裁" : "恢复标准管制清单"),
+        ST.cocom.strict ? "严格彻查一切中立口岸技术转口，彻底切断一切对东方秘密通道。" : "维持标准高新技术禁运清单管制。");
+      after();
+    });
+    wireBtn("p-btn-escort", () => {
+      ST.chokepoints.hormuz = "open";
+      toastNow("挚诚意志护航行动 · 霍尔木兹恢复通航",
+        "西方特遣舰队进驻波斯湾主航道武装护航，压制水雷与袭船威胁，海峡油轮运力完全恢复。");
+      after();
+    });
+    wireBtn("p-btn-smuggle", () => {
+      ST.smuggle.tr_deu_sun_tech = !ST.smuggle.tr_deu_sun_tech;
+      toastNow("东方情报外贸局 · " + (ST.smuggle.tr_deu_sun_tech ? "启动特种秘密技术转口" : "暂停秘密技术走私通道"),
+        ST.smuggle.tr_deu_sun_tech ? "通过中立国空壳企业支付 150% 自由外汇溢价突围采购精密铣床与技术设备。" : "避免外汇储备快速失血，暂停特种采购。");
+      after();
+    });
+    wireBtn("p-btn-hormuz", () => {
+      ST.chokepoints.hormuz = (ST.chokepoints.hormuz === "blocked" ? "open" : "blocked");
+      toastNow("波斯湾军事令 · " + (ST.chokepoints.hormuz === "blocked" ? "宣布封锁霍尔木兹海峡" : "撤销海峡封锁令"),
+        ST.chokepoints.hormuz === "blocked" ? "在咽喉航道布设大面积水雷与岸基反舰导弹，切断波斯湾外运，重创全球能源供应！" : "撤销战时封锁管制，允许中立国油轮恢复通航。");
+      after();
+    });
   }
 
   // ---- R10A：冷战大国战略性格与反应式 AI 决策机 ----
@@ -1569,7 +1559,16 @@
       return;
     }
     if (window.W1980_SOUND) window.W1980_SOUND.playHotline();
+    const ctx = summitContext(summitPresetId, targetAiKey);
+    if (!ctx) return;
+    fillSummitHeader(ctx);
+    fillSummitTreaties(ctx);
+    fillSummitPhoto(ctx);
+    modal.style.display = "flex";
+  }
 
+  // R10B：峰会上下文——对手解析（预设 → 指定目标 → 当前选中 → 宿敌 → 默认对极）与态度计算
+  function summitContext(summitPresetId, targetAiKey) {
     const curY = SIM.S ? SIM.S.year : 1980;
     const curM = SIM.S ? Math.max(1, SIM.S.month) : 1;
     let preset = null;
@@ -1595,7 +1594,7 @@
 
     if (!CM.countries[aiKey] || aiKey === ST.player) {
       toast({ y: "—", m: "", zh: "会晤目标无效", note: "无法与自身或未定义实体开启首脑谈判！" });
-      return;
+      return null;
     }
 
     const pName = (CM.countries[ST.player] || {}).zh || ST.player;
@@ -1604,6 +1603,12 @@
     const att = (ST.ai && ST.ai.tensions && ST.ai.tensions[aiKey]) ? ST.ai.tensions[aiKey] :
       (window.W1980_AI ? window.W1980_AI.calcAttitude(aiKey, ST.player, { mil: ST.mil, sanctions: ST.sanctions, aid: ST.aid }, { countries: CM.countries, treaties: ST.ai ? ST.ai.treaties : [] }) : { tension: 50, label: "警惕戒备" });
 
+    return { preset: preset, aiKey: aiKey, curY: curY, curM: curM, pName: pName, aiName: aiName, doc: doc, att: att };
+  }
+
+  // 峰会头部信息填充（地点/主题/双方/张力态势/战略学说）
+  function fillSummitHeader(ctx) {
+    const preset = ctx.preset, curY = ctx.curY, curM = ctx.curM, pName = ctx.pName, aiName = ctx.aiName, att = ctx.att, doc = ctx.doc;
     const locEl = $("summit-loc");
     const titleEl = $("summit-title");
     const descEl = $("summit-desc");
@@ -1620,6 +1625,11 @@
     if (tensionEl) tensionEl.textContent = att.tension + " 点（" + att.label + "）";
     if (docEl) docEl.textContent = doc.name + " (" + doc.doctrine + ")";
 
+  }
+
+  // 峰会条约卡片列表（R10B：签署状态、条款标签与签署接线）
+  function fillSummitTreaties(ctx) {
+    const preset = ctx.preset, aiKey = ctx.aiKey;
     const listEl = $("summit-treaty-list");
     if (listEl && window.W1980_AI && window.W1980_AI.TREATY_DEFS) {
       listEl.innerHTML = "";
@@ -1671,7 +1681,11 @@
       }
     }
 
-    // R14: 首脑会晤历史画报
+  }
+
+  // R14：首脑会晤历史画报
+  function fillSummitPhoto(ctx) {
+    const preset = ctx.preset, curY = ctx.curY;
     const sPhotoBox = $("summit-photo-box");
     const sPhotoImg = $("summit-photo-img");
     const sPhotoCap = $("summit-photo-caption");
@@ -1687,7 +1701,6 @@
       }
     }
 
-    modal.style.display = "flex";
   }
 
   function closeSummitModal() {
@@ -5826,6 +5839,18 @@
     let d = null;
     try { d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return false; }
     if (!d || d.v !== 2 || !d.S) return false;
+    loadPlayerProfile(d);        // R5C'/R5E/R7A：玩家决策、阵营迁移与领袖军力
+    loadFrontlineState(d);       // R8A：交战前线占领态
+    loadEconomyState(d);         // R9B/R9C：贸易航线、双轨储备与经济战
+    loadAiState(d);              // R10A/B/C：反应式 AI、条约与安理会
+    loadSocietyStates(d);        // R12A/B/C + R13A/B/C：内政/议程/危机/谍战/阿富汗/音效
+    if (!hydrateSaveCore(d)) return false;   // §4.4 还原契约（顺序固定 hydrate→evRebuild→crRebuild→applyPlayerDecisions）
+    loadUiPreferences(d);        // 速度/模式/图层/视角/选中
+    return true;
+  }
+
+  // ---- simLoad 子模块：按子系统还原存档（v2 格式，顺序即还原契约） ----
+  function loadPlayerProfile(d) {
     SIM.vol = d.vol || SIM.vol;
     ST.player = (d.player && CM.countries[d.player]) ? d.player : null;
     ST.mil = clamp(typeof d.mil === "number" ? d.mil : 0, 0, 10);
@@ -5844,6 +5869,9 @@
       }
     }
     rebuildBlocTable();
+  }
+
+  function loadFrontlineState(d) {
     // R8A：还原交战前线占领状态（过滤非法省份 ID 与未知国家 key）
     ST.frontlines = {};
     if (d.frontlines && typeof d.frontlines === "object" && !Array.isArray(d.frontlines)) {
@@ -5860,6 +5888,9 @@
       }
     }
     rebuildFrontlinesMap();
+  }
+
+  function loadEconomyState(d) {
     // R9B：还原贸易大动脉航线与双轨外汇储备池
     if (Array.isArray(d.tradeRoutes)) {
       ST.tradeRoutes = JSON.parse(JSON.stringify(d.tradeRoutes));
@@ -5901,6 +5932,9 @@
     } else {
       ST.smuggle = { tr_deu_sun_tech: true };
     }
+  }
+
+  function loadAiState(d) {
     // R10A/B/C：还原反应式 AI 决策机、军控条约与安理会决议状态
     if (d.ai && typeof d.ai === "object") {
       ST.ai = {
@@ -5914,6 +5948,9 @@
     } else {
       ST.ai = { enabled: true, decisions: {}, tensions: {}, cables: [], treaties: [], unsc: { passed: [], history: [] } };
     }
+  }
+
+  function loadSocietyStates(d) {
     // R12A：还原内政生态与派系权力天平状态
     if (d.domestic && typeof d.domestic === "object") {
       ST.domestic = sanitizeDomesticState(d.domestic);
@@ -5955,16 +5992,24 @@
       window.W1980_SOUND.setVolume(ST.sound.vol);
     }
     refreshSoundBtn();
+  }
+
+  // 核心还原契约（§4.4 顺序固定 hydrate→evRebuild→crRebuild→applyPlayerDecisions，勿改）
+  function hydrateSaveCore(d) {
     try { W1980_SIM.hydrate(SIM.S, d.S); } catch (e) { return false; }   // ← 直接还原，不重放
     SIM.S.noiseSigma = SIM.vol;
     SIM.playing = false; SIM.acc = 0; SIM.lastTs = 0;
     CR.choices = Array.isArray(d.cr) ? d.cr.slice() : [];   // R5D：还原十字路口选择（deny/active 由 evRebuild 后重建）
     evRebuild(SIM.S.year, Math.max(1, SIM.S.month));
     crRebuild();                         // R5D：从 choices 重建 deny 与路口 mod 到期登记（不重放 setMod——hydrate 已含）
-    applyPlayerDecisions();              // R5C'：幂等重建（§4.4 顺序固定 hydrate→evRebuild→crRebuild→applyPlayerDecisions）
+    applyPlayerDecisions();              // R5C'：幂等重建
     simEndClose();                       // R4：读档收起上一局结算（若存档已在 1991-12，按 ▶ 可重看）
     rebuildValueTables();
     if (bakedNow) { bakeNow(bakedNow); render(); drawMini(); }
+    return true;
+  }
+
+  function loadUiPreferences(d) {
     SIM.speed = d.speed || 1;
     if (d.mode && MODES.some((m) => m[0] === d.mode)) setMode(d.mode);
     else { fillLegend(); render(); drawOverlay(); }
@@ -5973,7 +6018,6 @@
     fillTop(); updPlayerTag(); refreshMilBox();
     select(d.sel && CM.countries[d.sel] ? d.sel : null);
     updateDate();
-    return true;
   }
   function simHasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
   function simHasV1() { try { return !!localStorage.getItem(SAVE_KEY_V1); } catch (e) { return false; } }
