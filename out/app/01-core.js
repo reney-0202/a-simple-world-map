@@ -107,6 +107,7 @@ const ST = {
   newsModalEnabled: true,                  // R11B（时代大新闻）：是否开启大事件头版弹窗
   lastNewsId: null,                        // R11B：最近一次触发的时代大新闻 ID
   endTab: "rubric",                        // R11C（终局长卷 Tabs）：当前结算选项卡 (rubric/epilogue/chronicle)
+  sandbox: false,                          // E（玩法评审）：沙盒模式 —— true 时解除 1991-12 终局判定
   domestic: null,                          // R12A（内政生态与派系天平）：{ sun, usa, generals }
   agendas: {},                             // R12B（专属国家战略议程）：{ [cKey]: { active, progress, completed, bonuses } }
   crises: { history: [], pending: null },  // R12C（突发危机抉择卡与升级阶梯）：已决断历史与当前待决危机

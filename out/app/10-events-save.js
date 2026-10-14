@@ -260,6 +260,7 @@ function simSave(slot) {
     afghan: ST.afghan ? JSON.parse(JSON.stringify(ST.afghan)) : null, // R13B：阿富汗战区态势与帝国失血槽状态
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
+    sandbox: !!ST.sandbox,                            // E：沙盒模式开关（随存档持久化）
     cr: CR.choices,                                   // R5D：十字路口选择记录（读档重建 deny/active）
     view: { x: view.x, y: view.y, s: view.s },
     savedAt: new Date().toISOString() };               // C（存档评审）：多槽展示用存档时间戳
@@ -458,6 +459,9 @@ function hydrateSaveCore(d) {
 
 function loadUiPreferences(d) {
   SIM.speed = d.speed || 1;
+  // E：沙盒模式开关还原（旧档缺省 = 非沙盒）
+  ST.sandbox = !!d.sandbox;
+  updateSandboxBadge();
   if (d.mode && MODES.some((m) => m[0] === d.mode)) setMode(d.mode);
   else { fillLegend(); render(); drawOverlay(); }
   if (d.layers) { for (const k in ST.layers) if (k in d.layers) ST.layers[k] = !!d.layers[k]; refreshLayerBtns(); }

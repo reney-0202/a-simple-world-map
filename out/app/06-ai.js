@@ -55,18 +55,45 @@ function updateAIDecisions(y, m, silent) {
 
     const react = window.W1980_AI.evaluateReactions(k, ST.player, playerDecisions, worldState);
     if (react) {
+      // E（玩法评审）：主动战略目标 —— 与玩家是否出手无关，AI 按自身议程行动。
+      // 合并规则：mil 取 max(反应式, 基础+目标偏移)；aid 名单合并去重（受 maxAid 限）；
+      // 自主 sanctions 仅在反应式没有对该玩家反制时追加（避免双重惩罚）。
+      let mil = react.mil;
+      let aidList = (react.aid || []).slice();
+      let sanList = (react.sanctions || []).slice();
+      let objectives = [];
+      if (window.W1980_AI.objectivesToActions) {
+        const ow = {
+          countries: CM.countries, year: curY, month: curM,
+          tension: (newTensions[k] && typeof newTensions[k].tension === "number") ? newTensions[k].tension : 20,
+          warActive: !!(ST.frontlines && Object.keys(ST.frontlines).length),
+          peace: false, playerKey: ST.player
+        };
+        const act = window.W1980_AI.objectivesToActions(k, ow);
+        objectives = act.objectives || [];
+        if (act.milDelta > 0) mil = Math.max(mil, react.mil + act.milDelta);
+        const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
+        const maxAid = doc.maxAid || 1;
+        for (const a of act.aid) {
+          if (aidList.length >= maxAid) break;
+          if (!aidList.some((x) => x.t === a.t)) aidList.push(a);
+        }
+        if (sanList.length === 0 && act.sanctions.length) sanList = act.sanctions.slice();
+      }
+
       newDecisions[k] = {
-        mil: react.mil,
-        sanctions: react.sanctions || [],
-        aid: react.aid || []
+        mil: mil,
+        sanctions: sanList,
+        aid: aidList,
+        objectives: objectives.map((o) => ({ id: o.id, zh: o.zh, kind: o.kind, note: o.note || "" }))
       };
 
       const oldDec = ST.ai.decisions ? ST.ai.decisions[k] : null;
       const hadSan = oldDec && Array.isArray(oldDec.sanctions) && oldDec.sanctions.length > 0;
-      const nowSan = Array.isArray(react.sanctions) && react.sanctions.length > 0;
+      const nowSan = Array.isArray(sanList) && sanList.length > 0;
       const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
       const hadMilUp = oldDec && typeof oldDec.mil === "number" && oldDec.mil > doc.baseMil + 0.05;
-      const nowMilUp = react.mil > doc.baseMil + 0.05;
+      const nowMilUp = mil > doc.baseMil + 0.05;
 
       if (!hadSan && nowSan && react.cable) {
         dispatchDiplomaticCable(react.cable, curY, curM, silent);
@@ -86,7 +113,7 @@ function updateAIDecisions(y, m, silent) {
           from: k,
           target: ST.player,
           zh: "防务戒备升级",
-          desc: kZh + "鉴于我国强化战略军备态势，正式进入防务戒备并将预算提升至 " + react.mil.toFixed(1) + "% GDP！"
+          desc: kZh + "鉴于我国强化战略军备态势，正式进入防务戒备并将预算提升至 " + mil.toFixed(1) + "% GDP！"
         }, curY, curM, silent);
       }
     }
@@ -190,6 +217,20 @@ function refreshAIBox(selKey) {
   }
   if (milDelta > 0.05) {
     actions.push('⚔️ 军备竞赛警戒：防务支出已动员提升至 ' + curMil.toFixed(1) + '% GDP');
+  }
+
+  // E（玩法评审）：主动战略目标展示 —— 让玩家看见 AI「自己在想什么」，
+  // 而不只是它对玩家动作的反应。
+  if (dec && Array.isArray(dec.objectives) && dec.objectives.length > 0) {
+    h += '<div class="ai-treaties-wrap"><div class="ai-treaty-title">🎯 主动战略目标（与我国行动无关）</div>';
+    for (let i = 0; i < dec.objectives.length; i++) {
+      const o = dec.objectives[i];
+      const kindZh = o.kind === "mil" ? "军费调整" : (o.kind === "aid" ? "对外军援" :
+        (o.kind === "sanction" ? "自主制裁" : "阵营倾向"));
+      h += '<div class="ai-action-item">🎯 <b>' + o.zh + '</b>（' + kindZh + '）' +
+        (o.note ? '<span style="color:var(--dim)"> — ' + o.note + '</span>' : '') + '</div>';
+    }
+    h += '</div>';
   }
 
   if (actions.length > 0) {

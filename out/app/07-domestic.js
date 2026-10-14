@@ -118,6 +118,25 @@ function initDomesticState() {
       budgetCapActive: false, // 《格拉姆-拉德曼法案》预算上限帽是否生效
       unrest: 2               // 社会动荡度 (0~100)
     },
+    // E（玩法评审）：为重点国补专属内政（现仅 SUN/USA 有）。
+    // CHN：改革开放期双轨制博弈——特区派 vs 计划派的路线拉锯，
+    //       双轨物价与国企效益直接决定民生安稳。
+    // DEU：新东方政策与西德社民/基民盟换届——缓和红利与北约义务的平衡，
+    //       东西欧缓和深度决定其外交空间。
+    chn: {
+      reformist: 52,          // 特区/市场派权重 (0~100)
+      planned: 48,            // 计划/国营派权重 (0~100)
+      dualTrackPrice: 35,     // 双轨物价扭曲度 (0~100，越高越冲击民生)
+      unrest: 3,              // 社会动荡度
+      sezMomentum: 40         // 特区开放动能 (0~100)
+    },
+    deu: {
+      spdApproval: 55,        // 社民党（SPD，施密特）支持率
+      cduApproval: 45,        // 基民盟/基社盟（CDU/CSU）支持率
+      detenteDepth: 60,       // 东西欧缓和深度 (0~100)
+      natoBurden: 50,         // 北约防务义务分担度
+      pipelineDependency: 30  // 对苏能源管道依赖度
+    },
     generals: {}              // 通用国家缓存
   };
 }
@@ -140,6 +159,9 @@ function sanitizeDomesticState(d) {
   const fresh = {
     sun: { conservative: 55, reformist: 45, shortage: 28, unrest: 5, crisisWarning: null },
     usa: { congressApproval: 62, presidentialApproval: 58, nextElectionYear: 1984, electionResult: null, budgetCapActive: false, unrest: 2 },
+    // E：CHN/DEU 专属内政（与 initDomesticState 同构）
+    chn: { reformist: 52, planned: 48, dualTrackPrice: 35, unrest: 3, sezMomentum: 40 },
+    deu: { spdApproval: 55, cduApproval: 45, detenteDepth: 60, natoBurden: 50, pipelineDependency: 30 },
     generals: {}
   };
   if (!d || typeof d !== "object") return fresh;
@@ -157,6 +179,21 @@ function sanitizeDomesticState(d) {
     fresh.usa.electionResult = typeof d.usa.electionResult === "string" ? d.usa.electionResult : null;
     fresh.usa.budgetCapActive = !!d.usa.budgetCapActive;
     fresh.usa.unrest = clamp(typeof d.usa.unrest === "number" ? d.usa.unrest : 2, 0, 100);
+  }
+  // E：CHN/DEU 专属内政字段清洗
+  if (d.chn && typeof d.chn === "object") {
+    fresh.chn.reformist = clamp(typeof d.chn.reformist === "number" ? d.chn.reformist : 52, 0, 100);
+    fresh.chn.planned = clamp(typeof d.chn.planned === "number" ? d.chn.planned : 48, 0, 100);
+    fresh.chn.dualTrackPrice = clamp(typeof d.chn.dualTrackPrice === "number" ? d.chn.dualTrackPrice : 35, 0, 100);
+    fresh.chn.unrest = clamp(typeof d.chn.unrest === "number" ? d.chn.unrest : 3, 0, 100);
+    fresh.chn.sezMomentum = clamp(typeof d.chn.sezMomentum === "number" ? d.chn.sezMomentum : 40, 0, 100);
+  }
+  if (d.deu && typeof d.deu === "object") {
+    fresh.deu.spdApproval = clamp(typeof d.deu.spdApproval === "number" ? d.deu.spdApproval : 55, 0, 100);
+    fresh.deu.cduApproval = clamp(typeof d.deu.cduApproval === "number" ? d.deu.cduApproval : 45, 0, 100);
+    fresh.deu.detenteDepth = clamp(typeof d.deu.detenteDepth === "number" ? d.deu.detenteDepth : 60, 0, 100);
+    fresh.deu.natoBurden = clamp(typeof d.deu.natoBurden === "number" ? d.deu.natoBurden : 50, 0, 100);
+    fresh.deu.pipelineDependency = clamp(typeof d.deu.pipelineDependency === "number" ? d.deu.pipelineDependency : 30, 0, 100);
   }
   if (d.generals && typeof d.generals === "object") {
     for (const k in d.generals) {
@@ -292,7 +329,58 @@ function updateDomesticPolitics(y, m, silent) {
     }
   }
 
-  // 3. 通用实体 (Generals) 社会安定度与制裁抗议
+  // E（玩法评审）：CHN/DEU 专属内政演进（现仅 SUN/USA 有）。
+  // 3. 中国 (CHN) 双轨制博弈：特区/市场派 vs 计划/国营派，军费与开放议程驱动路线天平，
+  //    双轨物价扭曲度决定民生安稳；特区开放动能影响长期 GDP 弹性。
+  if (dom.chn) {
+    const chn = dom.chn;
+    let milCHN = 2.5;
+    if (ST.player === "CHN") milCHN = ST.mil;
+    else if (ST.ai && ST.ai.decisions && ST.ai.decisions.CHN && typeof ST.ai.decisions.CHN.mil === "number") milCHN = ST.ai.decisions.CHN.mil;
+    // 高军费 → 国营/计划派抬头，特区派受压
+    if (milCHN >= 4.0) {
+      chn.planned = clamp(chn.planned + 0.22, 10, 92);
+      chn.reformist = clamp(chn.reformist - 0.22, 8, 90);
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice + 0.30, 0, 100);
+    } else if (milCHN <= 2.0) {
+      // 低军费 → 特区/市场派扩张，双轨物价逐步理顺
+      chn.reformist = clamp(chn.reformist + 0.18, 8, 90);
+      chn.planned = clamp(chn.planned - 0.18, 10, 92);
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice - 0.22, 0, 100);
+      chn.sezMomentum = clamp(chn.sezMomentum + 0.15, 0, 100);
+    }
+    // 双轨物价过高 → 民生动荡
+    if (chn.dualTrackPrice >= 70) chn.unrest = clamp(chn.unrest + 0.28, 0, 100);
+    else chn.unrest = clamp(chn.unrest - 0.10, 0, 100);
+    // 特区动能低速衰减（开放红利边际递减）
+    chn.sezMomentum = clamp(chn.sezMomentum - 0.05, 0, 100);
+  }
+
+  // 4. 西德 (DEU) 新东方政策与换届：缓和深度与北约义务的平衡，
+  //    对苏管道依赖既换来能源也带来政治脆弱性；高军费激化反核/反美民意。
+  if (dom.deu) {
+    const deu = dom.deu;
+    let milDEU = 3.0;
+    if (ST.player === "DEU") milDEU = ST.mil;
+    else if (ST.ai && ST.ai.decisions && ST.ai.decisions.DEU && typeof ST.ai.decisions.DEU.mil === "number") milDEU = ST.ai.decisions.DEU.mil;
+    // 高军费 → 北约义务加重，社民党缓和派失分
+    if (milDEU >= 4.5) {
+      deu.natoBurden = clamp(deu.natoBurden + 0.30, 0, 100);
+      deu.spdApproval = clamp(deu.spdApproval - 0.25, 0, 100);
+      deu.cduApproval = clamp(deu.cduApproval + 0.25, 0, 100);
+      deu.detenteDepth = clamp(deu.detenteDepth - 0.20, 0, 100);
+    } else if (milDEU <= 2.5) {
+      // 低军费 → 缓和红利，社民党得分
+      deu.detenteDepth = clamp(deu.detenteDepth + 0.22, 0, 100);
+      deu.spdApproval = clamp(deu.spdApproval + 0.20, 0, 100);
+      deu.cduApproval = clamp(deu.cduApproval - 0.20, 0, 100);
+      deu.pipelineDependency = clamp(deu.pipelineDependency + 0.12, 0, 100);
+    }
+    // 缓和越深，管道依赖越高（历史史实：新东方政策伴随油气换钢管）
+    if (deu.detenteDepth >= 65) deu.pipelineDependency = clamp(deu.pipelineDependency + 0.08, 0, 100);
+  }
+
+  // 5. 通用实体 (Generals) 社会安定度与制裁抗议
   if (dom.generals) {
     for (const k in dom.generals) {
       const g = dom.generals[k];
@@ -340,6 +428,38 @@ function applyDomesticPlayerAction(actType) {
         const v = $("p-mil-v"); if (v) v.textContent = "5";
       }
       toast({ zh: "【两党国会妥协】", note: "白宫签署两党折衷预算案，限制赤字规模，国会两党批准率显著回升！" });
+    }
+  } else if (ST.player === "CHN") {
+    // E：中国专属动作
+    const chn = ST.domestic.chn;
+    if (actType === "chn_expand_sez") {
+      chn.reformist = clamp(chn.reformist + 6, 0, 100);
+      chn.planned = clamp(chn.planned - 5, 0, 100);
+      chn.sezMomentum = clamp(chn.sezMomentum + 8, 0, 100);
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice + 2, 0, 100);
+      toast({ zh: "【国务院特区扩权】", note: "新批沿海开放城市与外资优惠政策，特区动能显著抬升，但双轨价差短期扩大。" });
+    } else if (actType === "chn_price_reform") {
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice - 9, 0, 100);
+      chn.reformist = clamp(chn.reformist + 3, 0, 100);
+      chn.planned = clamp(chn.planned - 3, 0, 100);
+      chn.unrest = clamp(chn.unrest + 5, 0, 100);
+      toast({ zh: "【价格并轨改革】", note: "闯关式价格改革推进，双轨套利空间收窄，但短期内需承受民生与通胀冲击。" });
+    }
+  } else if (ST.player === "DEU") {
+    // E：西德专属动作
+    const deu = ST.domestic.deu;
+    if (actType === "deu_ostpolitik") {
+      deu.detenteDepth = clamp(deu.detenteDepth + 7, 0, 100);
+      deu.pipelineDependency = clamp(deu.pipelineDependency + 5, 0, 100);
+      deu.spdApproval = clamp(deu.spdApproval + 4, 0, 100);
+      deu.cduApproval = clamp(deu.cduApproval - 4, 0, 100);
+      toast({ zh: "【新东方政策深化】", note: "波恩与莫斯科推进长期天然气供应与信贷合作，缓和高涨，但能源杠杆加深。" });
+    } else if (actType === "deu_nato_pledge") {
+      deu.natoBurden = clamp(deu.natoBurden + 8, 0, 100);
+      deu.detenteDepth = clamp(deu.detenteDepth - 5, 0, 100);
+      deu.cduApproval = clamp(deu.cduApproval + 5, 0, 100);
+      deu.spdApproval = clamp(deu.spdApproval - 3, 0, 100);
+      toast({ zh: "【北约防务承诺】", note: "联邦议院通过追加防务预算，重申北约前沿义务，缓和派民意受挫。" });
     }
   }
   refreshDomesticBox(ST.sel);
@@ -449,6 +569,96 @@ function refreshDomesticBox(selKey) {
     if (isMine) {
       h += '<div class="pdb-actions">';
       h += '  <button class="pdb-act-btn" data-act="compromise_budget" style="grid-column: span 2">🤝 两党预算妥协（拉升支持率/平抑军费）</button>';
+      h += '</div>';
+    }
+
+  } else if (actualKey === "CHN") {
+    // E（玩法评审）：中国 (CHN) 改革开放期双轨制专属面板
+    const chn = ST.domestic.chn;
+    const rPct = Math.round((chn.reformist / (chn.reformist + chn.planned)) * 100);
+    const pPct = 100 - rPct;
+    const priceClass = chn.dualTrackPrice >= 70 ? "danger" : chn.dualTrackPrice >= 45 ? "warn" : "good";
+    const unrestClass = chn.unrest >= 30 ? "danger" : chn.unrest >= 15 ? "warn" : "good";
+    const sezClass = chn.sezMomentum >= 60 ? "good" : chn.sezMomentum >= 30 ? "warn" : "danger";
+
+    h += '<div class="pdb-title"><span>🏛️ 改革开放 · 双轨制博弈</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
+    h += '<div class="pdb-desc">特区/市场派与计划/国营派围绕改革节奏拉锯。高军费强化计划派并推高双轨物价扭曲；低军费释放特区动能、逐步理顺价格，但需防范民生冲击。</div>';
+
+    h += '<div class="pdb-balance-wrap">';
+    h += '  <div class="pdb-balance-labels">';
+    h += '    <span class="pdb-lbl-left">🏭 计划/国营派 ' + chn.planned.toFixed(0) + ' (' + pPct + '%)</span>';
+    h += '    <span class="pdb-lbl-right">🏙️ 特区/市场派 ' + chn.reformist.toFixed(0) + ' (' + rPct + '%)</span>';
+    h += '  </div>';
+    h += '  <div class="pdb-balance-bar">';
+    h += '    <div class="pdb-bar-seg-left" style="width:' + pPct + '%"></div>';
+    h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
+    h += '  </div>';
+    h += '</div>';
+
+    h += '<div class="pdb-meters">';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">💰 双轨物价扭曲度</span><span class="pdb-meter-val" style="color:' + (priceClass === 'danger' ? '#f87171' : priceClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.dualTrackPrice.toFixed(1) + (chn.dualTrackPrice >= 70 ? ' · 倒卖套利猖獗' : chn.dualTrackPrice >= 45 ? ' · 价格双轨摩擦' : ' · 价格趋近并轨') + '</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + priceClass + '" style="width:' + chn.dualTrackPrice + '%"></div></div>';
+    h += '  </div>';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🚀 特区开放动能</span><span class="pdb-meter-val" style="color:' + (sezClass === 'danger' ? '#f87171' : sezClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.sezMomentum.toFixed(1) + ' · 外向型增长弹性</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + sezClass + '" style="width:' + chn.sezMomentum + '%"></div></div>';
+    h += '  </div>';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.unrest.toFixed(1) + (chn.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + chn.unrest + '%"></div></div>';
+    h += '  </div>';
+    h += '</div>';
+
+    if (isMine) {
+      h += '<div class="pdb-actions">';
+      h += '  <button class="pdb-act-btn" data-act="chn_expand_sez">🏙️ 扩大特区开放（推高市场派与动能）</button>';
+      h += '  <button class="pdb-act-btn" data-act="chn_price_reform">💰 推进价格并轨（压双轨扭曲/冒民生风险）</button>';
+      h += '</div>';
+    }
+
+  } else if (actualKey === "DEU") {
+    // E（玩法评审）：西德 (DEU) 新东方政策与换届专属面板
+    const deu = ST.domestic.deu;
+    const sPct = Math.round((deu.spdApproval / (deu.spdApproval + deu.cduApproval)) * 100);
+    const cPct2 = 100 - sPct;
+    const detClass = deu.detenteDepth >= 65 ? "good" : deu.detenteDepth >= 40 ? "warn" : "danger";
+    const burdenClass = deu.natoBurden >= 65 ? "warn" : "good";
+    const pipeClass = deu.pipelineDependency >= 60 ? "danger" : deu.pipelineDependency >= 35 ? "warn" : "good";
+
+    h += '<div class="pdb-title"><span>🏛️ 新东方政策 · 波恩联合政府</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
+    h += '<div class="pdb-desc">身处冷战对抗前沿：社民党主张缓和与东方贸易，基民盟强调北约义务。军费抬升加重北约分担并激化反核民意；克制军费换取缓和红利，但加深对苏能源管道依赖。</div>';
+
+    h += '<div class="pdb-balance-wrap">';
+    h += '  <div class="pdb-balance-labels">';
+    h += '    <span class="pdb-lbl-left">🕊️ 社民党 SPD ' + deu.spdApproval.toFixed(0) + ' (' + sPct + '%)</span>';
+    h += '    <span class="pdb-lbl-right">🛡️ 基民盟 CDU ' + deu.cduApproval.toFixed(0) + ' (' + cPct2 + '%)</span>';
+    h += '  </div>';
+    h += '  <div class="pdb-balance-bar">';
+    h += '    <div class="pdb-bar-seg-left" style="width:' + sPct + '%"></div>';
+    h += '    <div class="pdb-bar-seg-right" style="width:' + cPct2 + '%"></div>';
+    h += '  </div>';
+    h += '</div>';
+
+    h += '<div class="pdb-meters">';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🤝 东西欧缓和深度</span><span class="pdb-meter-val" style="color:' + (detClass === 'danger' ? '#f87171' : detClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.detenteDepth.toFixed(1) + ' · 外交回旋空间</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + detClass + '" style="width:' + deu.detenteDepth + '%"></div></div>';
+    h += '  </div>';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛡️ 北约防务义务分担度</span><span class="pdb-meter-val" style="color:' + (burdenClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.natoBurden.toFixed(1) + '%</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + burdenClass + '" style="width:' + deu.natoBurden + '%"></div></div>';
+    h += '  </div>';
+    h += '  <div class="pdb-meter">';
+    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛢️ 对苏能源管道依赖度</span><span class="pdb-meter-val" style="color:' + (pipeClass === 'danger' ? '#f87171' : pipeClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.pipelineDependency.toFixed(1) + (deu.pipelineDependency >= 60 ? '（能源杠杆风险）' : '') + '</span></div>';
+    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + pipeClass + '" style="width:' + deu.pipelineDependency + '%"></div></div>';
+    h += '  </div>';
+    h += '</div>';
+
+    if (isMine) {
+      h += '<div class="pdb-actions">';
+      h += '  <button class="pdb-act-btn" data-act="deu_ostpolitik">🤝 深化新东方政策（推高缓和与管道依赖）</button>';
+      h += '  <button class="pdb-act-btn" data-act="deu_nato_pledge">🛡️ 重申北约防务承诺（抬负担/压缓和）</button>';
       h += '</div>';
     }
 

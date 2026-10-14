@@ -2,6 +2,8 @@
 
 load().then(() => {
   const q = new URLSearchParams(location.search);
+  // E：沙盒模式 URL 开关（须在 wireTimeControls 前生效，避免启动即被终局拦截）
+  if (q.has("sandbox")) ST.sandbox = true;
   initTradeState();
   if (!q.has("simoff")) simInit();
   wireTimeControls(); updateDate(); requestAnimationFrame(simLoop);

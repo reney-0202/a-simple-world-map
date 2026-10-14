@@ -972,7 +972,7 @@ function runSummitProbe() {
     const AI = window.W1980_AI;
     assert("aiModuleLoaded", !!AI, "window.W1980_AI 模块正常加载");
 
-    // 1. 预设与条约模型结构校验
+
     assert("summitPresetsLoaded", Array.isArray(AI.SUMMIT_PRESETS) && AI.SUMMIT_PRESETS.length >= 5, "SUMMIT_PRESETS 包含 5 大冷战峰会");
     const pGeneva = AI.SUMMIT_PRESETS.find((p) => p.id === "geneva_1985");
     const pWash = AI.SUMMIT_PRESETS.find((p) => p.id === "washington_1987");
@@ -1003,6 +1003,7 @@ function runSummitProbe() {
     assert("modalCloses", modal && modal.style.display === "none", "closeSummitModal 成功收起弹窗");
 
     // 4. 条约签署与和平红利注入 (Sign Treaty & Détente Dividend)
+    r.details.__pmodSUNBefore = SIM.S.P.pmods[entKeys("SUN")[0]] || 0;
     signTreaty("inf", "SUN", pWash);
     assert("treatyActiveInState", ST.ai.treaties.some((t) => t.id === "inf" && t.with === "SUN" && t.status === "active"), "中导条约成功进入 ST.ai.treaties 且处于 active 状态");
 
@@ -1011,7 +1012,15 @@ function runSummitProbe() {
     const pmodUSA = SIM.S.P.pmods[ekUSA] || 0;
     const pmodSUN = SIM.S.P.pmods[ekSUN] || 0;
     assert("playerReceivesDividend", pmodUSA >= 0.40 - 1e-4, "美国作为签约国准确享有 +0.40pp/年 和平红利");
-    assert("aiReceivesDividend", pmodSUN >= 0.40 - 1e-4, "苏联作为履约国同样共享 +0.40pp/年 和平红利");
+    // E（玩法评审）：AI 主动战略目标（E 项新增）让 SUN 自主扩军/军援，其自我代价
+    // 会抵消条约红利——这是「主动 AI」的预期行为而非 bug。断言改为：红利本身已注入
+    // （签约前后 pmodSUN 的增量恰为 +0.40），净值为正或为负由 AI 自身决策决定。
+    const beforeSUN = (typeof r.details.__pmodSUNBefore === "number") ? r.details.__pmodSUNBefore : 0;
+    const deltaSUN = pmodSUN - beforeSUN;
+    r.details.__pmodSUNDelta = +deltaSUN.toFixed(3);
+    assert("aiDividendInjected", Math.abs(deltaSUN - 0.40) < 1e-3 || pmodSUN >= 0.40 - 1e-4,
+      "苏联作为履约国已注入 +0.40pp/年 和平红利（净效应可被自身扩军抵消，实测增量 "
+      + deltaSUN.toFixed(3) + "）");
 
     // 5. 危机热线张力锁死测试 (Hotline Tension Cap)
     signTreaty("hotline", "SUN");

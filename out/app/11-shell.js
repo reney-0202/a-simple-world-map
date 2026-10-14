@@ -258,6 +258,9 @@ function hsl(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 function ramp(t) { // R2 T6 / P2-4：7 档、亮度单调递减（浅→深），兼顾色盲可辨
+  // E（沙盒评审）：NaN/非有限输入此前会让 Math.floor(NaN)→stops[NaN]→undefined 并崩溃，
+  // 把「一个实体的坏值」放大成「整个地图渲染失败」。这里收敛为 0（最浅档）。
+  if (!isFinite(t)) t = 0;
   t = clamp(t, 0, 1);
   const stops = [[0xF2, 0xEA, 0xD3], [0xE4, 0xCE, 0x96], [0xD6, 0xB2, 0x6B], [0xC0, 0x8A, 0x4A],
     [0xA5, 0x67, 0x3F], [0x7E, 0x44, 0x36], [0x4A, 0x22, 0x2A]];
@@ -705,6 +708,14 @@ function buildUI() {
   $("b-save").onclick = () => { saveFromUi(0); };
   $("b-load").onclick = () => { loadFromUi(0); };
   wireSavesPanel();
+  // E：沙盒模式开关（解除 1991-12 终局）
+  const sb = $("b-sandbox");
+  if (sb) sb.onclick = () => {
+    setSandbox(!isSandbox());
+    toast({ y: "—", m: "", zh: isSandbox() ? "沙盒模式已开启：1991-12 终局已解除" : "沙盒模式已关闭：将在 1991-12 结算",
+      note: isSandbox() ? "推演可无限期继续" : "" });
+  };
+  updateSandboxBadge();
   document.querySelectorAll(".fl .hd .x").forEach((x) => x.onclick = () => $(x.dataset.close).classList.remove("open"));
   document.querySelectorAll("#stats .tabs .btn").forEach((b) => b.onclick = () => {
     ST.sortKey = b.dataset.sort;

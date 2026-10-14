@@ -606,11 +606,167 @@
     return { ok: true, isP5: UNSC_P5.includes(playerKey) };
   }
 
+  // ---- E（玩法评审）：主动战略目标 -------------------------------------------
+  // 旧 AI 是纯反应式（evaluateReactions 只在玩家出手后才回应），无自身议程。
+  // 这里给每个有 doctrine 的国家声明一份「战略目标」清单，由 evaluateObjectives
+  // 每 tick 评估达成度；引擎据结果自主行动（扩军/军援/制裁/管道合作），与玩家是否出手无关。
+  //
+  // kind:
+  //   mil        —— 目标军费占比（相对 baseMil 的偏移，pp）
+  //   aid        —— 对盟友的军援（{t: KEY, l: 0..2}）
+  //   sanction   —— 对目标的制裁（{t: KEY, l: 0..2}）
+  //   cohesion   —— 阵营内聚力（体现为对同阵营弱国的军援倾向）
+  // weight 决定同 tick 内多个目标同时成立时的优先级（高者先）。
+  const STRATEGIC_OBJECTIVES = {
+    USA: [
+      { id: "usa_frontline_deterrence", kind: "mil", delta: +0.6, weight: 8,
+        zh: "前沿遏制", cond: (w) => w.tension >= 55,
+        note: "对苏张力高企时追加前沿威慑军费" },
+      { id: "usa_ally_binding", kind: "aid", target: "DEU", l: 1, weight: 5,
+        zh: "同盟绑定", cond: (w) => w.year >= 1983,
+        note: "潘兴/中导部署后强化对西德安全承诺" },
+      { id: "usa_gulf_oil", kind: "aid", target: "SAU", l: 1, weight: 6,
+        zh: "海湾石油线", cond: (w) => w.year >= 1981 && !w.peace,
+        note: "两伊开战后保障沙特油线与地区存在" }
+    ],
+    SUN: [
+      { id: "sun_parity", kind: "mil", delta: +0.8, weight: 9,
+        zh: "战略均势", cond: (w) => w.tension >= 50,
+        note: "对美张力升高时恢复军备竞赛投入" },
+      { id: "sun_bloc_glue", kind: "aid", target: "POL", l: 1, weight: 5,
+        zh: "华约黏合", cond: (w) => w.year >= 1980,
+        note: "以经援/军援维系波兰团结工会危机后的阵营" },
+      { id: "sun_third_world", kind: "aid", target: "LEV", l: 1, weight: 4,
+        zh: "第三世界支点", cond: (w) => w.year >= 1982,
+        note: "在地中海东岸维持苏联海军与顾问存在" }
+    ],
+    CHN: [
+      { id: "chn_sez_growth", kind: "mil", delta: -0.4, weight: 7,
+        zh: "韬光养晦", cond: (w) => w.year >= 1980,
+        note: "特区开放期主动压缩军费占比，把资源让给经济建设" },
+      { id: "chn_prk_deterrence", kind: "aid", target: "PRK", l: 1, weight: 5,
+        zh: "半岛威慑", cond: (w) => w.year >= 1984,
+        note: "南北对峙升温时维持对朝安全承诺" },
+      { id: "chn_pak_balance", kind: "aid", target: "PAK", l: 1, weight: 5,
+        zh: "南亚制衡", cond: (w) => w.year >= 1982,
+        note: "苏联入侵阿富汗后深化中巴战略协作" }
+    ],
+    DEU: [
+      { id: "deu_detente", kind: "mil", delta: -0.5, weight: 7,
+        zh: "新东方政策", cond: (w) => w.year >= 1980,
+        note: "推动东西欧缓和，克制军费增速" },
+      { id: "deu_gas_pipeline", kind: "aid", target: "SUN", l: 0, weight: 4,
+        zh: "油气换钢管", cond: (w) => w.year >= 1981,
+        note: "以经贸纽带换取能源供应与缓和红利（低档往来）" },
+      { id: "deu_atlantic_bond", kind: "cohesion", weight: 5,
+        zh: "大西洋纽带", cond: (w) => w.tension >= 45,
+        note: "对抗升级时向西约同盟靠拢" }
+    ],
+    GBR: [
+      { id: "gbr_special_relationship", kind: "aid", target: "USA", l: 1, weight: 6,
+        zh: "特殊关系", cond: (w) => w.year >= 1982,
+        note: "马岛胜利后强化对美协调" },
+      { id: "gbr_falklands_vigil", kind: "mil", delta: +0.3, weight: 5,
+        zh: "远海警戒", cond: (w) => w.year >= 1982 && w.year <= 1984,
+        note: "马岛战后维持远海投送能力" }
+    ],
+    FRA: [
+      { id: "fra_independence", kind: "mil", delta: +0.4, weight: 6,
+        zh: "戴高乐主义", cond: (w) => w.tension >= 50,
+        note: "对抗升级时强化独立核威慑与常规力量" },
+      { id: "fra_africa_sway", kind: "aid", target: "LBY", l: 1, weight: 4,
+        zh: "非洲影响", cond: (w) => w.year >= 1983,
+        note: "在乍得/非洲之角维系法语区影响" }
+    ],
+    JPN: [
+      { id: "jpn_economic_security", kind: "mil", delta: -0.2, weight: 5,
+        zh: "经济优先", cond: (w) => w.year >= 1980,
+        note: "贸易立国，压低军费占比" },
+      { id: "jpn_sea_lane", kind: "aid", target: "KOR", l: 1, weight: 6,
+        zh: "海上生命线", cond: (w) => w.year >= 1983,
+        note: "保障对马海峡—波斯湾航线安全" }
+    ],
+    IRN: [
+      { id: "irn_revolution_export", kind: "aid", target: "LEV", l: 1, weight: 6,
+        zh: "革命输出", cond: (w) => w.year >= 1982,
+        note: "两伊战争中向黎凡特方向延伸影响" },
+      { id: "irn_war_mobilization", kind: "mil", delta: +0.7, weight: 8,
+        zh: "战争动员", cond: (w) => w.warActive,
+        note: "战争期间维持高战备" }
+    ],
+    IRQ: [
+      { id: "irq_war_mobilization", kind: "mil", delta: +0.9, weight: 9,
+        zh: "战争动员", cond: (w) => w.warActive,
+        note: "两伊战争期间全力扩军" },
+      { id: "irq_gulf_sway", kind: "aid", target: "LEV", l: 1, weight: 4,
+        zh: "阿拉伯纽带", cond: (w) => w.year >= 1983,
+        note: "在阿拉伯世界维系盟友圈" }
+    ]
+  };
+
+  // 评估某 AI 国当前成立的目标（按 weight 降序）。worldState 需带：
+  //   tension（该国对玩家张力 0-100）、year、month、warActive、peace
+  function evaluateObjectives(aiKey, worldState) {
+    const list = STRATEGIC_OBJECTIVES[aiKey];
+    if (!list || !worldState) return [];
+    const w = {
+      tension: typeof worldState.tension === "number" ? worldState.tension : 20,
+      year: worldState.year || 1980,
+      month: worldState.month || 1,
+      warActive: !!worldState.warActive,
+      peace: !!worldState.peace
+    };
+    const out = [];
+    for (const o of list) {
+      let ok = true;
+      if (typeof o.cond === "function") { try { ok = o.cond(w); } catch (e) { ok = false; } }
+      if (ok) out.push(o);
+    }
+    out.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    return out;
+  }
+
+  // 把成立目标折算成「与反应式结果合并前」的自主行动增量：
+  //   mil      —— 军费偏移（多个 mil 目标取最大正值，避免叠加失控）
+  //   aid      —— 军援名单（按 weight 降序，受 maxAid 限制）
+  //   sanctions—— 自主制裁（kind=sanction，受 maxSanctions 限制）
+  function objectivesToActions(aiKey, worldState) {
+    const doc = getDoctrine(aiKey, worldState && worldState.countries ? worldState.countries[aiKey] : null);
+    const objs = evaluateObjectives(aiKey, worldState);
+    const act = { milDelta: 0, aid: [], sanctions: [], objectives: objs };
+    let aidN = 0, sanN = 0;
+    for (const o of objs) {
+      if (o.kind === "mil") {
+        if (o.delta > act.milDelta) act.milDelta = o.delta;
+      } else if (o.kind === "aid") {
+        if (aidN >= (doc.maxAid || 1)) continue;
+        if (!o.target || o.target === worldState.playerKey) continue;
+        // 目标必须是已知实体（数据层外键自检）
+        const tgt = worldState && worldState.countries ? worldState.countries[o.target] : null;
+        if (!tgt) continue;
+        act.aid.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id });
+        aidN++;
+      } else if (o.kind === "sanction") {
+        if (sanN >= (doc.maxSanctions || 1)) continue;
+        if (!o.target) continue;
+        const tgt = worldState && worldState.countries ? worldState.countries[o.target] : null;
+        if (!tgt) continue;
+        act.sanctions.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id });
+        sanN++;
+      }
+      // cohesion 类目标只作为「倾向」参与态度计算，不直接产生名单动作
+    }
+    return act;
+  }
+
   window.W1980_AI = {
     AI_DOCTRINES: AI_DOCTRINES,
+    STRATEGIC_OBJECTIVES: STRATEGIC_OBJECTIVES,
     getDoctrine: getDoctrine,
     calcAttitude: calcAttitude,
     evaluateReactions: evaluateReactions,
+    evaluateObjectives: evaluateObjectives,
+    objectivesToActions: objectivesToActions,
     TREATY_DEFS: TREATY_DEFS,
     SUMMIT_PRESETS: SUMMIT_PRESETS,
     canHoldSummit: canHoldSummit,

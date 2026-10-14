@@ -126,7 +126,27 @@ function setMil(v) {
 // 范围：只消费 R3 落地的 ST.player / ST.mil；**不改引擎、不改存档格式（仍为 v2）**。
 // 判定不是"胜负"而是"结算 + 评分"——本作尚无战争/外交模型，评分只由可计算量构成（见 renderEnd 口径）。
 const END_Y = 1991, END_M = 12;
-function simAtEnd() { return SIM.ready && SIM.S.year === END_Y && Math.max(1, SIM.S.month) >= END_M; }
+// E（玩法评审）：沙盒模式 —— 解除 1991-12 终局，允许无限期继续推演。
+// 实现要点：simAtEnd() 是所有终局判定的唯一入口，故只需在此短路；
+// 沙盒开关存于 ST.sandbox（随存档持久化），URL ?sandbox=1 或 UI 切换均可开启。
+function isSandbox() { return !!(ST && ST.sandbox); }
+function simAtEnd() {
+  if (isSandbox()) return false;                 // 沙盒：永不触发终局
+  return SIM.ready && SIM.S.year === END_Y && Math.max(1, SIM.S.month) >= END_M;
+}
+function setSandbox(on) {
+  ST.sandbox = !!on;
+  // 关闭沙盒且已越过终点 → 立即结算，避免停在「已过期」的中间态
+  if (!ST.sandbox && SIM.S && simAtEnd()) simEndOpen();
+  updateSandboxBadge();
+}
+function updateSandboxBadge() {
+  const b = $("b-sandbox");
+  if (b) {
+    b.classList.toggle("on", isSandbox());
+    b.title = isSandbox() ? "沙盒模式：已解除 1991-12 终局（点击关闭）" : "沙盒模式：解除 1991-12 终局（点击开启）";
+  }
+}
 const BLOC_ORDER = [["NATO", "北约"], ["WP", "华约"], ["SOV", "亲苏"], ["CHN", "中国阵营"],
   ["W", "西方(非北约)"], ["NA", "不结盟/第三世界"], ["NE", "中立"]];
 // GDP 名次：useSim=false → 1980 基准；true → 末期（当前仿真值）。54 实体口径。

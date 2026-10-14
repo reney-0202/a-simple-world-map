@@ -241,6 +241,18 @@ if (EFF && EFF.EFFECTS) {
   };
   walkAi(DOCS, "ai.AI_DOCTRINES");
   note(`effect vocabulary violations: ${bad}`);
+  // E（玩法评审）：AI 主动战略目标的外键自检 —— kind=aid/sanction 的 target 必须是可玩实体
+  const OBJ = (sandbox.W1980_AI || {}).STRATEGIC_OBJECTIVES || {};
+  let objBad = 0, objN = 0;
+  for (const k of Object.keys(OBJ)) {
+    if (!resolves(k)) { fail(`ai.js: STRATEGIC_OBJECTIVES 属主 "${k}" 不可解析`); objBad++; }
+    for (const o of OBJ[k]) {
+      objN++;
+      if (o.target && !resolves(o.target)) { fail(`ai.js: ${k}/${o.id}.target = "${o.target}" 不可解析`); objBad++; }
+      if (o.kind === "mil" && typeof o.delta !== "number") { fail(`ai.js: ${k}/${o.id} kind=mil 缺 delta`); objBad++; }
+    }
+  }
+  note(`ai strategic objectives: ${objN} entries across ${Object.keys(OBJ).length} countries, ${objBad} bad`);
 } else fail('effects.js: no W1980_EFFECTS.EFFECTS');
 
 // ---- report -------------------------------------------------------------------

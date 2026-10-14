@@ -46,7 +46,17 @@
       // 双通道：oilChg = 油价同比%（对「变化」响应，如 ARE）；oilLvl = log(P/P1979)×100（对「水平」响应，如 OPEC 配额国 SAU/NGA）。
       // 逐键弹性 [同比 ey, 水平 el]，至多一条非零；进口国无条目 = 零响应（参照实测最优 e≈0，旧镜像为伪机制）。
       const oe = P.oilElast[key];
-      if (oe) g += oe[0] * P.oilChg[year - 1980] + oe[1] * P.oilLvl[year - 1980];
+      if (oe) {
+        // E（玩法评审）：沙盒模式 —— oilChg/oilLvl 只覆盖 1980–1991（12 项）。原先越界取到
+        // undefined → NaN，令 11 个产油国的 gdp 变 NaN 并连带 ramp() 崩溃（沙盒推进的真实阻断点）。
+        // 语义：史实窗口之外，油价「水平」保持末值（不再有新冲击），「同比」归零
+        // （否则最后一次 -15.6% 的同比会年年重复施加）。此分支只影响 year>=1992，
+        // 而该区间在终局（1991-12）之前不可达，故史实路径逐位不变。
+        const span = P.oilChg.length;
+        const oi = year - 1980;
+        if (oi < span) g += oe[0] * P.oilChg[oi] + oe[1] * P.oilLvl[oi];
+        else g += oe[1] * P.oilLvl[span - 1];
+      }
     }
     if (year === 1982) g += (key === "SUN" || key === "CHN") ? -0.3 : -1.5;   // 世界衰退（苏/中隔绝）
     if (year === 1991) g += (key === "SUN" || key === "CHN") ? -0.5 : -1.0;
