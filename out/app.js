@@ -3349,7 +3349,7 @@
   function closeCrisisModal() {
     hideCrisisModal();
     if (crisisResumePlay) {
-      SIM.playing = true;
+      SIM.playing = true; simKick();
       crisisResumePlay = false;
       updateDate();
     }
@@ -5475,8 +5475,9 @@
       if (bakedNow === ST.mode) { bakeNow(ST.mode); render(); drawMini(); }
     }
   }
+  let simLoopLive = false;               // B（架构评审）：rAF 仅在播放态调度 —— 暂停时完全静止，不再每帧空转
   function simLoop(ts) {
-    requestAnimationFrame(simLoop);
+    simLoopLive = false;
     if (!SIM.ready || !SIM.playing) { SIM.lastTs = ts; return; }
     // R4：1991-12 到站 —— 停播 + 结算（P3-2：原 simLoop 无上界，时间可无限越过 1991-12）
     if (simAtEnd()) { SIM.playing = false; SIM.acc = 0; SIM.lastTs = 0; updateDate(); simEndOpen(); return; }
@@ -5496,12 +5497,17 @@
       onSimAdvance(y0 !== SIM.S.year);
       if (simAtEnd()) { SIM.playing = false; SIM.acc = 0; updateDate(); simEndOpen(); }
     }
+    if (SIM.playing) { simLoopLive = true; requestAnimationFrame(simLoop); }
+  }
+  function simKick() {                   // B：所有「恢复播放」路径必须唤醒主循环（暂停期已无空转帧可依赖）
+    if (SIM.playing && !simLoopLive) { SIM.lastTs = 0; simLoopLive = true; requestAnimationFrame(simLoop); }
   }
   function simSetSpeed(sp) { SIM.speed = sp; updateDate(); }
   function simTogglePlay() {
     if (SIM.playing) { SIM.playing = false; }
     else { if (simAtEnd()) simEndOpen(); SIM.playing = !simAtEnd(); }   // 到站后 ▶ 只重看结算，不再推进
     SIM.lastTs = 0; updateDate();
+    simKick();
   }
   function simReset() {
     if (!SIM.ready) return;
@@ -5751,7 +5757,7 @@
       b.onclick = () => {
         const wasPending = CR.pending !== null;
         crDecide(cr, i);
-        if (wasPending && CR.resumePlay) { SIM.playing = true; CR.resumePlay = false; updateDate(); }
+        if (wasPending && CR.resumePlay) { SIM.playing = true; simKick(); CR.resumePlay = false; updateDate(); }
       };
       box.appendChild(b);
     });
@@ -6069,10 +6075,13 @@
     const c = $("coach"); if (c) c.classList.remove("on");
     try { localStorage.setItem(TUT_KEY, "1"); } catch (e) {}
   }
+  function onWindowResize() {            // B（架构评审）：唯一的窗口 resize 监听（画布重排 + 教程重定位）
+    resize(false); render(); drawOverlay();
+    if (tutI >= 0) tutShow();
+  }
   function tutWire() {
     $("c-next").onclick = tutNext;
     $("c-skip").onclick = tutEnd;
-    window.addEventListener("resize", () => { if (tutI >= 0) tutShow(); });
   }
   function tutMaybeAuto() {
     let done = null; try { done = localStorage.getItem(TUT_KEY); } catch (e) {}
@@ -6787,7 +6796,7 @@
       if (hit) { const bb = countryBBox(hit); if (bb) flyTo(bb[0], bb[1], bb[2], bb[3], 500); select(hit); }
       else { const p = CITY.find((c) => c[0].toLowerCase() === q); if (p) flyTo(p[1] - 300, p[2] - 200, p[1] + 300, p[2] + 200, 500); }
     };
-    window.addEventListener("resize", () => { resize(false); render(); drawOverlay(); });
+    window.addEventListener("resize", onWindowResize);
     wireMouse();
     wireKeys();
     tutWire();
@@ -8472,7 +8481,7 @@
     const modal = $("news-modal");
     if (modal) modal.style.display = "none";
     if (newsResumePlay) {
-      SIM.playing = true;
+      SIM.playing = true; simKick();
       newsResumePlay = false;
       updateDate();
     }
@@ -8884,7 +8893,7 @@
     if (tq && SIM.ready) simFastForward(+tq[1], +tq[2]);
     const spq = /[?&]sp=([124])/.exec(location.search);
     if (spq) simSetSpeed(+spq[1]);
-    if (/[?&](play|autoplay)=1/.test(location.search) && SIM.ready) { SIM.playing = true; updateDate(); }
+    if (/[?&](play|autoplay)=1/.test(location.search) && SIM.ready) { SIM.playing = true; simKick(); updateDate(); }
     if (/[?&]simprobe=1/.test(location.search)) {
       const r = { ready: SIM.ready, y0: SIM.S && SIM.S.year, m0: SIM.S && Math.max(1, SIM.S.month) };
       simTogglePlay(); r.playAfterToggle = SIM.playing;
