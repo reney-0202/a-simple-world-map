@@ -40,6 +40,29 @@ const BLOC_NET_BASE = {
   NATO: 0.40, W: 0.40, WP: 0.20, SOV: 0.15, CHN: 0.15, NA: 0.0, NE: 0.0
 };
 
+// ---- ST 状态对象的所有权约定（架构检查点 4）-----------------------------------
+// ST 是单一全局状态对象，17 个子系统共用。为可维护性，约定「一个字段一名写主」：
+//   写主 = 唯一在正常运行中写入该字段的模块；其他模块只读。
+// 例外是 10-events-save.js 的 simLoad 系列：它是存档还原的通用入口，
+// 按字段逐一还原所有子系统的值（这是设计意图，见 loadXxxState 注释）。
+// 另有 12-probes.js / 13-boot.js 为测试与启动参数注入，属于受控外部写入。
+// 字段归属表（写主 → 字段）：
+//   11-shell.js    mode, sortKey, sel, hover, hoverC, layers
+//   09-endgame.js  player, mil —— 运行时入口为 setPlayer / setMil（09-endgame.js:105/118）；
+//                   存档还原走 10-events-save.js 的 loadPlayerProfile；其余直写点集中在
+//                   07-domestic.js / 08-covert.js 的探针夹具与 12-probes.js / 13-boot.js
+//                   （测试注入与 ?player=/ ?mil= 启动参数），属受控外部写入。
+//   03-decisions.js sanctions, aid, blocOverride, blocSince（setBloc 为阵营写入入口）
+//   04-frontlines.js frontlines（setFrontline 为唯一入口）
+//   05-economy.js  tradeRoutes, reserves, cocom, chokepoints, smuggle
+//   06-ai.js       ai（含 tensions/cables/decisions）, panelTab
+//   07-domestic.js domestic, agendas, crises
+//   08-covert.js   intel, afghan, sound
+//   09-endgame.js  endTab
+//   10-events-save.js lastNewsId（读侧过滤见同文件 showNews 处）、newsModalEnabled（读侧）
+// 迁移字段时：先改写主，再更新本表；不要把散落的 ST.x = ... 直接搬进其他模块。
+// ------------------------------------------------------------------------------
+
 const ST = {
   mode: "political", sortKey: "pop_m", sel: null, hover: 0, hoverC: null,
   player: null, mil: 0,            // R3：玩家实体（可 null=旁观）与军费占比决策（%）
