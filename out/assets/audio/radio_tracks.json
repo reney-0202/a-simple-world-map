@@ -1,0 +1,26 @@
+[
+  {
+    "id": "reagan_wall",
+    "title": "罗纳德·里根：推倒这堵墙 (柏林 1987)",
+    "speaker": "Ronald Reagan",
+    "year": 1987,
+    "quote": "General Secretary Gorbachev, if you seek peace, if you seek prosperity for the Soviet Union and Eastern Europe... tear down this wall!",
+    "duration": "0:18"
+  },
+  {
+    "id": "gorbachev_farewell",
+    "title": "米哈伊尔·戈尔巴乔夫：辞职告别演讲 (克里姆林宫 1991)",
+    "speaker": "Mikhail Gorbachev",
+    "year": 1991,
+    "quote": "Дорогие соотечественники! В силу сложившейся ситуации... я прекращаю свою деятельность на посту Президента СССР.",
+    "duration": "0:22"
+  },
+  {
+    "id": "coldwar_shortwave",
+    "title": "冷战短波电台与摩尔斯密电通信 (1980s)",
+    "speaker": "Shortwave Radio Broadcast",
+    "year": 1983,
+    "quote": "Numbers station transmission and cryptographic teletype signals across the Iron Curtain.",
+    "duration": "0:15"
+  }
+]

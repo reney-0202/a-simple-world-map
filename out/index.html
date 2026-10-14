@@ -32,6 +32,9 @@
   <div class="tools">
     <input id="search" placeholder="搜索国家…" autocomplete="off">
     <button class="btn" id="b-stats">统计</button>
+    <button class="btn" id="b-summit" title="首脑峰会与军控谈判">🕊️峰会</button>
+    <button class="btn" id="b-unsc" title="联合国安全理事会 (UNSC)">🌐安理会</button>
+    <button class="btn" id="b-sound" title="时代音效控制 (静音/开启)">🔊</button>
     <button class="btn" id="b-inbox" title="事件收件箱">🔔<span id="b-inbox-n"></span></button>
     <button class="btn" id="b-save" title="存档到本地（localStorage）">存档</button>
     <button class="btn" id="b-load" title="读取本地存档">读档</button>
@@ -66,16 +69,63 @@
     <button class="btn" id="p-reset">重置</button>
   </div>
   <div class="diss" id="p-diss" style="display:none"></div>
-  <div class="spark" id="p-spark"></div>
-  <div class="mil" id="p-milbox">
-    <div class="mh">你的国家 · 决策</div>
-    <div id="p-mil-none" class="mn"><span id="p-mil-other">尚未选择你的国家</span>
-      <button class="btn" id="p-mkplayer">设为本国</button></div>
-    <div id="p-mil-ctl" style="display:none">
-      <label for="p-mil">军费占比 <b id="p-mil-v">0</b>%</label>
-      <input type="range" id="p-mil" min="0" max="10" step="0.5" value="0">
-      <div class="mt">每 +1% 使本国年产出增速 <b>-1pp</b>（持续生效，立即计入轨迹）</div>
-      <button class="btn" id="p-mil-off">取消本国</button>
+  <div class="panel-tabs" id="panel-tabs">
+    <button class="p-tab-btn active" data-tab="overview" id="p-tb-btn-overview">📊 概览<span class="p-tab-badge" id="p-tb-overview"></span></button>
+    <button class="p-tab-btn" data-tab="defense" id="p-tb-btn-defense">⚖️ 国防<span class="p-tab-badge" id="p-tb-defense"></span></button>
+    <button class="p-tab-btn" data-tab="economy" id="p-tb-btn-economy">🚢 经贸<span class="p-tab-badge" id="p-tb-economy"></span></button>
+    <button class="p-tab-btn" data-tab="diplomacy" id="p-tb-btn-diplomacy">🌐 外交<span class="p-tab-badge" id="p-tb-diplomacy"></span></button>
+  </div>
+  <div class="p-tab-pane active" id="p-pane-overview">
+    <div class="spark" id="p-spark"></div>
+    <div class="p-leader-card" id="p-leader-card"></div>
+    <div class="p-overview-card" id="p-overview-card"></div>
+    <div class="p-domestic-box" id="p-domestic-box"></div>
+  </div>
+  <div class="p-tab-pane" id="p-pane-defense">
+    <div class="warbox" id="p-war-box" style="display:none"></div>
+    <div class="afghanbox" id="p-afghan-box"></div>
+    <div class="mil" id="p-milbox">
+      <div class="mh">你的国家 · 决策</div>
+      <div id="p-mil-none" class="mn"><span id="p-mil-other">尚未选择你的国家</span>
+        <button class="btn" id="p-mkplayer">设为本国</button>
+        <div id="p-dec-quick" style="display:none"></div></div>
+      <div id="p-mil-ctl" style="display:none">
+        <div id="p-dec-cost">当前决策对本国年增速无影响</div>
+        <label for="p-mil">军费占比 <b id="p-mil-v">0</b>%</label>
+        <input type="range" id="p-mil" min="0" max="10" step="0.5" value="0">
+        <div class="mt">每 +1% 使本国年产出增速 <b>-1pp</b>（持续生效，立即计入轨迹）</div>
+        <div class="dsec"><span class="dh">制裁 <b id="p-san-cnt">0/2</b></span>
+          <select id="p-san-sel"></select>
+          <span class="lvls" id="p-san-lvls">
+            <button class="btn" data-l="0">抗议</button><button class="btn" data-l="1">轻度</button><button class="btn" data-l="2">重度</button>
+          </span>
+          <div id="p-san-list" class="dlist"></div>
+        </div>
+        <div class="dsec"><span class="dh">军援 <b id="p-aid-cnt">0/2</b></span>
+          <select id="p-aid-sel"></select>
+          <span class="lvls" id="p-aid-lvls">
+            <button class="btn" data-l="0">顾问</button><button class="btn" data-l="1">装备</button><button class="btn" data-l="2">全面</button>
+          </span>
+          <div id="p-aid-list" class="dlist"></div>
+        </div>
+        <button class="btn" id="p-mil-off">取消本国</button>
+      </div>
+    </div>
+  </div>
+  <div class="p-tab-pane" id="p-pane-economy">
+    <div class="resbox" id="p-res-box" style="display:none"></div>
+    <div class="tradebox" id="p-trade-box" style="display:none"></div>
+    <div class="embargobox" id="p-embargo-box" style="display:none"></div>
+  </div>
+  <div class="p-tab-pane" id="p-pane-diplomacy">
+    <div class="agendabox" id="p-agenda-box"></div>
+    <div class="aibox" id="p-ai-box" style="display:none"></div>
+    <div class="covertbox" id="p-covert-box"></div>
+    <div class="blocctl" id="p-bloc-ctl" style="display:none">
+      <label for="p-bloc-sel">迁入阵营 ▸</label>
+      <select id="p-bloc-sel"></select>
+      <div class="bt" id="p-bloc-tip">阵营经贸网络：不同阵营具 0~+0.4pp 协作红利，脱离原阵营有 2 年脱钩震荡</div>
+      <div class="bloc-status" id="p-bloc-status"></div>
     </div>
   </div>
   <div class="note">数值为 1980 年前后近似估算，量级正确即可。</div>
@@ -112,9 +162,19 @@
 </div>
 
 <div class="fl" id="end">
-  <div class="hd">1991-12 · 终局结算 <span class="x" data-close="end">✕</span></div>
-  <div class="bd" id="end-body"></div>
-  <div class="ft">
+  <div class="hd">1991-12 · 终局结算与历史长卷 <span class="x" data-close="end">✕</span></div>
+  <div class="end-tabs" id="end-tabs">
+    <button class="end-tab-btn on" data-endtab="rubric">📊 战略评分与格局</button>
+    <button class="end-tab-btn" data-endtab="epilogue">📜 历史后日谈</button>
+    <button class="end-tab-btn" data-endtab="chronicle">📅 时代编年史</button>
+  </div>
+  <div class="bd" id="end-body">
+    <div class="end-tab-pane on" id="end-pane-rubric"></div>
+    <div class="end-tab-pane" id="end-pane-epilogue"></div>
+    <div class="end-tab-pane" id="end-pane-chronicle"></div>
+  </div>
+  <div class="ft" id="end-ft">
+    <button class="btn" id="e-copy" title="将本局执政回忆录与编年史长卷复制到剪贴板">📋 复制回忆录</button>
     <button class="btn" id="e-again">重开一局（1980）</button>
     <button class="btn" id="e-close">关闭（继续看地图）</button>
   </div>
@@ -140,7 +200,9 @@
     <h4>本版范围</h4>
     <div>地图底座建模全部 <b>133</b> 国（§4 表 TIER 1 + TIER 2），灰色只剩 §3 忽略的微型政体与南极
       （无主权，不可点击）。游戏层为 <b>54</b> 个可玩实体（31 独立国 + 23 联邦/殖民集团）：
-      1980-01 → 1991-12 月度仿真、7 件史实事件、存档/难度/教程、<b>1991-12 终局结算</b>。</div>
+      1980-01 → 1991-12 月度仿真、<b>24 条史实事件 + 6 个架空十字路口</b>（两伊开战 / 优秀射手演习 / 广场协议 / 切尔诺贝利 / 东欧的选择 / 苏联的命运——
+      默认 = 史实，玩家的选择产生自洽的架空分支）、<b>对外决策</b>（军费占比 / 制裁 / 军援 / 结盟经贸网络与迁营，均即时计入轨迹与统计）、
+      <b>全量存档</b>（v2，含随机流状态，读档逐位还原）、<b>1991-12 终局结算</b>（阵营占比 + 决策评分 Rubric 2.0 E/R/M/G）。</div>
     <h4>性能</h4>
     <div id="k-perf">–</div>
     <div id="k-sum">–</div>
@@ -169,7 +231,7 @@
     <div class="w-sect">
       <b>选择你的国家</b>（可留空旁观）<br>
       <select id="w-ctry"></select>
-      <div class="w-hint">选定后可在国家面板调整<b>军费占比</b> —— 这是你的第一笔决策，会立即改变本国经济轨迹。</div>
+      <div class="w-hint">选定后可在国家面板调整<b>军费占比</b>、<b>对外制裁/军援</b>与<b>结盟经贸网络</b>，直接改写冷战历史走向。</div>
     </div>
     <div class="w-sect">
       <b>波动幅度（难度）</b><br>
@@ -188,10 +250,192 @@
   <div class="spot" id="c-spot"></div>
   <div class="tip" id="c-tip">
     <div class="tx" id="c-tx"></div>
-    <div class="col" id="c-col">1 / 5</div>
+    <div class="col" id="c-col">1 / 8</div>
     <div class="cbtns">
       <button class="btn" id="c-skip">跳过教程</button>
       <button class="btn" id="c-next">下一步</button>
+    </div>
+  </div>
+</div>
+
+<div id="crossroad">
+  <div class="cr-card">
+    <div class="cr-era" id="cr-era">HISTORICAL CROSSROADS</div>
+    <div class="cr-title" id="cr-title">–</div>
+    <div class="cr-note" id="cr-note">–</div>
+    <div class="cr-choices" id="cr-choices"></div>
+  </div>
+</div>
+
+<div id="summit-modal" class="modal" style="display:none">
+  <div class="summit-box">
+    <div class="summit-hd">
+      <div class="summit-title-area">
+        <div class="summit-loc" id="summit-loc">日内瓦 · 1985 年 11 月</div>
+        <div class="summit-title" id="summit-title">冷战大国首脑峰会外交</div>
+      </div>
+      <button class="modal-close" id="summit-close" title="关闭">✕</button>
+    </div>
+    <div class="summit-flags-row">
+      <div class="summit-side" id="summit-side-p">
+        <span class="summit-side-name" id="summit-p-name">美国</span>
+        <span class="summit-side-role" id="summit-p-role">玩家直辖</span>
+      </div>
+      <div class="summit-vs">🤝 峰会会晤 🤝</div>
+      <div class="summit-side" id="summit-side-ai">
+        <span class="summit-side-name" id="summit-ai-name">苏联</span>
+        <span class="summit-side-role" id="summit-ai-role">AI 对手</span>
+      </div>
+    </div>
+    <div class="summit-photo-box" id="summit-photo-box" style="display:none">
+      <img class="summit-photo-img" id="summit-photo-img" src="" alt="首脑会晤历史画报">
+      <div class="summit-photo-caption" id="summit-photo-caption"></div>
+    </div>
+    <div class="summit-desc" id="summit-desc">
+      两国最高领导人展开面对面历史性会晤，就削减核武库、建立信任措施与缓和双边对抗关系进行高层决断。
+    </div>
+    <div class="summit-meta-row">
+      <div class="summit-meta-item">
+        <span class="k">双边对抗张力</span>
+        <span class="v" id="summit-tension-info">65 (警惕戒备)</span>
+      </div>
+      <div class="summit-meta-item">
+        <span class="k">对方战略性格</span>
+        <span class="v" id="summit-doctrine-info">战略均势与全面抗衡</span>
+      </div>
+    </div>
+    <div class="summit-treaties-sec">
+      <div class="summit-treaties-hd">议程待签军控条约与缓和协定</div>
+      <div class="summit-treaty-list" id="summit-treaty-list">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+    <div class="summit-ft">
+      <button class="btn" id="summit-shelve-btn">搁置争议 (关闭)</button>
+      <button class="btn summit-btn-walkout" id="summit-walkout-btn">谈判破裂退席 (+10 张力)</button>
+    </div>
+  </div>
+</div>
+
+<div id="unsc-modal" class="modal" style="display:none">
+  <div class="unsc-box">
+    <div class="unsc-hd">
+      <div class="unsc-title-area">
+        <div class="unsc-badge">UNITED NATIONS SECURITY COUNCIL</div>
+        <div class="unsc-title" id="unsc-title">联合国安全理事会审议大厅</div>
+      </div>
+      <button class="modal-close" id="unsc-close" title="关闭">✕</button>
+    </div>
+
+    <div class="unsc-meta-bar">
+      <div class="unsc-meta-item">
+        <span class="k">审议决议草案</span>
+        <select id="unsc-res-select" class="v" style="background:#11151a;color:#5ba4f2;border:1px solid #4a90e2;border-radius:3px;padding:2px 6px;font-size:12px;cursor:pointer">
+          <option value="res_598">第 598 号决议：两伊全面停火与和平调解 (1987)</option>
+          <option value="res_660">第 660/678 号决议：海湾危机与集体授权制裁 (1990)</option>
+          <option value="res_502">第 502 号决议：福克兰群岛敌对行动与停火撤军 (1982)</option>
+          <option value="res_peace_mediation">国际热点危机通用和平斡旋草案</option>
+        </select>
+        <span class="v" id="unsc-res-title" style="display:none">第 598 号决议草案</span>
+      </div>
+      <div class="unsc-meta-item">
+        <span class="k">草案发起方</span>
+        <span class="v" id="unsc-res-sponsor">五常联合协商提案</span>
+      </div>
+    </div>
+
+    <div class="unsc-text-box" id="unsc-res-text">
+      安理会审议有关两伊冲突局势，确认和平解决争端之必要，要求双方立即停火并撤回国际公认边界，维护波斯湾航行自由。
+    </div>
+
+    <div class="unsc-p5-section">
+      <div class="unsc-p5-hd">常任理事国席位与表决态势（P5 拥有一票否决权）</div>
+      <div class="unsc-p5-grid" id="unsc-p5-grid">
+        <!-- 动态生成 5 常席位卡片 -->
+      </div>
+    </div>
+
+    <div class="unsc-status-banner" id="unsc-status-banner">
+      <span class="unsc-status-text" id="unsc-status-text">草案审议中：需要至少 3 票赞成且零否决方可通过</span>
+      <img class="unsc-stamp-img" id="unsc-stamp-img" src="" alt="安理会裁决印章" style="display:none">
+    </div>
+
+    <div class="unsc-actions" id="unsc-actions">
+      <button class="btn unsc-btn-vote ok" id="unsc-vote-favor">投赞成票 (In Favor)</button>
+      <button class="btn unsc-btn-vote neutral" id="unsc-vote-abstain">投弃权票 (Abstain)</button>
+      <button class="btn unsc-btn-vote bad" id="unsc-vote-veto">行使一票否决权 (VETO)</button>
+      <button class="btn" id="unsc-close-btn">退出大厅</button>
+    </div>
+  </div>
+</div>
+
+<div id="news-modal" class="modal-overlay" style="display:none">
+  <div class="news-broadsheet" id="news-broadsheet">
+    <div class="news-header">
+      <div class="news-meta-top">
+        <span class="news-edition" id="news-edition">INTERNATIONAL EDITION</span>
+        <span class="news-stamp">★ BREAKING NEWS · 时代特刊 ★</span>
+        <span class="news-date" id="news-date">1980-09</span>
+      </div>
+      <div class="news-masthead" id="news-masthead">THE GLOBAL CHRONICLE</div>
+      <div class="news-subbar">
+        <span class="news-issue" id="news-issue">VOL. XLIV NO. 15,420</span>
+        <span class="news-motto">“记录冷战历史的每一步车轮转向”</span>
+        <span class="news-loc">GENEVA · WASHINGTON · MOSCOW</span>
+      </div>
+    </div>
+    <div class="news-body">
+      <div class="news-headline" id="news-headline">战火撕裂阿拉伯河：伊拉克装甲军团突入胡齐斯坦</div>
+      <div class="news-subhead" id="news-subhead">两伊爆发全面军事冲突，波斯湾原油生命线阴云密布</div>
+      <div class="news-lead" id="news-lead"></div>
+      <div class="news-photo-box" id="news-photo-box" style="display:none">
+        <img class="news-photo-img" id="news-photo-img" src="" alt="历史新闻档案画报">
+        <div class="news-photo-caption" id="news-photo-caption"></div>
+        <img class="news-stamp-img" id="news-stamp-img" src="" alt="印章" style="display:none">
+      </div>
+      <div class="news-columns">
+        <div class="news-col left">
+          <div class="news-section-title">🏛️ 时代社论纵深</div>
+          <div class="news-editorial" id="news-editorial"></div>
+        </div>
+        <div class="news-col right">
+          <div class="news-section-title">🌐 地缘波及速评</div>
+          <div class="news-impacts" id="news-impacts"></div>
+        </div>
+      </div>
+    </div>
+    <div class="news-footer">
+      <button class="btn news-btn-focus" id="news-btn-focus">🔍 聚焦事发地</button>
+      <button class="btn news-btn-continue" id="news-btn-continue">⏩ 继续推演</button>
+    </div>
+  </div>
+</div>
+
+<div id="crisis-modal" class="modal-overlay" style="display:none">
+  <div class="crisis-dossier" id="crisis-dossier">
+    <div class="crisis-header">
+      <img class="crisis-stamp-img" src="assets/ui/stamp_top_secret.png" alt="TOP SECRET">
+      <div class="crisis-meta-top">
+        <span class="crisis-stamp">★ FLASH CRISIS · 绝密特急密电 ★</span>
+        <span class="crisis-code" id="crisis-code">TOP SECRET // CODEWORD: FLASHPOINT-80</span>
+        <span class="crisis-date" id="crisis-date">1983-09</span>
+      </div>
+      <div class="crisis-title" id="crisis-title">大韩航空 007 班机偏航事件</div>
+      <div class="crisis-subhead" id="crisis-subhead">远东空域防空拦截与国际震荡</div>
+      <div class="crisis-subbar">
+        <span class="crisis-loc" id="crisis-region">📍 远东 / 库页岛防空区</span>
+        <span class="crisis-actors" id="crisis-actors">🌐 涉事各方：美利坚合众国 · 苏维埃联盟</span>
+      </div>
+    </div>
+    <div class="crisis-body">
+      <div class="crisis-desc" id="crisis-desc">事态综述简报...</div>
+      <div class="crisis-options-hd">⚡ 最高决策层升级阶梯（三级博弈决断）</div>
+      <div class="crisis-options" id="crisis-options">
+        <!-- 动态生成三级阶梯选项卡片 -->
+      </div>
+    </div>
+    <div class="crisis-footer">
+      <div class="crisis-footer-hint">💡 升级决断将直接重塑冷战双边张力、大国内政权力天平，并永久镌刻于终局时代大事记</div>
     </div>
   </div>
 </div>
@@ -203,6 +447,18 @@
 <script src="data/borders_country.js"></script>
 <script src="data/sim.js"></script>
 <script src="data/events.js"></script>
+<script src="data/cr.js"></script>
+<script src="data/resources.js"></script>
+<script src="data/trade.js"></script>
+<script src="data/embargo.js"></script>
+<script src="data/ai.js"></script>
+<script src="data/news.js"></script>
+<script src="data/agendas.js"></script>
+<script src="data/crises.js"></script>
+<script src="data/intel.js"></script>
+<script src="data/afghan.js"></script>
+<script src="data/sound.js"></script>
+<script src="data/assets.js"></script>
 <script src="engine/sim.js"></script>
 <script src="app.js"></script>
 </body>
