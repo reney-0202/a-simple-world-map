@@ -1132,6 +1132,16 @@ function resolveCrisis(crId, tier, silent) {
 
   const eff = opt.effects || {};
 
+  // D（数据层评审）：统一效果词表自检 —— 数据里出现表外键 = 拼错或过期，静默无效最危险。
+  // 词表见 data/effects.js（W1980_EFFECTS）；构建期由 tools/validate_data.js 强制校验。
+  const unknownEff = (window.W1980_EFFECTS && window.W1980_EFFECTS.unknownKeys) ? window.W1980_EFFECTS.unknownKeys(eff) : [];
+  if (unknownEff.length) {
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn("[W1980] 危机 " + cr.id + " 阶梯 " + tier + " 含未登记效果键：" + unknownEff.join(", ")
+        + "（合法键见 data/effects.js）");
+    }
+  }
+
   // 1. 双边张力影响 (R10A)
   if (typeof eff.tensionDelta === "number" && eff.tensionDelta !== 0 && ST.ai && ST.ai.tensions) {
     const usSunKey = "USA:SUN";

@@ -63,6 +63,33 @@ const BLOC_NET_BASE = {
 // 迁移字段时：先改写主，再更新本表；不要把散落的 ST.x = ... 直接搬进其他模块。
 // ------------------------------------------------------------------------------
 
+// ---- D（数据层评审）：双地址空间的单一 resolve() 事实源 ----------------------
+// 54 可玩实体 ↔ 133 成员过去靠调用方各自「约定展开」（entKeys / simVal 各写一遍，
+// 且对未知 key 直接 CM.countries[k].members 抛 TypeError）。这里把规则收敛到一处：
+//   resolve(k)       : 任意 key（实体 / 成员 / 联邦别名）→ 所属可玩实体 key；不可解析返回 null
+//   isEntity(k)      : 是否为 54 个可玩实体之一
+//   isMember(k)      : 是否为 133 个有 sim row 的成员之一
+//   memberKeys(k)    : 实体 → 其下所有有 sim row 的成员 key（含自身）
+//   FED_ALIAS        : 战区/成员 → 联邦可玩实体的别名表（与 resolvePlayableKey 同值）
+const FED_ALIAS = { ARG: "LAP", KWT: "ARA" };
+function isEntity(k) { return !!(CM.countries && CM.countries[k]); }
+function isMember(k) { return window.W1980_SIMDATA && window.W1980_SIMDATA.popStart[k] !== undefined; }
+function resolve(k) {
+  if (!k || typeof k !== "string") return null;
+  if (isEntity(k)) return k;
+  return FED_ALIAS[k] || null;
+}
+function memberKeys(k) {
+  const c = CM.countries && CM.countries[k];
+  if (!c) return [];
+  const D = window.W1980_SIMDATA, out = [];
+  if (D && D.popStart[k] !== undefined) out.push(k);
+  const ms = c.members || [];
+  for (let i = 0; i < ms.length; i++) if (D && D.popStart[ms[i].key] !== undefined) out.push(ms[i].key);
+  return out;
+}
+// ------------------------------------------------------------------------------
+
 const ST = {
   mode: "political", sortKey: "pop_m", sel: null, hover: 0, hoverC: null,
   player: null, mil: 0,            // R3：玩家实体（可 null=旁观）与军费占比决策（%）
@@ -104,6 +131,7 @@ let modeCan = null, mctx = null, tables = {}, baked = {}, bakedNow = null;
 let mapCan, mctx2, ovCan, octx, bimg = null, oimg = null;
 let xmapA = null, ymapA = null, xmapP = -1, ymapP = -1;
 let VB_P = null, VB_C = null;   // 矢量边界折线（delta-int16 解码后的浮点折线，惰性）
+let vbLoading = false;          // D：borders JSON 按需加载中标记（避免重复 fetch）
 let xmapX = NaN, ymapY = NaN;   // ← 缓存必须跟 view.x/view.y 一起失效，否则平移后边界层会错位
 let __W1980 = null;             // 调试/验证钩子（见文件末尾 window.__W1980）
 

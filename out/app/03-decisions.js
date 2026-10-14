@@ -133,10 +133,13 @@ function applyPlayerDecisions() {
   }
 }
 // 战区/成员至所属联邦可玩实体映射（如 ARG -> LAP, KWT -> ARA）
-const MAP_FED_TARGET = { ARG: "LAP", KWT: "ARA" };
+// D（数据层评审）：别名表与 resolve/isEntity/isMember/memberKeys 合并为 01-core.js 的
+// 单一事实源（FED_ALIAS + resolve()）；本函数保留「不可解析时原样返回」的旧契约，
+// 以免改变 20+ 处调用方的既有行为。
+const MAP_FED_TARGET = FED_ALIAS;
 function resolvePlayableKey(k) {
   if (!k) return k;
-  if (CM.countries && CM.countries[k]) return k;
+  if (isEntity(k)) return k;
   return MAP_FED_TARGET[k] || k;
 }
 

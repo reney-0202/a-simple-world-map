@@ -17,16 +17,16 @@ function simInit() {
 }
 function simAdvanced() { return SIM.ready && (SIM.S.year > 1980 || SIM.S.month > 0); }
 // 实体 k 在当前仿真时刻的 {pop_m, gdp_bn, industry_bn}（成员求和；t=0 时与基准完全一致）
+// D（数据层评审）：未知 key 走 memberKeys → []，返回该实体的静态基准而不是抛错。
 function simVal(k) {
   const c = CM.countries[k];
+  if (!c) return { pop_m: 0, gdp_bn: 0, industry_bn: 0 };
   if (!SIM.S) return { pop_m: c.pop_m, gdp_bn: c.gdp_bn, industry_bn: c.industry_bn };
   const D = window.W1980_SIMDATA, S = SIM.S;
+  const keys = memberKeys(k);
   let pop = 0, gdp = 0, ind = 0;
-  if (D.popStart[k] !== undefined) { pop += S.pop[k]; gdp += D.gdp1980[k] * S.gdp[k]; ind += D.ind1980[k] * S.gdp[k]; }
-  const ms = c.members || [];
-  for (let i = 0; i < ms.length; i++) {
-    const key = ms[i].key;
-    if (D.popStart[key] === undefined) continue;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
     pop += S.pop[key]; gdp += D.gdp1980[key] * S.gdp[key]; ind += D.ind1980[key] * S.gdp[key];
   }
   return { pop_m: pop, gdp_bn: gdp, industry_bn: ind };
@@ -38,13 +38,9 @@ function deltaTag(base, cur) {
 }
 // ---- R2 T2/T5：历史轨迹消费（成员级 hist，见 engine/sim.js HIST_MAX）----
 // 实体 key -> 成员 key 列表（与 simVal 同口径：实体自身 + members 展开）
-function entKeys(k) {
-  const c = CM.countries[k], D = window.W1980_SIMDATA, out = [];
-  if (D.popStart[k] !== undefined) out.push(k);
-  const ms = c.members || [];
-  for (let i = 0; i < ms.length; i++) if (D.popStart[ms[i].key] !== undefined) out.push(ms[i].key);
-  return out;
-}
+// D（数据层评审）：改为委托 01-core.js 的 memberKeys —— 单一展开规则，
+// 且未知 key 返回 [] 而不是抛 TypeError（双地址空间的约定收敛到一处）。
+function entKeys(k) { return memberKeys(k); }
 // 一组成员的实际产出同比增速（近 12 个月，按 1980 基准加总）；历史不足 13 个月 → null
 function growthOf(keys) {
   const H = SIM.S && SIM.S.hist, D = window.W1980_SIMDATA;
@@ -72,6 +68,7 @@ function growthWorld() {
 const DELTA_SPAN = 0.20;          // ±20% 映射到色阶两端：固定尺度 → 跨年份可比，且 1980-01 恒为中性
 function deltaOf(k) {
   const c = CM.countries[k];
+  if (!c) return 0;                       // D：未知 key 不再抛 TypeError
   return c.gdp_bn > 0 ? simVal(k).gdp_bn / c.gdp_bn - 1 : 0;
 }
 // 发散色阶：负→冷、0→中性、正→暖。刻意避用红/绿——冷战题材里红=苏联会误导，冷暖发散对色盲也更友好。

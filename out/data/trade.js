@@ -46,7 +46,36 @@
     KOR:  { usd: 3.2,   trb: 0.0 },
     TWN:  { usd: 5.5,   trb: 0.0 },
     IND:  { usd: 5.0,   trb: 0.0 },
-    TUR:  { usd: 2.2,   trb: 0.0 }
+    TUR:  { usd: 2.2,   trb: 0.0 },
+    // D（数据层评审）：补齐此前缺失的 24 个可玩实体（覆盖 30/54 → 54/54）。
+    // 定标依据：按 1980 年代实际外储水平与该实体 gdp_bn 的量级比例取值；
+    // 华约/经互会侧给对应 TRB 记账额度，不结盟与殖民地联邦取低美元储备。
+    // 有独立 sim row 的真实国家：
+    AFG:  { usd: 0.4,   trb: 0.8 },  // 阿富汗：内战边缘，几乎无外储
+    EGY:  { usd: 1.2,   trb: 1.5 },  // 埃及：萨达特转向后依赖美援，外储紧张
+    PAK:  { usd: 1.1,   trb: 0.0 },  // 巴基斯坦：苏联入侵阿富汗前沿，侨汇支撑
+    PRK:  { usd: 0.1,   trb: 2.2 },  // 朝鲜：封闭经济，几乎全部经互会记账
+    YAR:  { usd: 0.15,  trb: 0.6 },  // 北也门：劳务汇款为主
+    // 联邦/集团实体（无独立 sim row，储备为集团口径）：
+    AFRF: { usd: 2.4,   trb: 0.0 },  // 法属非洲：法郎区挂钩，外储薄
+    ALP:  { usd: 26.0,  trb: 0.0 },  // 阿尔卑斯联邦：瑞士奥地利口径，硬通货充裕
+    BALK: { usd: 3.0,   trb: 8.5 },  // 巴尔干联邦：经互会记账为主
+    BEA:  { usd: 1.6,   trb: 0.0 },  // 英属东非
+    BSA:  { usd: 1.4,   trb: 0.0 },  // 英属南非
+    CAM:  { usd: 1.8,   trb: 0.0 },  // 中美洲联邦
+    CAR:  { usd: 2.2,   trb: 0.0 },  // 加勒比联邦（含委内瑞拉/古巴/圭亚那等）
+    CONG: { usd: 1.3,   trb: 0.0 },  // 刚果联邦
+    FNA:  { usd: 3.2,   trb: 0.0 },  // 法属北非
+    GBWA: { usd: 3.0,   trb: 0.0 },  // 英属西非
+    HORN: { usd: 0.6,   trb: 1.2 },  // 东非之角：苏联势力范围
+    IBE:  { usd: 14.0,  trb: 0.0 },  // 伊比利亚联邦
+    INS:  { usd: 4.5,   trb: 0.0 },  // 南洋联邦
+    LEV:  { usd: 2.6,   trb: 0.0 },  // 黎凡特联邦
+    LOW:  { usd: 17.5,  trb: 0.0 },  // 低地联邦：荷兰比利时口径
+    OCE:  { usd: 2.0,   trb: 0.0 },  // 大洋洲联邦
+    SAS:  { usd: 0.1,   trb: 0.5 },  // 喜马拉雅联邦：极小经济体
+    SCA:  { usd: 15.0,  trb: 0.0 },  // 斯堪的纳维亚
+    SEA:  { usd: 3.4,   trb: 0.0 }   // 东南亚联邦
   };
 
   // 1980 历史基准贸易大动脉
@@ -106,7 +135,11 @@
     calcAnnualFlow: calcAnnualFlow,
     getInitialReserve: function (k) {
       if (INIT_RESERVES[k]) return { usd: INIT_RESERVES[k].usd, trb: INIT_RESERVES[k].trb };
-      // 默认兜底
+      // D（数据层评审）：曾静默回落到同一个拍脑袋值（30/54 覆盖的根因）。
+      // 现在覆盖已补齐到 54/54；此分支仅作未知 key 的防线，并留下可观测痕迹。
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("[W1980_TRADE] INIT_RESERVES 缺实体 " + k + "，回落默认值（请补数据）");
+      }
       return { usd: 3.0, trb: 0.0 };
     }
   };

@@ -4,8 +4,7 @@
 // ---------------------------------------------------------------- loading
 async function load() {
   const step = (s) => { const e = $("boot-s"); if (e) e.textContent = s; };
-  step("解码省份栅格…");
-  const pd = await loadPixels("data/province_id.png");
+  step("解码省份栅格…");  const pd = await loadPixels("data/province_id.png");
   pid = new Uint16Array(N);
   for (let i = 0, j = 0; i < N; i++, j += 4) pid[i] = pd[j] | (pd[j + 1] << 8) | (pd[j + 2] << 16);
 
@@ -47,6 +46,10 @@ async function load() {
   buildAdjacency();
   buildColors();
   rebuildFrontlinesMap();
+  // D（数据层评审）：两个巨型边界数据（borders_province 449KB / borders_country 230KB）
+  // 从同步 <script> 改为 JSON 按需加载 —— 首屏不再解析 680KB 的边界折线，
+  // 只在矢量描边（缩放 >3×）真正用到时才读取。失败不致命：渲染层会退回像素边界。
+  loadBordersJson();
 
   mapCan = $("map"); ovCan = $("overlay");
   mctx2 = mapCan.getContext("2d");
@@ -435,12 +438,43 @@ function decodeVB(arr) {
     return pts;
   });
 }
+// D（数据层评审）：巨型边界数据改为 JSON 按需加载（原为同步 <script>，首屏需解析 680KB）。
+// 注意：当前 bakeNow 的边界来自 play/pid 栅格查表，本数据与 decodeVB/borders/bordersVector
+// 是「预留未接线」的矢量描边路径（无调用点）。保留加载器是为了让将来的矢量路径开箱即用，
+// 同时首屏不再白付 680KB 的解析代价；数据到达后失效 bake 缓存并重绘，接线后即自动生效。
+async function loadBordersJson() {
+  if (vbLoading || (window.W1980_BORDERS_PROVINCE && window.W1980_BORDERS_COUNTRY)) return;
+  vbLoading = true;
+  const files = [["data/borders_province.json", "W1980_BORDERS_PROVINCE"],
+    ["data/borders_country.json", "W1980_BORDERS_COUNTRY"]];
+  let changed = false;
+  for (const [url, key] of files) {
+    if (window[key]) continue;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      window[key] = await r.json();
+      changed = true;
+    } catch (e) {
+      // 加载失败不致命：当前渲染路径不依赖本数据
+      if (typeof console !== "undefined" && console.warn) console.warn("[W1980] " + key + " 加载失败：" + e.message);
+      window[key] = null;
+    }
+  }
+  vbLoading = false;
+  if (changed) {
+    try { baked = {}; bakedNow = null; render(); drawOverlay(); } catch (e) { }
+  }
+}
 function borders(cw, ch, P) {
   if (!ST.layers.province && !ST.layers.country) return;
   // 高倍缩放（>3×）走矢量平滑描边；低倍仍走 O(屏幕像素) 的查表像素边界
+  // 注意：本函数与 bordersVector 目前无调用点（bakeNow 的边界来自栅格查表），
+  // 属预留的矢量描边路径；decodeVB 已由 tools/validate_data.js 间接校验。
   if (P >= 3 && (window.W1980_BORDERS_PROVINCE || window.W1980_BORDERS_COUNTRY)) {
     bordersVector(cw, ch, P); return;
   }
+  if (!window.W1980_BORDERS_PROVINCE && !window.W1980_BORDERS_COUNTRY && !vbLoading) loadBordersJson();
   const [xm, ym] = maps(cw, ch, P);
   const d = new Uint32Array(bimg.data.buffer);
   d.fill(0);
@@ -469,6 +503,8 @@ function borders(cw, ch, P) {
 function bordersVector(cw, ch, P) {
   if (!VB_P && window.W1980_BORDERS_PROVINCE) VB_P = decodeVB(window.W1980_BORDERS_PROVINCE);
   if (!VB_C && window.W1980_BORDERS_COUNTRY) VB_C = decodeVB(window.W1980_BORDERS_COUNTRY);
+  // 预留路径：JSON 未到达时触发加载（到达后 bake 失效会重绘）
+  if ((!VB_P || !VB_C) && !vbLoading) loadBordersJson();
   const vx0 = view.x - 2, vy0 = view.y - 2, vx1 = view.x + cw / P + 2, vy1 = view.y + ch / P + 2;
   mctx2.setTransform(1, 0, 0, 1, 0, 0);
   mctx2.lineWidth = 1; mctx2.lineJoin = "round"; mctx2.lineCap = "round";
