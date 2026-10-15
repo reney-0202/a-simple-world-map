@@ -104,12 +104,14 @@ JITTER_FIELDS = {
 }
 
 # Fields whose values depend on the browser/platform canvas implementation rather
-# than on the game logic: readback hashes and sampled pixel RGB strings. They are
-# still asserted inside each probe (the `run` gate is authoritative); they are
-# excluded only from the cross-platform baseline diff, where a Windows/Edge
-# baseline would otherwise differ from a Linux/Chrome CI run.
+# than on the game logic: readback hashes, sampled pixel RGB strings, and the
+# exported-PNG byte length (each platform's PNG encoder compresses differently).
+# They are still asserted inside each probe (the `run` gate is authoritative);
+# they are excluded only from the cross-platform baseline diff, where a
+# Windows/Edge baseline would otherwise differ from a Linux/Chrome CI run.
 PLATFORM_FIELD_PREFIXES = ("sig", "c0Rgb", "cOccRgb", "dbg")
 PLATFORM_FIELD_SUFFIXES = ("Rgb",)
+PLATFORM_FIELDS = {"exportPng"}
 
 # Fields compared with a tolerance rather than exactly (none today; kept explicit
 # so the intent is visible if a genuinely float-noisy field appears).
@@ -117,7 +119,7 @@ TOLERANT_FIELDS = {}
 
 
 def _platform_dependent(name, value):
-    if name in JITTER_FIELDS:
+    if name in JITTER_FIELDS or name in PLATFORM_FIELDS:
         return True
     # keep booleans (e.g. sigChanged) - they are logic-derived, not canvas-derived
     if isinstance(value, bool):
