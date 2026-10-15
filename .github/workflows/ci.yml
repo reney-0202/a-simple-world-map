@@ -23,6 +23,18 @@ jobs:
           node-version: "20"
       - name: Validate data layer (foreign keys + effect vocabulary)
         run: node tools/validate_data.js out
+      - name: Unit-test the validator checks (one function per check class)
+        run: node tools/validate.test.js
+      - name: Emit the structured result (machine-readable artifact)
+        run: node tools/validate_data.js out --json > validate-report.json
+      - name: Entity coverage matrix (54 entities x data surfaces)
+        run: node tools/validate_data.js out --report
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: validate-report
+          path: validate-report.json
+          if-no-files-found: warn
 
   probes:
     name: Headless probes

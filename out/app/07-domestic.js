@@ -872,6 +872,10 @@ function calcAgendaBonuses(cKey) {
       const agId = state.completed[i];
       const ag = list.find((a) => a.id === agId);
       if (ag && ag.effects) {
+        // I（数据层工具链）：议程效果同样过词表 —— 运行期登记，构建期由校验器强制
+        if (window.W1980_EFFECTS && window.W1980_EFFECTS.report) {
+          window.W1980_EFFECTS.report("agenda " + cKey + "/" + ag.id, ag.effects);
+        }
         if (typeof ag.effects.gdpBonus === "number") bonuses.gdpBonus += ag.effects.gdpBonus;
         if (typeof ag.effects.reserveMonthly === "number") bonuses.reserveMonthly += ag.effects.reserveMonthly;
         if (ag.effects.decoupleImmunity) bonuses.decoupleImmunity = true;
@@ -1605,14 +1609,12 @@ function resolveCrisis(crId, tier, silent) {
 
   const eff = opt.effects || {};
 
-  // D（数据层评审）：统一效果词表自检 —— 数据里出现表外键 = 拼错或过期，静默无效最危险。
-  // 词表见 data/effects.js（W1980_EFFECTS）；构建期由 tools/validate_data.js 强制校验。
-  const unknownEff = (window.W1980_EFFECTS && window.W1980_EFFECTS.unknownKeys) ? window.W1980_EFFECTS.unknownKeys(eff) : [];
-  if (unknownEff.length) {
-    if (typeof console !== "undefined" && console.warn) {
-      console.warn("[W1980] 危机 " + cr.id + " 阶梯 " + tier + " 含未登记效果键：" + unknownEff.join(", ")
-        + "（合法键见 data/effects.js）");
-    }
+  // D（数据层评审）/ I（数据层工具链）：统一效果词表自检 —— 数据里出现表外键 = 拼错或过期，
+  // 静默无效最危险。词表见 data/effects.js（W1980_EFFECTS）：构建期由 tools/validate_data.js
+  // 直接判失败；运行期登记进 W1980_EFFECTS.violations（探针断言其为空），
+  // 并在探针/开发模式下同时打到控制台。
+  if (window.W1980_EFFECTS && window.W1980_EFFECTS.report) {
+    window.W1980_EFFECTS.report("crisis " + cr.id + " tier" + tier, eff);
   }
 
   // 1. 双边张力影响 (R10A)

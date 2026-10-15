@@ -159,6 +159,11 @@ if (isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed)) {
     const resId = ST.ai.unsc.passed[i];
     const resDef = (window.W1980_AI && window.W1980_AI.UNSC_RESOLUTIONS) ? window.W1980_AI.UNSC_RESOLUTIONS[resId] : null;
     if (resDef && resDef.effects) {
+      // I（数据层工具链）：安理会决议效应是「ai」组词表的真实数据源，
+      // 同样过运行期词表（此前构建期扫的是 AI_DOCTRINES，那里根本没有 effects）。
+      if (window.W1980_EFFECTS && window.W1980_EFFECTS.report) {
+        window.W1980_EFFECTS.report("unsc " + resId, resDef.effects);
+      }
       if (resDef.effects.multilateralEmbargo && resDef.effects.embargoPenalty) {
         const tgtKeys = entKeys(resDef.effects.multilateralEmbargo);
         for (let j = 0; j < tgtKeys.length; j++) {

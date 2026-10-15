@@ -20,6 +20,7 @@ function runDomesticProbe() {
   runDomesticProbePhase1(r, assert, ctx);
   runDomesticProbePhase2(r, assert, ctx);
   runDomesticProbePhase3(r, assert, ctx);
+  runDomesticProbePhase4(r, assert, ctx);
 
   } catch (e) {
     r.pass = false;
@@ -270,6 +271,45 @@ function runDomesticProbePhase3(r, assert, ctx) {
   applyPlayerDecisions();
   initDomesticState();
   refreshDomesticBox(ST.sel);
+}
+
+// I（数据层工具链）：效果词表的运行期双保险 —— 构建期由 tools/validate_data.js 判失败，
+// 这里验证浏览器里同一份词表同样能抓住拼错的键，并覆盖本局从未触发的数据分支。
+function runDomesticProbePhase4(r, assert, ctx) {
+  const EFF = window.W1980_EFFECTS;
+  assert("effectVocabRuntimeApi",
+    !!EFF && typeof EFF.report === "function" && typeof EFF.auditData === "function" && Array.isArray(EFF.violations),
+    "W1980_EFFECTS 暴露运行期登记表与全量审计入口");
+
+  // 23. 本局实际走过的消费路径（危机卡 / 议程加成 / 安理会决议）没有登记任何表外键
+  r.details.__effectViolationsLive = EFF.violations.length;
+  assert("effectVocabLivePathsClean", EFF.violations.length === 0,
+    "本局实际走过的效果消费路径无表外键（实测 " + EFF.violations.length + " 条）");
+
+  // 24. 全量审计：数据里声明过的每个 effects 站点都过一遍词表（含本局未触发的分支）
+  const audit = EFF.auditData();
+  r.details.__effectSites = audit.sites;
+  assert("effectVocabAuditsAllSites", audit.sites >= 20,
+    "全量审计覆盖 ≥20 个效果站点（实测 " + audit.sites + "）");
+  assert("effectVocabDataClean", audit.keys === 0 && EFF.violations.length === 0,
+    "现有数据无表外效果键（审计 " + audit.sites + " 个站点，违规 " + audit.keys + " 处）");
+
+  // 25. 反向验证：拼错的键必须被抓住，否则词表只是摆设
+  const caught = EFF.report("domesticprobe injected", { gdpBonux: 1 });
+  r.details.__effectCaught = caught.join(",") || "(none)";
+  assert("effectVocabCatchesTypo",
+    caught.length === 1 && caught[0] === "gdpBonux" && EFF.violations.length === 1,
+    "注入拼写错误的效果键会被运行期词表抓住（" + (caught.join(",") || "未抓住") + "）");
+
+  // 26. 去重：同一站点每月重复登记只计一次，月度结算不会把登记表刷爆
+  EFF.report("domesticprobe injected", { gdpBonux: 1 });
+  assert("effectVocabDedupesSites", EFF.violations.length === 1,
+    "同一站点重复登记被去重（实测 " + EFF.violations.length + " 条）");
+
+  // 复原：清掉注入的违规，探针自身不留痕迹
+  EFF.resetViolations();
+  assert("effectVocabResetClean", EFF.violations.length === 0 && EFF.isClean(),
+    "resetViolations 清空登记表并恢复 isClean()");
 }
 
 

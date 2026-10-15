@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 54,
-    "pop": 49,
-    "ind": 53,
-    "province": 57,
-    "delta": 59,
-    "resource": 58
+    "bloc": 55,
+    "pop": 54,
+    "ind": 54,
+    "province": 56,
+    "delta": 62,
+    "resource": 86
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1550
+   "totalMs": 1564
   },
   "failed": false
  },
@@ -794,7 +794,17 @@
     "deuEnergyPressureDragsGdp": "PASS",
     "chnEconMeterRendered": "PASS",
     "deuEconMeterRendered": "PASS",
-    "chnDeuEconFieldsRestored": "PASS"
+    "chnDeuEconFieldsRestored": "PASS",
+    "effectVocabRuntimeApi": "PASS",
+    "__effectViolationsLive": 0,
+    "effectVocabLivePathsClean": "PASS",
+    "__effectSites": 48,
+    "effectVocabAuditsAllSites": "PASS",
+    "effectVocabDataClean": "PASS",
+    "__effectCaught": "gdpBonux",
+    "effectVocabCatchesTypo": "PASS",
+    "effectVocabDedupesSites": "PASS",
+    "effectVocabResetClean": "PASS"
    }
   },
   "failed": false

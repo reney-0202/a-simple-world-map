@@ -130,6 +130,12 @@ const CR = { list: null, pending: null, choices: [], decided: new Set(), deny: n
 function crInit() {
   CR.list = window.W1980_CROSSROADS || [];
   CR.probeMode = /[?&](simprobe|saveprobe|end=1|selftest|flprobe|warprobe|resprobe|tradeprobe|embargoprobe|aiprobe|summitprobe|unscprobe|panelprobe|newsprobe|chronicleprobe|domesticprobe|agendaprobe|crisisprobe|intelprobe|afghanprobe|soundprobe|assetsprobe)/.test(location.search);
+  // I（数据层工具链）：效果词表的运行期双保险。探针/开发模式下把表外键打到控制台，
+  // 同时（任何模式）登记进 W1980_EFFECTS.violations —— 探针断言该表为空，
+  // 于是「数据里拼错一个效果键」在构建期和运行期都会失败，而不是静默无效。
+  if (window.W1980_EFFECTS && window.W1980_EFFECTS.setStrict) {
+    window.W1980_EFFECTS.setStrict(CR.probeMode || /[?&]dev=1/.test(location.search));
+  }
   const cq = /[?&]choice=([A-Za-z_0-9]+):(\d+)/.exec(location.search);
   if (cq) CR.auto = { id: cq[1], ci: clamp(parseInt(cq[2], 10) || 0, 0, 9) };
 }
