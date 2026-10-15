@@ -269,165 +269,187 @@ function generateEpilogue(st) {
   const topBloc = blocs.slice().sort((a, b) => b.gdpShare - a.gdpShare)[0] || { zh: "西方", gdpShare: 0, gdpShare0: 0 };
   const dShare = (topBloc.gdpShare - topBloc.gdpShare0).toFixed(1);
 
+  // G（收尾评审）：头衔判定与两套卷宗正文已抽为独立构建器（见下方 epilogue*）。
   if (p) {
-    if (p.total >= 85) res.rankTitle = "★ 冷战奇迹 · 大国擎天 ★";
-    else if (p.total >= 70) res.rankTitle = "★ 定海神针 · 破浪前行 ★";
-    else if (p.total >= 55) res.rankTitle = "★ 风雨同舟 · 守成维稳 ★";
-    else res.rankTitle = "★ 沉浮动荡 · 时代阵痛 ★";
-
-    // R12B 专属历史议程专属头衔联动：若达成 2 项及以上专属议程且评级良好
-    if (ST.agendas && ST.agendas[p.k] && ST.agendas[p.k].completed && ST.agendas[p.k].completed.length >= 2 && p.total >= 60) {
-      if (p.k === "CHN") res.rankTitle = "★ 改革开放与和平崛起总设计师 ★";
-      else if (p.k === "JPN") res.rankTitle = "★ 技术立国与东亚雁阵领航者 ★";
-      else if (p.k === "DEU") res.rankTitle = "★ 欧洲大市场奠基者与防务新支柱 ★";
-      else if (p.k === "GBR") res.rankTitle = "★ 金融城大爆炸与结构转型总设计师 ★";
-      else if (p.k === "FRA") res.rankTitle = "★ 高卢战略自主与欧洲单一市场统帅 ★";
-      else if (p.k === "SUN") res.rankTitle = "★ 新联盟体制守护者与改革破局者 ★";
-      else if (p.k === "USA") res.rankTitle = "★ 供给学派繁荣与天基高边疆统帅 ★";
-    }
-
-    const pc = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-    const rankTxt = p.dr > 0 ? ("上升 " + p.dr + " 位") : p.dr < 0 ? ("下降 " + (-p.dr) + " 位") : "维持原位";
-    const pctlTxt = p.pctl !== null ? Math.round(p.pctl * 100) + "%" : "—";
-
-    // 卷首 · 时代终局综评
-    res.sections.push({
-      sec: "卷首 · 时代终局综评",
-      body: "在 1980 至 1991 年的风云激荡中，" + p.zh + "经历了波澜壮阔的十二年国运推演。GDP 总量由 1980 年的 " +
-        p.gdp0.toFixed(0) + " 十亿扩张至 " + p.gdp.toFixed(0) + " 十亿（" + pc(p.gdpDelta) + "），世界排位由第 " +
-        p.rank0 + " 名变为第 " + p.rank1 + " 名（" + rankTxt + "），经济增速位居全球第 " + pctlTxt +
-        " 分位。大战略综合评分定格于 " + p.total.toFixed(1) + " / 100 分，荣膺【" + res.rankTitle.replace(/★/g, "").trim() + "】历史评价。",
-      quote: "十二年间执政定策，每一项防务开支与地缘抉择，皆在世界版图上刻下了不可磨灭的印记。"
-    });
-
-    // 卷一 · 国运兴衰与阵营消长
-    let sec1Body = "";
-    if (p.k === "SUN") {
-      const isDissolved = SIM.S && SIM.S.ussrDissolved;
-      if (isDissolved) {
-        sec1Body = "1991 年 12 月 25 日，莫斯科红场飘扬的红旗悄然滑落，长达半个世纪的冷战双极对峙宣告落幕。尽管执政期间进行了诸多战略周旋与政策调整，但在长期经济停滞、军备重负与各加盟共和国离心力的合力撕扯下，庞大的苏维埃大厦终告解体。新生的十五个独立国家在休克疗法的骤雨中艰难探索转型之路，亚欧大陆的地缘重心面临空前重构。";
-      } else {
-        sec1Body = "在关键的历史十字路口，联盟体制在改革的惊涛骇浪中得以保全。《新联盟条约》的签署与结构性调整使这艘庞然巨舰避免了四分五裂的悲剧命运。进入 1990 年代，一个保持着庞大工业底座与广袤地缘纵深的苏维埃联盟，将继续作为全球多极化格局中举足轻重的一极，打破了‘历史终结论’的单一剧本。";
-      }
-    } else if (p.k === "USA") {
-      sec1Body = "经历 1980 年代里根经济学的复苏扩张与冷战终局的地缘胜势，美利坚合众国登上了全球单极霸权的顶峰。西方阵营在全球经济总量中的主导地位空前巩固，‘新世界秩序’成为华盛顿外交的核心叙事。然而，巨额双赤字的累积与冷战后多边体系的复杂利益诉求，预示着后冷战时代的世界并非坦途。";
-    } else if (p.k === "CHN") {
-      sec1Body = "从 1980 到 1991，改革开放的浩荡春风席卷神州大地。面对外部地缘风云变幻与苏东剧变的剧烈震荡，中国始终保持战略定力，坚持独立自主与对内深化改革。国民经济实现了历史性的快速跃升与民生改善，为跨入 21 世纪重返世界舞台中央奠定了坚不可摧的物质基石。";
-    } else {
-      sec1Body = p.zh + "作为国际舞台上的关键力量，在两大阵营激荡的夹缝与机遇中展现了非凡的韧性。经济位次" + rankTxt +
-        "，在全球产业与资源贸易分工中占据了不可忽视的战略身位。";
-    }
-    sec1Body += " 全球格局方面，" + topBloc.zh + "阵营占据了全球 " + topBloc.gdpShare.toFixed(1) + "% 的产出份额（变动 " +
-      (dShare >= 0 ? "+" : "") + dShare + "pp），冷战铁幕呈现出深刻的结构性消长。";
-    res.sections.push({
-      sec: "卷一 · 国运兴衰与阵营消长",
-      body: sec1Body,
-      quote: "阵营的兴替印证着大国兴衰的铁律：唯有内政昌明与战略清醒，方能立于不败之地。"
-    });
-
-    // 卷二 · 国防战略与军备路线
-    let sec2Body = "";
-    if (ST.mil >= 7) {
-      sec2Body = "在防务与安全治理上，采取了高度戒备的重兵威慑学说，军费占比常年维持在 " + ST.mil + "% 的超高水平。钢铁长城虽筑牢了坚不可摧的国防壁垒，然而沉重的非生产性开支对民生与民间资本形成显著挤出，长期年均产出增速承受了累积惩罚，国防适度评分定格为 " + p.M.toFixed(1) + " / 15 分。";
-    } else if (ST.mil >= 3 && ST.mil <= 5) {
-      sec2Body = "防务决策展现了卓越的中庸智慧与战略定力，将国防预算严谨锚定在 " + ST.mil + "% 的适度区间。既有效威慑了潜在敌对势力、巩固了国家主权，又最大限度为工业投资与民生造血让渡了发展空间，达成了国防建设与经济繁荣的黄金平衡，国防适度分高达 " + p.M.toFixed(1) + " / 15 分。";
-    } else {
-      sec2Body = "推行了极其果断的紧缩裁军战略，军费占比压缩至仅 " + ST.mil + "%。刀枪入库为民生经济全力让路，带来了惊人的低负担增长红利；但在冷战充满不确定性的地缘博弈中，偏低的防务开支在突发安全风险面前面临着严峻的威慑韧性考验，国防适度评分定格为 " + p.M.toFixed(1) + " / 15 分。";
-    }
-    res.sections.push({
-      sec: "卷二 · 国防战略与军备路线",
-      body: sec2Body,
-      quote: "国虽大，好战必亡；天下虽平，忘战必危。治国者的最高艺术正在于张弛之间。"
-    });
-
-    // 卷三 · 地缘前线与冲突痕迹
-    let sec3Body = "";
-    const hasUnsc598 = ST.ai && ST.ai.unsc && ST.ai.unsc.resolutions && ST.ai.unsc.resolutions.includes("res598");
-    if (hasUnsc598) {
-      sec3Body += "中东热点方面，在联合国安理会 598 号决议的强力斡旋下，两伊长达八年的堑壕拉锯与油轮战得以平息停火，波斯湾与霍尔木兹海峡重新迎来航运生机。";
-    } else {
-      sec3Body += "中东战局方面，两伊战争的长年消耗深刻撕裂了海湾原油动脉，油轮战的阴云笼罩霍尔木兹海峡，重塑了世界能源供应版图。";
-    }
-    if (ST.sanctions.length || ST.aid.length) {
-      const sTargets = ST.sanctions.map((s) => (CM.countries[s.t] || { zh: s.t }).zh).join("、");
-      const aTargets = ST.aid.map((a) => (CM.countries[a.t] || { zh: a.t }).zh).join("、");
-      sec3Body += " 在多边博弈棋盘上，主动推行了对外干预路线" +
-        (sTargets ? "（对 " + sTargets + " 实施制裁封锁）" : "") +
-        (aTargets ? "（对 " + aTargets + " 注入战略军援）" : "") +
-        "，虽承受了每年 -" + decSelfCost().total.toFixed(1) + "pp 的自身增长代价，却在地缘天平上斩获了 " +
-        p.G_act.toFixed(1) + " 分战略作为成效。";
-    } else {
-      sec3Body += " 在对外政策上，奉行了独立自主与和平克制的内政专注路线，未卷入盲目的对外制裁或军援泥潭，收获了 8.0 分稳健的和平专注战略红利。";
-    }
-    res.sections.push({
-      sec: "卷三 · 地缘前线与冲突痕迹",
-      body: sec3Body,
-      quote: "远方的烽烟从未真正远离，地缘棋局上的每一步落子，都在重塑世界的均势。"
-    });
-
-    // 卷四 · 峰会军控与多边秩序
-    let sec4Body = "";
-    const hasTreaties = ST.ai && ST.ai.treaties && Object.keys(ST.ai.treaties).length > 0;
-    const activeTreaties = hasTreaties ? Object.entries(ST.ai.treaties).filter(([k, v]) => v.status === "active") : [];
-    if (activeTreaties.length > 0) {
-      const tNames = activeTreaties.map(([k, v]) => v.name || k).join("与");
-      sec4Body += "在多边外交与大国关系领域，首脑峰会破冰机制催生了《" + tNames + "》等划时代军控条约的落地履约，大国间的互信赤字得以扭转，战略核阴云逐步消散，为世界赢得了宝贵的冷战和平红利。";
-    } else {
-      sec4Body += "在多边外交领域，大国首脑会晤几经周折，互信赤字与战略疑虑仍如阴云笼罩，军控博弈在妥协与坚守之间艰难前行。";
-    }
-    if (ST.ai && ST.ai.unsc && ST.ai.unsc.vetoCount > 0) {
-      sec4Body += " 作为安理会常任理事国，在核心利益受到冲击的关键时刻果断行使了一票否决权（Veto），坚决捍卫了同盟阵营的地缘底线。";
-    }
-    res.sections.push({
-      sec: "卷四 · 峰会军控与多边秩序",
-      body: sec4Body,
-      quote: "谈判桌前的握手虽无法立刻消弭铁幕，却在核阴霾之下点亮了理性的微光。"
-    });
-
-    // R12B 卷五 · 专属国家战略路线
-    if (ST.agendas && ST.agendas[p.k] && Array.isArray(ST.agendas[p.k].completed) && ST.agendas[p.k].completed.length > 0) {
-      const agList = window.W1980_AGENDAS ? window.W1980_AGENDAS.getAgendasForCountry(p.k) : [];
-      const titles = ST.agendas[p.k].completed.map((id) => {
-        const item = agList.find((a) => a.id === id);
-        return item ? ("【" + item.title + "】") : id;
-      }).join("、");
-      res.sections.push({
-        sec: "卷五 · 专属国家战略路线与历史答卷",
-        body: "执政期间始终坚持战略定力与顶层谋划，成功达成了 " + titles + " 等具有划时代意义的专属国家议程。所开辟的独特发展路径不仅释放了深层的结构性经济红利，更使国家在复杂动荡的冷战大变局中确立了无可替代的地缘身位与制度韧性。",
-        quote: "战略路线的清醒坚守是大国破局之源，非凡之策方能成就长治久安。"
-      });
-    }
-
-    // 卷尾 · 历史回响
-    res.sections.push({
-      sec: "卷尾 · 历史回响",
-      body: "1991 年的风雪渐次消散，冷战的旧时代已然落幕，但大国博弈的巨轮从未停歇。从波斯湾的石油管道到柏林墙坍塌的废墟，从日内瓦的谈判长桌到安理会的审议大厅，历史的车轮滚滚向前。1991 的终局并非历史的终结，而是人类文明在新世纪谱写多极新篇章的恢弘序曲。",
-      quote: "往事如烟，青史不泯。十二年大战略激荡，终成一家之言。"
-    });
+    res.rankTitle = epilogueRankTitleOf(p);
+    epiloguePlayerCoreVolumes(res, st, p, topBloc, dShare);
+    epiloguePlayerDiplomacyVolumes(res, st, p);
   } else {
-    // 旁观模式
-    res.sections.push({
-      sec: "卷首 · 时代终局综评",
-      body: "在 1980 至 1991 年的风云激荡中，全球 54 个国家与实体经历了波澜壮阔的冷战终局推演。全球经济总量由 1980 年的 " +
-        (st.world.gdp0 / 1000).toFixed(2) + " 万亿扩张至 " + (st.world.gdp / 1000).toFixed(2) + " 万亿（+" +
-        st.world.gdpDelta.toFixed(1) + "%），全球总人口由 " + (st.world.pop0 / 1000).toFixed(2) + " 十亿增长至 " +
-        (st.world.pop / 1000).toFixed(2) + " 十亿。两极争霸的铁幕在十二年间经历了空前的剧变与重塑。",
-      quote: "以超然的全知视角旁观冷战十二载，见证大国沉浮与时代更迭。"
-    });
-    res.sections.push({
-      sec: "卷一 · 阵营消长与铁幕重塑",
-      body: "各大阵营中，" + topBloc.zh + "阵营占据了全球 " + topBloc.gdpShare.toFixed(1) + "% 的经济份额（较 1980 变动 " +
-        (dShare >= 0 ? "+" : "") + dShare + "pp）。苏东剧变与两极格局的演进改写了半个世纪的地缘均势，新旧秩序在阵痛中加速交替。",
-      quote: "世界的重心在流动，历史的罗盘指向了不可逆转的多极化未来。"
-    });
-    res.sections.push({
-      sec: "卷尾 · 历史回响",
-      body: "1991 年的风雪落幕，冷战大时代自此告一段落。选择一个国家作为执政者重开推演，即可亲手制定军备开支、实施外交干预并检验你的大战略成就。",
-      quote: "千帆过尽，唯有历史永恒。"
-    });
+    epilogueSpectatorVolumes(res, st, topBloc, dShare);
   }
   return res;
 }
+
+// G（收尾评审）：generateEpilogue 的「历史评价头衔」判定抽为纯函数（原样搬运，仅把写入 res 改为返回值）
+function epilogueRankTitleOf(p) {
+  let title;
+  if (p.total >= 85) title = "★ 冷战奇迹 · 大国擎天 ★";
+  else if (p.total >= 70) title = "★ 定海神针 · 破浪前行 ★";
+  else if (p.total >= 55) title = "★ 风雨同舟 · 守成维稳 ★";
+  else title = "★ 沉浮动荡 · 时代阵痛 ★";
+
+  // R12B 专属历史议程专属头衔联动：若达成 2 项及以上专属议程且评级良好
+  if (ST.agendas && ST.agendas[p.k] && ST.agendas[p.k].completed && ST.agendas[p.k].completed.length >= 2 && p.total >= 60) {
+    if (p.k === "CHN") title = "★ 改革开放与和平崛起总设计师 ★";
+    else if (p.k === "JPN") title = "★ 技术立国与东亚雁阵领航者 ★";
+    else if (p.k === "DEU") title = "★ 欧洲大市场奠基者与防务新支柱 ★";
+    else if (p.k === "GBR") title = "★ 金融城大爆炸与结构转型总设计师 ★";
+    else if (p.k === "FRA") title = "★ 高卢战略自主与欧洲单一市场统帅 ★";
+    else if (p.k === "SUN") title = "★ 新联盟体制守护者与改革破局者 ★";
+    else if (p.k === "USA") title = "★ 供给学派繁荣与天基高边疆统帅 ★";
+  }
+  return title;
+}
+
+// G（收尾评审）：玩家卷宗 A —— 卷首/卷一/卷二（时代综评、国运兴衰、国防战略）
+function epiloguePlayerCoreVolumes(res, st, p, topBloc, dShare) {
+  const pc = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+  const rankTxt = p.dr > 0 ? ("上升 " + p.dr + " 位") : p.dr < 0 ? ("下降 " + (-p.dr) + " 位") : "维持原位";
+  const pctlTxt = p.pctl !== null ? Math.round(p.pctl * 100) + "%" : "—";
+
+  // 卷首 · 时代终局综评
+  res.sections.push({
+    sec: "卷首 · 时代终局综评",
+    body: "在 1980 至 1991 年的风云激荡中，" + p.zh + "经历了波澜壮阔的十二年国运推演。GDP 总量由 1980 年的 " +
+      p.gdp0.toFixed(0) + " 十亿扩张至 " + p.gdp.toFixed(0) + " 十亿（" + pc(p.gdpDelta) + "），世界排位由第 " +
+      p.rank0 + " 名变为第 " + p.rank1 + " 名（" + rankTxt + "），经济增速位居全球第 " + pctlTxt +
+      " 分位。大战略综合评分定格于 " + p.total.toFixed(1) + " / 100 分，荣膺【" + res.rankTitle.replace(/★/g, "").trim() + "】历史评价。",
+    quote: "十二年间执政定策，每一项防务开支与地缘抉择，皆在世界版图上刻下了不可磨灭的印记。"
+  });
+
+  // 卷一 · 国运兴衰与阵营消长
+  let sec1Body = "";
+  if (p.k === "SUN") {
+    const isDissolved = SIM.S && SIM.S.ussrDissolved;
+    if (isDissolved) {
+      sec1Body = "1991 年 12 月 25 日，莫斯科红场飘扬的红旗悄然滑落，长达半个世纪的冷战双极对峙宣告落幕。尽管执政期间进行了诸多战略周旋与政策调整，但在长期经济停滞、军备重负与各加盟共和国离心力的合力撕扯下，庞大的苏维埃大厦终告解体。新生的十五个独立国家在休克疗法的骤雨中艰难探索转型之路，亚欧大陆的地缘重心面临空前重构。";
+    } else {
+      sec1Body = "在关键的历史十字路口，联盟体制在改革的惊涛骇浪中得以保全。《新联盟条约》的签署与结构性调整使这艘庞然巨舰避免了四分五裂的悲剧命运。进入 1990 年代，一个保持着庞大工业底座与广袤地缘纵深的苏维埃联盟，将继续作为全球多极化格局中举足轻重的一极，打破了‘历史终结论’的单一剧本。";
+    }
+  } else if (p.k === "USA") {
+    sec1Body = "经历 1980 年代里根经济学的复苏扩张与冷战终局的地缘胜势，美利坚合众国登上了全球单极霸权的顶峰。西方阵营在全球经济总量中的主导地位空前巩固，‘新世界秩序’成为华盛顿外交的核心叙事。然而，巨额双赤字的累积与冷战后多边体系的复杂利益诉求，预示着后冷战时代的世界并非坦途。";
+  } else if (p.k === "CHN") {
+    sec1Body = "从 1980 到 1991，改革开放的浩荡春风席卷神州大地。面对外部地缘风云变幻与苏东剧变的剧烈震荡，中国始终保持战略定力，坚持独立自主与对内深化改革。国民经济实现了历史性的快速跃升与民生改善，为跨入 21 世纪重返世界舞台中央奠定了坚不可摧的物质基石。";
+  } else {
+    sec1Body = p.zh + "作为国际舞台上的关键力量，在两大阵营激荡的夹缝与机遇中展现了非凡的韧性。经济位次" + rankTxt +
+      "，在全球产业与资源贸易分工中占据了不可忽视的战略身位。";
+  }
+  sec1Body += " 全球格局方面，" + topBloc.zh + "阵营占据了全球 " + topBloc.gdpShare.toFixed(1) + "% 的产出份额（变动 " +
+    (dShare >= 0 ? "+" : "") + dShare + "pp），冷战铁幕呈现出深刻的结构性消长。";
+  res.sections.push({
+    sec: "卷一 · 国运兴衰与阵营消长",
+    body: sec1Body,
+    quote: "阵营的兴替印证着大国兴衰的铁律：唯有内政昌明与战略清醒，方能立于不败之地。"
+  });
+
+  // 卷二 · 国防战略与军备路线
+  let sec2Body = "";
+  if (ST.mil >= 7) {
+    sec2Body = "在防务与安全治理上，采取了高度戒备的重兵威慑学说，军费占比常年维持在 " + ST.mil + "% 的超高水平。钢铁长城虽筑牢了坚不可摧的国防壁垒，然而沉重的非生产性开支对民生与民间资本形成显著挤出，长期年均产出增速承受了累积惩罚，国防适度评分定格为 " + p.M.toFixed(1) + " / 15 分。";
+  } else if (ST.mil >= 3 && ST.mil <= 5) {
+    sec2Body = "防务决策展现了卓越的中庸智慧与战略定力，将国防预算严谨锚定在 " + ST.mil + "% 的适度区间。既有效威慑了潜在敌对势力、巩固了国家主权，又最大限度为工业投资与民生造血让渡了发展空间，达成了国防建设与经济繁荣的黄金平衡，国防适度分高达 " + p.M.toFixed(1) + " / 15 分。";
+  } else {
+    sec2Body = "推行了极其果断的紧缩裁军战略，军费占比压缩至仅 " + ST.mil + "%。刀枪入库为民生经济全力让路，带来了惊人的低负担增长红利；但在冷战充满不确定性的地缘博弈中，偏低的防务开支在突发安全风险面前面临着严峻的威慑韧性考验，国防适度评分定格为 " + p.M.toFixed(1) + " / 15 分。";
+  }
+  res.sections.push({
+    sec: "卷二 · 国防战略与军备路线",
+    body: sec2Body,
+    quote: "国虽大，好战必亡；天下虽平，忘战必危。治国者的最高艺术正在于张弛之间。"
+  });
+}
+
+// G（收尾评审）：玩家卷宗 B —— 卷三/卷四/卷五/卷尾（地缘前线、峰会军控、专属议程、历史回响）
+function epiloguePlayerDiplomacyVolumes(res, st, p) {
+  // 卷三 · 地缘前线与冲突痕迹
+  let sec3Body = "";
+  const hasUnsc598 = ST.ai && ST.ai.unsc && ST.ai.unsc.resolutions && ST.ai.unsc.resolutions.includes("res598");
+  if (hasUnsc598) {
+    sec3Body += "中东热点方面，在联合国安理会 598 号决议的强力斡旋下，两伊长达八年的堑壕拉锯与油轮战得以平息停火，波斯湾与霍尔木兹海峡重新迎来航运生机。";
+  } else {
+    sec3Body += "中东战局方面，两伊战争的长年消耗深刻撕裂了海湾原油动脉，油轮战的阴云笼罩霍尔木兹海峡，重塑了世界能源供应版图。";
+  }
+  if (ST.sanctions.length || ST.aid.length) {
+    const sTargets = ST.sanctions.map((s) => (CM.countries[s.t] || { zh: s.t }).zh).join("、");
+    const aTargets = ST.aid.map((a) => (CM.countries[a.t] || { zh: a.t }).zh).join("、");
+    sec3Body += " 在多边博弈棋盘上，主动推行了对外干预路线" +
+      (sTargets ? "（对 " + sTargets + " 实施制裁封锁）" : "") +
+      (aTargets ? "（对 " + aTargets + " 注入战略军援）" : "") +
+      "，虽承受了每年 -" + decSelfCost().total.toFixed(1) + "pp 的自身增长代价，却在地缘天平上斩获了 " +
+      p.G_act.toFixed(1) + " 分战略作为成效。";
+  } else {
+    sec3Body += " 在对外政策上，奉行了独立自主与和平克制的内政专注路线，未卷入盲目的对外制裁或军援泥潭，收获了 8.0 分稳健的和平专注战略红利。";
+  }
+  res.sections.push({
+    sec: "卷三 · 地缘前线与冲突痕迹",
+    body: sec3Body,
+    quote: "远方的烽烟从未真正远离，地缘棋局上的每一步落子，都在重塑世界的均势。"
+  });
+
+  // 卷四 · 峰会军控与多边秩序
+  let sec4Body = "";
+  const hasTreaties = ST.ai && ST.ai.treaties && Object.keys(ST.ai.treaties).length > 0;
+  const activeTreaties = hasTreaties ? Object.entries(ST.ai.treaties).filter(([k, v]) => v.status === "active") : [];
+  if (activeTreaties.length > 0) {
+    const tNames = activeTreaties.map(([k, v]) => v.name || k).join("与");
+    sec4Body += "在多边外交与大国关系领域，首脑峰会破冰机制催生了《" + tNames + "》等划时代军控条约的落地履约，大国间的互信赤字得以扭转，战略核阴云逐步消散，为世界赢得了宝贵的冷战和平红利。";
+  } else {
+    sec4Body += "在多边外交领域，大国首脑会晤几经周折，互信赤字与战略疑虑仍如阴云笼罩，军控博弈在妥协与坚守之间艰难前行。";
+  }
+  if (ST.ai && ST.ai.unsc && ST.ai.unsc.vetoCount > 0) {
+    sec4Body += " 作为安理会常任理事国，在核心利益受到冲击的关键时刻果断行使了一票否决权（Veto），坚决捍卫了同盟阵营的地缘底线。";
+  }
+  res.sections.push({
+    sec: "卷四 · 峰会军控与多边秩序",
+    body: sec4Body,
+    quote: "谈判桌前的握手虽无法立刻消弭铁幕，却在核阴霾之下点亮了理性的微光。"
+  });
+
+  // R12B 卷五 · 专属国家战略路线
+  if (ST.agendas && ST.agendas[p.k] && Array.isArray(ST.agendas[p.k].completed) && ST.agendas[p.k].completed.length > 0) {
+    const agList = window.W1980_AGENDAS ? window.W1980_AGENDAS.getAgendasForCountry(p.k) : [];
+    const titles = ST.agendas[p.k].completed.map((id) => {
+      const item = agList.find((a) => a.id === id);
+      return item ? ("【" + item.title + "】") : id;
+    }).join("、");
+    res.sections.push({
+      sec: "卷五 · 专属国家战略路线与历史答卷",
+      body: "执政期间始终坚持战略定力与顶层谋划，成功达成了 " + titles + " 等具有划时代意义的专属国家议程。所开辟的独特发展路径不仅释放了深层的结构性经济红利，更使国家在复杂动荡的冷战大变局中确立了无可替代的地缘身位与制度韧性。",
+      quote: "战略路线的清醒坚守是大国破局之源，非凡之策方能成就长治久安。"
+    });
+  }
+
+  // 卷尾 · 历史回响
+  res.sections.push({
+    sec: "卷尾 · 历史回响",
+    body: "1991 年的风雪渐次消散，冷战的旧时代已然落幕，但大国博弈的巨轮从未停歇。从波斯湾的石油管道到柏林墙坍塌的废墟，从日内瓦的谈判长桌到安理会的审议大厅，历史的车轮滚滚向前。1991 的终局并非历史的终结，而是人类文明在新世纪谱写多极新篇章的恢弘序曲。",
+    quote: "往事如烟，青史不泯。十二年大战略激荡，终成一家之言。"
+  });
+}
+
+// G（收尾评审）：旁观模式三卷正文抽为独立构建器（原样搬运，无逻辑改动）
+function epilogueSpectatorVolumes(res, st, topBloc, dShare) {
+  // 旁观模式
+  res.sections.push({
+    sec: "卷首 · 时代终局综评",
+    body: "在 1980 至 1991 年的风云激荡中，全球 54 个国家与实体经历了波澜壮阔的冷战终局推演。全球经济总量由 1980 年的 " +
+      (st.world.gdp0 / 1000).toFixed(2) + " 万亿扩张至 " + (st.world.gdp / 1000).toFixed(2) + " 万亿（+" +
+      st.world.gdpDelta.toFixed(1) + "%），全球总人口由 " + (st.world.pop0 / 1000).toFixed(2) + " 十亿增长至 " +
+      (st.world.pop / 1000).toFixed(2) + " 十亿。两极争霸的铁幕在十二年间经历了空前的剧变与重塑。",
+    quote: "以超然的全知视角旁观冷战十二载，见证大国沉浮与时代更迭。"
+  });
+  res.sections.push({
+    sec: "卷一 · 阵营消长与铁幕重塑",
+    body: "各大阵营中，" + topBloc.zh + "阵营占据了全球 " + topBloc.gdpShare.toFixed(1) + "% 的经济份额（较 1980 变动 " +
+      (dShare >= 0 ? "+" : "") + dShare + "pp）。苏东剧变与两极格局的演进改写了半个世纪的地缘均势，新旧秩序在阵痛中加速交替。",
+    quote: "世界的重心在流动，历史的罗盘指向了不可逆转的多极化未来。"
+  });
+  res.sections.push({
+    sec: "卷尾 · 历史回响",
+    body: "1991 年的风雪落幕，冷战大时代自此告一段落。选择一个国家作为执政者重开推演，即可亲手制定军备开支、实施外交干预并检验你的大战略成就。",
+    quote: "千帆过尽，唯有历史永恒。"
+  });
+}
+
 
 function renderEpilogueHTML(ep) {
   if (!ep) return "";

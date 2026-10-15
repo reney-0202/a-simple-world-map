@@ -215,8 +215,16 @@ function updateDomesticPolitics(y, m, silent) {
   if (!ST.domestic) initDomesticState();
   const dom = ST.domestic;
 
-  // 1. 苏联 (SUN) 政治局权力天平与短缺经济演进
-  if (dom.sun) {
+  // G（收尾评审）：各子系统按月演进已抽为独立推进器（见下方 updateDomestic*）。
+  if (dom.sun) updateDomesticSun(dom, y, m, silent);
+  if (dom.usa) updateDomesticUsa(dom, y, m, silent);
+  if (dom.chn) updateDomesticChn(dom, y, m, silent);
+  if (dom.deu) updateDomesticDeu(dom, y, m, silent);
+  if (dom.generals) updateDomesticGenerals(dom, y, m, silent);
+}
+
+// G（收尾评审）：updateDomesticPolitics 的「苏联：政治局权力天平与短缺经济演进」块抽为独立推进器（原样搬运，无逻辑改动）
+function updateDomesticSun(dom, y, m, silent) {
     const sun = dom.sun;
     let milSUN = 4.0;
     if (ST.player === "SUN") {
@@ -269,10 +277,10 @@ function updateDomesticPolitics(y, m, silent) {
     } else {
       sun.crisisWarning = null;
     }
-  }
+}
 
-  // 2. 美国 (USA) 国会两党支持率、大选与《格拉姆-拉德曼法案》预算帽
-  if (dom.usa) {
+// G（收尾评审）：updateDomesticPolitics 的「美国：国会支持率、大选与《格拉姆-拉德曼法案》预算帽」块抽为独立推进器（原样搬运，无逻辑改动）
+function updateDomesticUsa(dom, y, m, silent) {
     const usa = dom.usa;
     let milUSA = 5.0;
     if (ST.player === "USA") {
@@ -327,12 +335,10 @@ function updateDomesticPolitics(y, m, silent) {
         toast({ y: y, m: m, zh: "【美利坚大选公报】" + usa.electionResult, note: "四年一度的美国大选尘埃落定" });
       }
     }
-  }
+}
 
-  // E（玩法评审）：CHN/DEU 专属内政演进（现仅 SUN/USA 有）。
-  // 3. 中国 (CHN) 双轨制博弈：特区/市场派 vs 计划/国营派，军费与开放议程驱动路线天平，
-  //    双轨物价扭曲度决定民生安稳；特区开放动能影响长期 GDP 弹性。
-  if (dom.chn) {
+// G（收尾评审）：updateDomesticPolitics 的「中国：双轨制博弈（市场派 vs 计划派、双轨物价、特区动能）」块抽为独立推进器（原样搬运，无逻辑改动）
+function updateDomesticChn(dom, y, m, silent) {
     const chn = dom.chn;
     let milCHN = 2.5;
     if (ST.player === "CHN") milCHN = ST.mil;
@@ -354,11 +360,10 @@ function updateDomesticPolitics(y, m, silent) {
     else chn.unrest = clamp(chn.unrest - 0.10, 0, 100);
     // 特区动能低速衰减（开放红利边际递减）
     chn.sezMomentum = clamp(chn.sezMomentum - 0.05, 0, 100);
-  }
+}
 
-  // 4. 西德 (DEU) 新东方政策与换届：缓和深度与北约义务的平衡，
-  //    对苏管道依赖既换来能源也带来政治脆弱性；高军费激化反核/反美民意。
-  if (dom.deu) {
+// G（收尾评审）：updateDomesticPolitics 的「西德：新东方政策与换届（缓和深度、北约义务、管道依赖）」块抽为独立推进器（原样搬运，无逻辑改动）
+function updateDomesticDeu(dom, y, m, silent) {
     const deu = dom.deu;
     let milDEU = 3.0;
     if (ST.player === "DEU") milDEU = ST.mil;
@@ -378,10 +383,10 @@ function updateDomesticPolitics(y, m, silent) {
     }
     // 缓和越深，管道依赖越高（历史史实：新东方政策伴随油气换钢管）
     if (deu.detenteDepth >= 65) deu.pipelineDependency = clamp(deu.pipelineDependency + 0.08, 0, 100);
-  }
+}
 
-  // 5. 通用实体 (Generals) 社会安定度与制裁抗议
-  if (dom.generals) {
+// G（收尾评审）：updateDomesticPolitics 的「通用实体：社会安定度与制裁抗议」块抽为独立推进器（原样搬运，无逻辑改动）
+function updateDomesticGenerals(dom, y, m, silent) {
     for (const k in dom.generals) {
       const g = dom.generals[k];
       const isSan = ST.sanctions.some((s) => s.t === k);
@@ -395,8 +400,8 @@ function updateDomesticPolitics(y, m, silent) {
         g.unrest = clamp(g.unrest - 0.25, 0, 100);
       }
     }
-  }
 }
+
 
 function applyDomesticPlayerAction(actType) {
   if (!ST.domestic) initDomesticState();
@@ -473,224 +478,16 @@ function refreshDomesticBox(selKey) {
   if (!ST.domestic) initDomesticState();
 
   const actualKey = resolvePlayableKey(selKey);
-  const c = CM.countries[actualKey] || {};
   const isMine = !!ST.player && actualKey === ST.player;
 
-  let h = "";
-  if (actualKey === "SUN") {
-    // 苏联 (SUN) 界面
-    const sun = ST.domestic.sun;
-    const cPct = Math.round((sun.conservative / (sun.conservative + sun.reformist)) * 100);
-    const rPct = 100 - cPct;
-
-    let shortageClass = "good";
-    let shortageDesc = "消费品供给平稳";
-    if (sun.shortage >= 65) { shortageClass = "danger"; shortageDesc = "物资奇缺 · 排长队与凭票抢购"; }
-    else if (sun.shortage >= 40) { shortageClass = "warn"; shortageDesc = "部分商品脱销 · 供应紧张"; }
-
-    let unrestClass = "good";
-    if (sun.unrest >= 45) unrestClass = "danger";
-    else if (sun.unrest >= 25) unrestClass = "warn";
-
-    h += '<div class="pdb-title"><span>🏛️ 政治局权力天平</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
-    h += '<div class="pdb-desc">苏维埃最高决策层由保守鹰派（军工集团/老近卫军）与改革新思维派共同掣肘。维持高额军费巩固国防但挤占轻工民生，低军费改善供给但激化党内政变风险。</div>';
-
-    // 派系天平双色进度条
-    h += '<div class="pdb-balance-wrap">';
-    h += '  <div class="pdb-balance-labels">';
-    h += '    <span class="pdb-lbl-left">🛡️ 保守派 ' + sun.conservative.toFixed(0) + ' (' + cPct + '%)</span>';
-    h += '    <span class="pdb-lbl-right">🕊️ 改革派 ' + sun.reformist.toFixed(0) + ' (' + rPct + '%)</span>';
-    h += '  </div>';
-    h += '  <div class="pdb-balance-bar">';
-    h += '    <div class="pdb-bar-seg-left" style="width:' + cPct + '%"></div>';
-    h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    // 短缺与动荡指标
-    h += '<div class="pdb-meters">';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📦 轻工商品短缺指数</span><span class="pdb-meter-val" style="color:' + (shortageClass==='danger'?'#f87171':shortageClass==='warn'?'#fbbf24':'#4ade80') + '">' + sun.shortage.toFixed(1) + ' · ' + shortageDesc + '</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + shortageClass + '" style="width:' + sun.shortage + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡与工潮指数</span><span class="pdb-meter-val" style="color:' + (unrestClass==='danger'?'#f87171':unrestClass==='warn'?'#fbbf24':'#4ade80') + '">' + sun.unrest.toFixed(1) + (sun.unrest > 30 ? '（引发经济脱节拖累）' : '（安定）') + '</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + sun.unrest + '%"></div></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    if (sun.crisisWarning) {
-      h += '<div class="pdb-alert">' + sun.crisisWarning + '</div>';
-    }
-
-    // 如果当前玩家控制苏联，展示微调操作按钮
-    if (isMine) {
-      h += '<div class="pdb-actions">';
-      h += '  <button class="pdb-act-btn" data-act="rebalance_consumer">🛒 倾斜轻工业消费品</button>';
-      h += '  <button class="pdb-act-btn" data-act="placate_vpk">🎖️ 安抚军工复合体</button>';
-      h += '</div>';
-    }
-
-  } else if (actualKey === "USA") {
-    // 美国 (USA) 界面
-    const usa = ST.domestic.usa;
-    let congClass = usa.congressApproval >= 55 ? "good" : usa.congressApproval >= 45 ? "warn" : "danger";
-    let presClass = usa.presidentialApproval >= 55 ? "good" : usa.presidentialApproval >= 45 ? "warn" : "danger";
-
-    h += '<div class="pdb-title"><span>🏛️ 国会两党与大选宪政</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
-    h += '<div class="pdb-desc">三权分立与四年一度大选对白宫战略决策形成刚性宪政制约。巨额财政赤字或海外干预泥潭将侵蚀国会批准率，触发《格拉姆-拉德曼法案》军费预算帽强制冻结。</div>';
-
-    // 徽章区：预算帽与大选倒计时
-    h += '<div class="pdb-badge-row">';
-    if (usa.budgetCapActive) {
-      h += '  <span class="pdb-badge cap-alert">⚠️ 《格拉姆-拉德曼法案》预算帽生效中（军费≤6%）</span>';
-    } else {
-      h += '  <span class="pdb-badge cap-ok">✓ 财政预算帽未激活（赤字受控）</span>';
-    }
-    h += '  <span class="pdb-badge election">🗳️ ' + usa.nextElectionYear + ' 总统大选周期</span>';
-    h += '</div>';
-
-    if (usa.electionResult) {
-      h += '<div class="pdb-status-pill">' + usa.electionResult + '</div>';
-    }
-
-    // 国会支持率与总统民调进度条
-    h += '<div class="pdb-meters">';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📜 两党国会批准率</span><span class="pdb-meter-val">' + usa.congressApproval.toFixed(1) + '% (预算帽阈值 45%)</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + congClass + '" style="width:' + usa.congressApproval + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📊 白宫总统民意支持率</span><span class="pdb-meter-val">' + usa.presidentialApproval.toFixed(1) + '%</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + presClass + '" style="width:' + usa.presidentialApproval + '%"></div></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    if (isMine) {
-      h += '<div class="pdb-actions">';
-      h += '  <button class="pdb-act-btn" data-act="compromise_budget" style="grid-column: span 2">🤝 两党预算妥协（拉升支持率/平抑军费）</button>';
-      h += '</div>';
-    }
-
-  } else if (actualKey === "CHN") {
-    // E（玩法评审）：中国 (CHN) 改革开放期双轨制专属面板
-    const chn = ST.domestic.chn;
-    const rPct = Math.round((chn.reformist / (chn.reformist + chn.planned)) * 100);
-    const pPct = 100 - rPct;
-    const priceClass = chn.dualTrackPrice >= 70 ? "danger" : chn.dualTrackPrice >= 45 ? "warn" : "good";
-    const unrestClass = chn.unrest >= 30 ? "danger" : chn.unrest >= 15 ? "warn" : "good";
-    const sezClass = chn.sezMomentum >= 60 ? "good" : chn.sezMomentum >= 30 ? "warn" : "danger";
-
-    h += '<div class="pdb-title"><span>🏛️ 改革开放 · 双轨制博弈</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
-    h += '<div class="pdb-desc">特区/市场派与计划/国营派围绕改革节奏拉锯。高军费强化计划派并推高双轨物价扭曲；低军费释放特区动能、逐步理顺价格，但需防范民生冲击。</div>';
-
-    h += '<div class="pdb-balance-wrap">';
-    h += '  <div class="pdb-balance-labels">';
-    h += '    <span class="pdb-lbl-left">🏭 计划/国营派 ' + chn.planned.toFixed(0) + ' (' + pPct + '%)</span>';
-    h += '    <span class="pdb-lbl-right">🏙️ 特区/市场派 ' + chn.reformist.toFixed(0) + ' (' + rPct + '%)</span>';
-    h += '  </div>';
-    h += '  <div class="pdb-balance-bar">';
-    h += '    <div class="pdb-bar-seg-left" style="width:' + pPct + '%"></div>';
-    h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    h += '<div class="pdb-meters">';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">💰 双轨物价扭曲度</span><span class="pdb-meter-val" style="color:' + (priceClass === 'danger' ? '#f87171' : priceClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.dualTrackPrice.toFixed(1) + (chn.dualTrackPrice >= 70 ? ' · 倒卖套利猖獗' : chn.dualTrackPrice >= 45 ? ' · 价格双轨摩擦' : ' · 价格趋近并轨') + '</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + priceClass + '" style="width:' + chn.dualTrackPrice + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🚀 特区开放动能</span><span class="pdb-meter-val" style="color:' + (sezClass === 'danger' ? '#f87171' : sezClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.sezMomentum.toFixed(1) + ' · 外向型增长弹性</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + sezClass + '" style="width:' + chn.sezMomentum + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.unrest.toFixed(1) + (chn.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + chn.unrest + '%"></div></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    if (isMine) {
-      h += '<div class="pdb-actions">';
-      h += '  <button class="pdb-act-btn" data-act="chn_expand_sez">🏙️ 扩大特区开放（推高市场派与动能）</button>';
-      h += '  <button class="pdb-act-btn" data-act="chn_price_reform">💰 推进价格并轨（压双轨扭曲/冒民生风险）</button>';
-      h += '</div>';
-    }
-
-  } else if (actualKey === "DEU") {
-    // E（玩法评审）：西德 (DEU) 新东方政策与换届专属面板
-    const deu = ST.domestic.deu;
-    const sPct = Math.round((deu.spdApproval / (deu.spdApproval + deu.cduApproval)) * 100);
-    const cPct2 = 100 - sPct;
-    const detClass = deu.detenteDepth >= 65 ? "good" : deu.detenteDepth >= 40 ? "warn" : "danger";
-    const burdenClass = deu.natoBurden >= 65 ? "warn" : "good";
-    const pipeClass = deu.pipelineDependency >= 60 ? "danger" : deu.pipelineDependency >= 35 ? "warn" : "good";
-
-    h += '<div class="pdb-title"><span>🏛️ 新东方政策 · 波恩联合政府</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
-    h += '<div class="pdb-desc">身处冷战对抗前沿：社民党主张缓和与东方贸易，基民盟强调北约义务。军费抬升加重北约分担并激化反核民意；克制军费换取缓和红利，但加深对苏能源管道依赖。</div>';
-
-    h += '<div class="pdb-balance-wrap">';
-    h += '  <div class="pdb-balance-labels">';
-    h += '    <span class="pdb-lbl-left">🕊️ 社民党 SPD ' + deu.spdApproval.toFixed(0) + ' (' + sPct + '%)</span>';
-    h += '    <span class="pdb-lbl-right">🛡️ 基民盟 CDU ' + deu.cduApproval.toFixed(0) + ' (' + cPct2 + '%)</span>';
-    h += '  </div>';
-    h += '  <div class="pdb-balance-bar">';
-    h += '    <div class="pdb-bar-seg-left" style="width:' + sPct + '%"></div>';
-    h += '    <div class="pdb-bar-seg-right" style="width:' + cPct2 + '%"></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    h += '<div class="pdb-meters">';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🤝 东西欧缓和深度</span><span class="pdb-meter-val" style="color:' + (detClass === 'danger' ? '#f87171' : detClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.detenteDepth.toFixed(1) + ' · 外交回旋空间</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + detClass + '" style="width:' + deu.detenteDepth + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛡️ 北约防务义务分担度</span><span class="pdb-meter-val" style="color:' + (burdenClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.natoBurden.toFixed(1) + '%</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + burdenClass + '" style="width:' + deu.natoBurden + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛢️ 对苏能源管道依赖度</span><span class="pdb-meter-val" style="color:' + (pipeClass === 'danger' ? '#f87171' : pipeClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.pipelineDependency.toFixed(1) + (deu.pipelineDependency >= 60 ? '（能源杠杆风险）' : '') + '</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + pipeClass + '" style="width:' + deu.pipelineDependency + '%"></div></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    if (isMine) {
-      h += '<div class="pdb-actions">';
-      h += '  <button class="pdb-act-btn" data-act="deu_ostpolitik">🤝 深化新东方政策（推高缓和与管道依赖）</button>';
-      h += '  <button class="pdb-act-btn" data-act="deu_nato_pledge">🛡️ 重申北约防务承诺（抬负担/压缓和）</button>';
-      h += '</div>';
-    }
-
-  } else {
-    // 通用国家 (Generals)
-    const gen = getGeneralDomestic(actualKey);
-    let stabClass = gen.stability >= 70 ? "good" : gen.stability >= 45 ? "warn" : "danger";
-    let unrestClass = gen.unrest >= 35 ? "danger" : gen.unrest >= 15 ? "warn" : "good";
-
-    h += '<div class="pdb-title"><span>🏛️ 内政稳定与执政合法性</span><span class="pdb-tag">' + (isMine ? '★ 本国' : '地方政权') + '</span></div>';
-    h += '<div class="pdb-desc">政权稳定性直接决定社会生产秩序与民生凝聚力。长期遭受外国单边经济制裁或断油危机将直接消耗安定度并诱发社会动荡。</div>';
-
-    h += '<div class="pdb-meters">';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">⚖️ 民生安定度</span><span class="pdb-meter-val">' + gen.stability.toFixed(1) + '%</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + stabClass + '" style="width:' + gen.stability + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🕊️ 执政合法性</span><span class="pdb-meter-val">' + gen.legitimacy.toFixed(1) + '%</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill blue" style="width:' + gen.legitimacy + '%"></div></div>';
-    h += '  </div>';
-    h += '  <div class="pdb-meter">';
-    h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val">' + gen.unrest.toFixed(1) + '%</span></div>';
-    h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + gen.unrest + '%"></div></div>';
-    h += '  </div>';
-    h += '</div>';
-
-    const isSan = ST.sanctions.some((s) => s.t === actualKey);
-    if (isSan) {
-      h += '<div class="pdb-alert">⚠️ 该国正遭受外部单边经济制裁，民生与储备承压消耗中。</div>';
-    }
-  }
+  // G（收尾评审）：各分支的 HTML 构建已抽为独立构建器（见下方 domestic*Html），
+  // 本函数只负责选择分支、写入面板与接线动作按钮。
+  let h;
+  if (actualKey === "SUN") h = domesticSunHtml(isMine);
+  else if (actualKey === "USA") h = domesticUsaHtml(isMine);
+  else if (actualKey === "CHN") h = domesticChnHtml(isMine);
+  else if (actualKey === "DEU") h = domesticDeuHtml(isMine);
+  else h = domesticGenericHtml(actualKey, isMine);
 
   box.innerHTML = h;
 
@@ -702,6 +499,241 @@ function refreshDomesticBox(selKey) {
     });
   });
 }
+
+// G（收尾评审）：refreshDomesticBox 的「苏联」分支抽为独立构建器（原样搬运，无逻辑改动）
+function domesticSunHtml(isMine) {
+  let h = "";
+  // 苏联 (SUN) 界面
+  const sun = ST.domestic.sun;
+  const cPct = Math.round((sun.conservative / (sun.conservative + sun.reformist)) * 100);
+  const rPct = 100 - cPct;
+
+  let shortageClass = "good";
+  let shortageDesc = "消费品供给平稳";
+  if (sun.shortage >= 65) { shortageClass = "danger"; shortageDesc = "物资奇缺 · 排长队与凭票抢购"; }
+  else if (sun.shortage >= 40) { shortageClass = "warn"; shortageDesc = "部分商品脱销 · 供应紧张"; }
+
+  let unrestClass = "good";
+  if (sun.unrest >= 45) unrestClass = "danger";
+  else if (sun.unrest >= 25) unrestClass = "warn";
+
+  h += '<div class="pdb-title"><span>🏛️ 政治局权力天平</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
+  h += '<div class="pdb-desc">苏维埃最高决策层由保守鹰派（军工集团/老近卫军）与改革新思维派共同掣肘。维持高额军费巩固国防但挤占轻工民生，低军费改善供给但激化党内政变风险。</div>';
+
+  // 派系天平双色进度条
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🛡️ 保守派 ' + sun.conservative.toFixed(0) + ' (' + cPct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">🕊️ 改革派 ' + sun.reformist.toFixed(0) + ' (' + rPct + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + cPct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  // 短缺与动荡指标
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📦 轻工商品短缺指数</span><span class="pdb-meter-val" style="color:' + (shortageClass==='danger'?'#f87171':shortageClass==='warn'?'#fbbf24':'#4ade80') + '">' + sun.shortage.toFixed(1) + ' · ' + shortageDesc + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + shortageClass + '" style="width:' + sun.shortage + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡与工潮指数</span><span class="pdb-meter-val" style="color:' + (unrestClass==='danger'?'#f87171':unrestClass==='warn'?'#fbbf24':'#4ade80') + '">' + sun.unrest.toFixed(1) + (sun.unrest > 30 ? '（引发经济脱节拖累）' : '（安定）') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + sun.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (sun.crisisWarning) {
+    h += '<div class="pdb-alert">' + sun.crisisWarning + '</div>';
+  }
+
+  // 如果当前玩家控制苏联，展示微调操作按钮
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="rebalance_consumer">🛒 倾斜轻工业消费品</button>';
+    h += '  <button class="pdb-act-btn" data-act="placate_vpk">🎖️ 安抚军工复合体</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// G（收尾评审）：refreshDomesticBox 的「美国」分支抽为独立构建器（原样搬运，无逻辑改动）
+function domesticUsaHtml(isMine) {
+  let h = "";
+  // 美国 (USA) 界面
+  const usa = ST.domestic.usa;
+  let congClass = usa.congressApproval >= 55 ? "good" : usa.congressApproval >= 45 ? "warn" : "danger";
+  let presClass = usa.presidentialApproval >= 55 ? "good" : usa.presidentialApproval >= 45 ? "warn" : "danger";
+
+  h += '<div class="pdb-title"><span>🏛️ 国会两党与大选宪政</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
+  h += '<div class="pdb-desc">三权分立与四年一度大选对白宫战略决策形成刚性宪政制约。巨额财政赤字或海外干预泥潭将侵蚀国会批准率，触发《格拉姆-拉德曼法案》军费预算帽强制冻结。</div>';
+
+  // 徽章区：预算帽与大选倒计时
+  h += '<div class="pdb-badge-row">';
+  if (usa.budgetCapActive) {
+    h += '  <span class="pdb-badge cap-alert">⚠️ 《格拉姆-拉德曼法案》预算帽生效中（军费≤6%）</span>';
+  } else {
+    h += '  <span class="pdb-badge cap-ok">✓ 财政预算帽未激活（赤字受控）</span>';
+  }
+  h += '  <span class="pdb-badge election">🗳️ ' + usa.nextElectionYear + ' 总统大选周期</span>';
+  h += '</div>';
+
+  if (usa.electionResult) {
+    h += '<div class="pdb-status-pill">' + usa.electionResult + '</div>';
+  }
+
+  // 国会支持率与总统民调进度条
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📜 两党国会批准率</span><span class="pdb-meter-val">' + usa.congressApproval.toFixed(1) + '% (预算帽阈值 45%)</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + congClass + '" style="width:' + usa.congressApproval + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📊 白宫总统民意支持率</span><span class="pdb-meter-val">' + usa.presidentialApproval.toFixed(1) + '%</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + presClass + '" style="width:' + usa.presidentialApproval + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="compromise_budget" style="grid-column: span 2">🤝 两党预算妥协（拉升支持率/平抑军费）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// G（收尾评审）：refreshDomesticBox 的「中国」分支抽为独立构建器（原样搬运，无逻辑改动）
+function domesticChnHtml(isMine) {
+  let h = "";
+  // E（玩法评审）：中国 (CHN) 改革开放期双轨制专属面板
+  const chn = ST.domestic.chn;
+  const rPct = Math.round((chn.reformist / (chn.reformist + chn.planned)) * 100);
+  const pPct = 100 - rPct;
+  const priceClass = chn.dualTrackPrice >= 70 ? "danger" : chn.dualTrackPrice >= 45 ? "warn" : "good";
+  const unrestClass = chn.unrest >= 30 ? "danger" : chn.unrest >= 15 ? "warn" : "good";
+  const sezClass = chn.sezMomentum >= 60 ? "good" : chn.sezMomentum >= 30 ? "warn" : "danger";
+
+  h += '<div class="pdb-title"><span>🏛️ 改革开放 · 双轨制博弈</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
+  h += '<div class="pdb-desc">特区/市场派与计划/国营派围绕改革节奏拉锯。高军费强化计划派并推高双轨物价扭曲；低军费释放特区动能、逐步理顺价格，但需防范民生冲击。</div>';
+
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🏭 计划/国营派 ' + chn.planned.toFixed(0) + ' (' + pPct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">🏙️ 特区/市场派 ' + chn.reformist.toFixed(0) + ' (' + rPct + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + pPct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">💰 双轨物价扭曲度</span><span class="pdb-meter-val" style="color:' + (priceClass === 'danger' ? '#f87171' : priceClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.dualTrackPrice.toFixed(1) + (chn.dualTrackPrice >= 70 ? ' · 倒卖套利猖獗' : chn.dualTrackPrice >= 45 ? ' · 价格双轨摩擦' : ' · 价格趋近并轨') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + priceClass + '" style="width:' + chn.dualTrackPrice + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🚀 特区开放动能</span><span class="pdb-meter-val" style="color:' + (sezClass === 'danger' ? '#f87171' : sezClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.sezMomentum.toFixed(1) + ' · 外向型增长弹性</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + sezClass + '" style="width:' + chn.sezMomentum + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.unrest.toFixed(1) + (chn.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + chn.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="chn_expand_sez">🏙️ 扩大特区开放（推高市场派与动能）</button>';
+    h += '  <button class="pdb-act-btn" data-act="chn_price_reform">💰 推进价格并轨（压双轨扭曲/冒民生风险）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// G（收尾评审）：refreshDomesticBox 的「西德」分支抽为独立构建器（原样搬运，无逻辑改动）
+function domesticDeuHtml(isMine) {
+  let h = "";
+  // E（玩法评审）：西德 (DEU) 新东方政策与换届专属面板
+  const deu = ST.domestic.deu;
+  const sPct = Math.round((deu.spdApproval / (deu.spdApproval + deu.cduApproval)) * 100);
+  const cPct2 = 100 - sPct;
+  const detClass = deu.detenteDepth >= 65 ? "good" : deu.detenteDepth >= 40 ? "warn" : "danger";
+  const burdenClass = deu.natoBurden >= 65 ? "warn" : "good";
+  const pipeClass = deu.pipelineDependency >= 60 ? "danger" : deu.pipelineDependency >= 35 ? "warn" : "good";
+
+  h += '<div class="pdb-title"><span>🏛️ 新东方政策 · 波恩联合政府</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
+  h += '<div class="pdb-desc">身处冷战对抗前沿：社民党主张缓和与东方贸易，基民盟强调北约义务。军费抬升加重北约分担并激化反核民意；克制军费换取缓和红利，但加深对苏能源管道依赖。</div>';
+
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🕊️ 社民党 SPD ' + deu.spdApproval.toFixed(0) + ' (' + sPct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">🛡️ 基民盟 CDU ' + deu.cduApproval.toFixed(0) + ' (' + cPct2 + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + sPct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + cPct2 + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🤝 东西欧缓和深度</span><span class="pdb-meter-val" style="color:' + (detClass === 'danger' ? '#f87171' : detClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.detenteDepth.toFixed(1) + ' · 外交回旋空间</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + detClass + '" style="width:' + deu.detenteDepth + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛡️ 北约防务义务分担度</span><span class="pdb-meter-val" style="color:' + (burdenClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.natoBurden.toFixed(1) + '%</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + burdenClass + '" style="width:' + deu.natoBurden + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛢️ 对苏能源管道依赖度</span><span class="pdb-meter-val" style="color:' + (pipeClass === 'danger' ? '#f87171' : pipeClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.pipelineDependency.toFixed(1) + (deu.pipelineDependency >= 60 ? '（能源杠杆风险）' : '') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + pipeClass + '" style="width:' + deu.pipelineDependency + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="deu_ostpolitik">🤝 深化新东方政策（推高缓和与管道依赖）</button>';
+    h += '  <button class="pdb-act-btn" data-act="deu_nato_pledge">🛡️ 重申北约防务承诺（抬负担/压缓和）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// G（收尾评审）：refreshDomesticBox 的「通用」分支抽为独立构建器（原样搬运，无逻辑改动）
+function domesticGenericHtml(actualKey, isMine) {
+  let h = "";
+  // 通用国家 (Generals)
+  const gen = getGeneralDomestic(actualKey);
+  let stabClass = gen.stability >= 70 ? "good" : gen.stability >= 45 ? "warn" : "danger";
+  let unrestClass = gen.unrest >= 35 ? "danger" : gen.unrest >= 15 ? "warn" : "good";
+
+  h += '<div class="pdb-title"><span>🏛️ 内政稳定与执政合法性</span><span class="pdb-tag">' + (isMine ? '★ 本国' : '地方政权') + '</span></div>';
+  h += '<div class="pdb-desc">政权稳定性直接决定社会生产秩序与民生凝聚力。长期遭受外国单边经济制裁或断油危机将直接消耗安定度并诱发社会动荡。</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">⚖️ 民生安定度</span><span class="pdb-meter-val">' + gen.stability.toFixed(1) + '%</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + stabClass + '" style="width:' + gen.stability + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🕊️ 执政合法性</span><span class="pdb-meter-val">' + gen.legitimacy.toFixed(1) + '%</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill blue" style="width:' + gen.legitimacy + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val">' + gen.unrest.toFixed(1) + '%</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + gen.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  const isSan = ST.sanctions.some((s) => s.t === actualKey);
+  if (isSan) {
+    h += '<div class="pdb-alert">⚠️ 该国正遭受外部单边经济制裁，民生与储备承压消耗中。</div>';
+  }
+  return h;
+}
+
 
 // ---- R12B: 次极大国专属国家议程与战略路线系统 ----
 function initAgendaState(cKey) {
@@ -1060,155 +1092,13 @@ function runAgendaProbe() {
     }
   };
 
+  // G（收尾评审）：14 个步骤按阶段抽为四个推进器；跨阶段的议程列表经 ctx 传递。
   try {
-    // 1. 核心数据库与函数存在性
-    assert("databaseLoaded", !!window.W1980_AGENDAS && typeof window.W1980_AGENDAS.getAgendasForCountry === "function", "W1980_AGENDAS 应已载入");
-    assert("initAgendaStateExists", typeof initAgendaState === "function", "initAgendaState 应定义");
-    assert("startAgendaExists", typeof startAgenda === "function", "startAgenda 应定义");
-    assert("updateMonthlyAgendasExists", typeof updateMonthlyAgendas === "function", "updateMonthlyAgendas 应定义");
-    assert("refreshAgendaBoxExists", typeof refreshAgendaBox === "function", "refreshAgendaBox 应定义");
-
-    // 2. 数据库完备性断言
-    const chnAgendas = window.W1980_AGENDAS.getAgendasForCountry("CHN");
-    const jpnAgendas = window.W1980_AGENDAS.getAgendasForCountry("JPN");
-    const deuAgendas = window.W1980_AGENDAS.getAgendasForCountry("DEU");
-    const fraAgendas = window.W1980_AGENDAS.getAgendasForCountry("FRA");
-    const gbrAgendas = window.W1980_AGENDAS.getAgendasForCountry("GBR");
-    const sunAgendas = window.W1980_AGENDAS.getAgendasForCountry("SUN");
-    const usaAgendas = window.W1980_AGENDAS.getAgendasForCountry("USA");
-    const defAgendas = window.W1980_AGENDAS.getAgendasForCountry("BRA");
-
-    assert("chnAgendasCount", chnAgendas.length >= 3, "中国专属议程数 >= 3 (特区/裁军/大三角)");
-    assert("jpnAgendasCount", jpnAgendas.length >= 3, "日本专属议程数 >= 3 (半导体/专守防卫/黑潮出海)");
-    assert("deuAgendasCount", deuAgendas.length >= 2, "西德专属议程数 >= 2");
-    assert("fraAgendasCount", fraAgendas.length >= 2, "法国专属议程数 >= 2");
-    assert("gbrAgendasCount", gbrAgendas.length >= 2, "英国专属议程数 >= 2 (金融大爆炸/私有化)");
-    assert("sunAgendasCount", sunAgendas.length >= 2, "苏联专属议程数 >= 2 (合资法/新联盟)");
-    assert("usaAgendasCount", usaAgendas.length >= 2, "美国专属议程数 >= 2 (供给学派/SDI)");
-    assert("defaultFallbackAgendas", defAgendas.length >= 2, "通用国家 fallback 议程有效");
-
-    // 3. 初始状态断言
-    initAgendaState();
-    assert("stateInitClean", Object.keys(ST.agendas).length === 0, "ST.agendas 初始化为空字典");
-    const chnState = getAgendaState("CHN");
-    assert("chnStateInit", chnState.active === null && chnState.progress === 0 && chnState.completed.length === 0, "国家议程初始结构完备");
-
-    // 4. 前置条件断言：中国百万大裁军军费与年代约束
-    const agSez = chnAgendas.find((a) => a.id === "chn_sez");
-    const agDisarm = chnAgendas.find((a) => a.id === "chn_disarm");
-    assert("sezConditionPass", checkAgendaCondition("CHN", agSez).ok === true, "1980 年设立经济特区前置条件满足");
-
-    // 军费过高时大裁军被锁
-    ST.player = "CHN";
-    ST.mil = 5.0;
-    assert("disarmBlockedByMilAndPrereq", checkAgendaCondition("CHN", agDisarm).ok === false, "军费 5% 且未完成特区时大裁军应被禁用");
-
-    // 5. 启动议程与推进
-    const startRes = startAgenda("CHN", "chn_sez");
-    assert("startAgendaSuccess", startRes === true && ST.agendas.CHN.active === "chn_sez", "成功启动特区议程");
-    assert("cantStartSecondAgenda", startAgenda("CHN", "chn_triangle") === false, "推进中不可同时启动第二项议程");
-
-    // 6. 月度演进推进至完成
-    const prevProg = ST.agendas.CHN.progress;
-    updateMonthlyAgendas(1980, 2, true);
-    assert("progressAdvanced", ST.agendas.CHN.progress > prevProg, "月度演进推进进度");
-
-    // 快速模拟推进至 100% 完成
-    for (let i = 0; i < 20; i++) {
-      updateMonthlyAgendas(1980, 3 + i, true);
-    }
-    assert("agendaCompleted", ST.agendas.CHN.completed.includes("chn_sez"), "特区议程推进完毕进入 completed");
-    assert("agendaActiveReset", ST.agendas.CHN.active === null, "达成后 active 自动置空");
-    assert("gdpBonusCalculated", ST.agendas.CHN.bonuses.gdpBonus === 0.35, "正确计算 +0.35pp GDP 结构性红利");
-    assert("reserveMonthlyCalculated", ST.agendas.CHN.bonuses.reserveMonthly === 1.5, "正确计算 +1.5亿 外汇流红利");
-
-    // 7. 单一事实源与 pmods 注入
-    applyPlayerDecisions();
-    const pmodsCHN = W1980_SIM.pmap(SIM.S).CHN;
-    assert("pmodsInjectedGdpBonus", typeof pmodsCHN === "number", "pmods 正确注入玩家执政国家");
-
-    // 8. 日本专守防卫 1% 军费红线校验
-    const agJpnDef = jpnAgendas.find((a) => a.id === "jpn_defense_cap");
-    ST.player = "JPN";
-    ST.mil = 2.0;
-    assert("jpnDefenseBlockedHighMil", checkAgendaCondition("JPN", agJpnDef).ok === false, "日本军费 2.0% 时专守防卫应被禁用");
-    ST.mil = 0.8;
-    assert("jpnDefenseAllowedLowMil", checkAgendaCondition("JPN", agJpnDef).ok === true, "日本军费 0.8% 时专守防卫条件满足");
-
-    // 9. 美国 SDI 军备军费 ≥ 5% 校验
-    const agUsaSdi = usaAgendas.find((a) => a.id === "usa_sdi_tech");
-    ST.player = "USA";
-    const oldYear = SIM.S ? SIM.S.year : 1980;
-    const oldMonth = SIM.S ? SIM.S.month : 1;
-    if (SIM.S) { SIM.S.year = 1983; SIM.S.month = 4; }
-    ST.mil = 3.0;
-    assert("usaSdiBlockedLowMil", checkAgendaCondition("USA", agUsaSdi).ok === false, "美国军费 3.0% 时 SDI 应被禁用");
-    ST.mil = 6.0;
-    assert("usaSdiAllowedHighMil", checkAgendaCondition("USA", agUsaSdi).ok === true, "美国军费 6.0% 且 1983 年时 SDI 允许启动");
-    if (SIM.S) { SIM.S.year = oldYear; SIM.S.month = oldMonth; }
-
-    // 10. 大三角脱钩震荡免疫验证
-    ST.player = "CHN";
-    ST.agendas.CHN.completed.push("chn_triangle");
-    ST.agendas.CHN.bonuses = calcAgendaBonuses("CHN");
-    assert("hasDecoupleImmunityBonus", ST.agendas.CHN.bonuses.decoupleImmunity === true, "达成大三角平衡后获得脱钩免疫");
-    ST.blocOverride.CHN = "WP";
-    ST.blocSince = curMonthIdx();
-    const blocEff = curBlocEffect();
-    assert("decoupleFrictionZero", blocEff.friction === 0, "脱钩免疫使阵营迁移脱钩震荡摩擦归零");
-
-    // 11. 界面渲染测试
-    const agendaBox = $("p-agenda-box");
-    assert("agendaBoxDomExists", !!agendaBox, "#p-agenda-box DOM 容器存在");
-    refreshAgendaBox("CHN");
-    assert("chnRenderedCards", agendaBox.innerHTML.includes("设立经济特区") && agendaBox.querySelectorAll(".ag-card").length >= 3, "成功渲染中国议程卡片列表");
-    refreshAgendaBox("JPN");
-    assert("jpnRenderedCards", agendaBox.innerHTML.includes("半导体与精密制造") && agendaBox.innerHTML.includes("恪守专守防卫"), "成功渲染日本议程卡片列表");
-    refreshAgendaBox("DEU");
-    assert("deuRenderedCards", agendaBox.innerHTML.includes("单一欧洲法案"), "成功渲染欧洲单一市场议程卡片");
-
-    // 12. 终局后日谈专属篇章与称号联动
-    const epSt = {
-      date: "1991-12",
-      world: { gdp: 24000, gdp0: 12000, gdpDelta: 100, pop: 5300, pop0: 4400, popDelta: 20.4 },
-      blocs: [{ b: "CHN", zh: "中国", gdpShare: 18, gdpShare0: 12, popShare: 22, popShare0: 22 }],
-      player: {
-        k: "CHN", zh: "中国", mil: 2,
-        gdp: 2600, gdp0: 1200, gdpDelta: 116,
-        pop: 1100, pop0: 980, popDelta: 12.2,
-        rank0: 8, rank1: 4, dr: 4, pctl: 0.95,
-        E: 28, R: 12, M: 15, G: 20, G_bloc: 10, G_act: 12, total: 87
-      }
-    };
-    const epRes = generateEpilogue(epSt);
-    assert("epilogueHasAgendaSection", epRes.sections.some((s) => s.sec.includes("专属国家战略路线")), "终局后日谈包含专属战略议程篇章");
-    assert("epilogueSpecialTitle", epRes.rankTitle.includes("总设计师") || epRes.rankTitle.includes("擎天"), "达成双核心议程荣膺专属历史称号");
-
-    // 13. 旁观模式零漂移验证
-    ST.player = null;
-    applyPlayerDecisions();
-    const pmodsCount = Object.keys((SIM.S && SIM.S.P && SIM.S.P.pmods) || {}).length;
-    assert("observerZeroPmods", pmodsCount === 0, "旁观模式下 applyPlayerDecisions 绝对 0 pmods (0 漂移)");
-
-    // 14. 存档读档往返序列化
-    ST.player = "CHN";
-    ST.agendas.CHN.completed = ["chn_sez", "chn_triangle"];
-    ST.agendas.CHN.active = "chn_disarm";
-    ST.agendas.CHN.progress = 45.5;
-    simSave();
-    initAgendaState();
-    assert("stateCleanedBeforeLoad", Object.keys(ST.agendas).length === 0, "读档前清空状态生效");
-    simLoad();
-    assert("stateRestoredAfterLoad", ST.agendas.CHN && ST.agendas.CHN.active === "chn_disarm" && Math.abs(ST.agendas.CHN.progress - 45.5) < 0.1 && ST.agendas.CHN.completed.length === 2, "simSave/simLoad 100% 完美往返恢复议程状态");
-
-    // 复原状态
-    ST.player = null;
-    ST.mil = 0;
-    ST.blocOverride = {};
-    ST.blocSince = null;
-    initAgendaState();
-    applyPlayerDecisions();
-    refreshAgendaBox(ST.sel);
+    const ctx = {};
+    agendaProbeDatabase(r, assert, ctx);
+    agendaProbeLifecycle(r, assert, ctx);
+    agendaProbeGuardsAndUi(r, assert, ctx);
+    agendaProbeEndgameAndState(r, assert, ctx);
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -1218,6 +1108,174 @@ function runAgendaProbe() {
   d.textContent = "AGENDAPROBE " + JSON.stringify(r);
   document.body.appendChild(d);
   return r;
+}
+
+// G（收尾评审）：runAgendaProbe 的 步骤 1-2：核心 API 存在性 + 议程数据库完备性（原样搬运，无逻辑改动）
+function agendaProbeDatabase(r, assert, ctx) {
+  // 1. 核心数据库与函数存在性
+  assert("databaseLoaded", !!window.W1980_AGENDAS && typeof window.W1980_AGENDAS.getAgendasForCountry === "function", "W1980_AGENDAS 应已载入");
+  assert("initAgendaStateExists", typeof initAgendaState === "function", "initAgendaState 应定义");
+  assert("startAgendaExists", typeof startAgenda === "function", "startAgenda 应定义");
+  assert("updateMonthlyAgendasExists", typeof updateMonthlyAgendas === "function", "updateMonthlyAgendas 应定义");
+  assert("refreshAgendaBoxExists", typeof refreshAgendaBox === "function", "refreshAgendaBox 应定义");
+
+  // 2. 数据库完备性断言
+  const chnAgendas = window.W1980_AGENDAS.getAgendasForCountry("CHN");
+  const jpnAgendas = window.W1980_AGENDAS.getAgendasForCountry("JPN");
+  const deuAgendas = window.W1980_AGENDAS.getAgendasForCountry("DEU");
+  const fraAgendas = window.W1980_AGENDAS.getAgendasForCountry("FRA");
+  const gbrAgendas = window.W1980_AGENDAS.getAgendasForCountry("GBR");
+  const sunAgendas = window.W1980_AGENDAS.getAgendasForCountry("SUN");
+  const usaAgendas = window.W1980_AGENDAS.getAgendasForCountry("USA");
+  const defAgendas = window.W1980_AGENDAS.getAgendasForCountry("BRA");
+
+  assert("chnAgendasCount", chnAgendas.length >= 3, "中国专属议程数 >= 3 (特区/裁军/大三角)");
+  assert("jpnAgendasCount", jpnAgendas.length >= 3, "日本专属议程数 >= 3 (半导体/专守防卫/黑潮出海)");
+  assert("deuAgendasCount", deuAgendas.length >= 2, "西德专属议程数 >= 2");
+  assert("fraAgendasCount", fraAgendas.length >= 2, "法国专属议程数 >= 2");
+  assert("gbrAgendasCount", gbrAgendas.length >= 2, "英国专属议程数 >= 2 (金融大爆炸/私有化)");
+  assert("sunAgendasCount", sunAgendas.length >= 2, "苏联专属议程数 >= 2 (合资法/新联盟)");
+  assert("usaAgendasCount", usaAgendas.length >= 2, "美国专属议程数 >= 2 (供给学派/SDI)");
+  assert("defaultFallbackAgendas", defAgendas.length >= 2, "通用国家 fallback 议程有效");
+
+  // G：跨阶段复用的议程列表经 ctx 传递（后续阶段按原名取回，逻辑不变）
+  ctx.chnAgendas = chnAgendas;
+  ctx.jpnAgendas = jpnAgendas;
+  ctx.usaAgendas = usaAgendas;
+}
+
+// G（收尾评审）：runAgendaProbe 的 步骤 3-7：初始状态、前置条件、启动/推进/完成、红利与 pmods 注入（原样搬运，无逻辑改动）
+function agendaProbeLifecycle(r, assert, ctx) {
+  const chnAgendas = ctx.chnAgendas;
+  // 3. 初始状态断言
+  initAgendaState();
+  assert("stateInitClean", Object.keys(ST.agendas).length === 0, "ST.agendas 初始化为空字典");
+  const chnState = getAgendaState("CHN");
+  assert("chnStateInit", chnState.active === null && chnState.progress === 0 && chnState.completed.length === 0, "国家议程初始结构完备");
+
+  // 4. 前置条件断言：中国百万大裁军军费与年代约束
+  const agSez = chnAgendas.find((a) => a.id === "chn_sez");
+  const agDisarm = chnAgendas.find((a) => a.id === "chn_disarm");
+  assert("sezConditionPass", checkAgendaCondition("CHN", agSez).ok === true, "1980 年设立经济特区前置条件满足");
+
+  // 军费过高时大裁军被锁
+  ST.player = "CHN";
+  ST.mil = 5.0;
+  assert("disarmBlockedByMilAndPrereq", checkAgendaCondition("CHN", agDisarm).ok === false, "军费 5% 且未完成特区时大裁军应被禁用");
+
+  // 5. 启动议程与推进
+  const startRes = startAgenda("CHN", "chn_sez");
+  assert("startAgendaSuccess", startRes === true && ST.agendas.CHN.active === "chn_sez", "成功启动特区议程");
+  assert("cantStartSecondAgenda", startAgenda("CHN", "chn_triangle") === false, "推进中不可同时启动第二项议程");
+
+  // 6. 月度演进推进至完成
+  const prevProg = ST.agendas.CHN.progress;
+  updateMonthlyAgendas(1980, 2, true);
+  assert("progressAdvanced", ST.agendas.CHN.progress > prevProg, "月度演进推进进度");
+
+  // 快速模拟推进至 100% 完成
+  for (let i = 0; i < 20; i++) {
+    updateMonthlyAgendas(1980, 3 + i, true);
+  }
+  assert("agendaCompleted", ST.agendas.CHN.completed.includes("chn_sez"), "特区议程推进完毕进入 completed");
+  assert("agendaActiveReset", ST.agendas.CHN.active === null, "达成后 active 自动置空");
+  assert("gdpBonusCalculated", ST.agendas.CHN.bonuses.gdpBonus === 0.35, "正确计算 +0.35pp GDP 结构性红利");
+  assert("reserveMonthlyCalculated", ST.agendas.CHN.bonuses.reserveMonthly === 1.5, "正确计算 +1.5亿 外汇流红利");
+
+  // 7. 单一事实源与 pmods 注入
+  applyPlayerDecisions();
+  const pmodsCHN = W1980_SIM.pmap(SIM.S).CHN;
+  assert("pmodsInjectedGdpBonus", typeof pmodsCHN === "number", "pmods 正确注入玩家执政国家");
+}
+
+// G（收尾评审）：runAgendaProbe 的 步骤 8-11：日本 1% 红线、美国 SDI 阈值、脱钩免疫、界面渲染（原样搬运，无逻辑改动）
+function agendaProbeGuardsAndUi(r, assert, ctx) {
+  const jpnAgendas = ctx.jpnAgendas, usaAgendas = ctx.usaAgendas;
+  // 8. 日本专守防卫 1% 军费红线校验
+  const agJpnDef = jpnAgendas.find((a) => a.id === "jpn_defense_cap");
+  ST.player = "JPN";
+  ST.mil = 2.0;
+  assert("jpnDefenseBlockedHighMil", checkAgendaCondition("JPN", agJpnDef).ok === false, "日本军费 2.0% 时专守防卫应被禁用");
+  ST.mil = 0.8;
+  assert("jpnDefenseAllowedLowMil", checkAgendaCondition("JPN", agJpnDef).ok === true, "日本军费 0.8% 时专守防卫条件满足");
+
+  // 9. 美国 SDI 军备军费 ≥ 5% 校验
+  const agUsaSdi = usaAgendas.find((a) => a.id === "usa_sdi_tech");
+  ST.player = "USA";
+  const oldYear = SIM.S ? SIM.S.year : 1980;
+  const oldMonth = SIM.S ? SIM.S.month : 1;
+  if (SIM.S) { SIM.S.year = 1983; SIM.S.month = 4; }
+  ST.mil = 3.0;
+  assert("usaSdiBlockedLowMil", checkAgendaCondition("USA", agUsaSdi).ok === false, "美国军费 3.0% 时 SDI 应被禁用");
+  ST.mil = 6.0;
+  assert("usaSdiAllowedHighMil", checkAgendaCondition("USA", agUsaSdi).ok === true, "美国军费 6.0% 且 1983 年时 SDI 允许启动");
+  if (SIM.S) { SIM.S.year = oldYear; SIM.S.month = oldMonth; }
+
+  // 10. 大三角脱钩震荡免疫验证
+  ST.player = "CHN";
+  ST.agendas.CHN.completed.push("chn_triangle");
+  ST.agendas.CHN.bonuses = calcAgendaBonuses("CHN");
+  assert("hasDecoupleImmunityBonus", ST.agendas.CHN.bonuses.decoupleImmunity === true, "达成大三角平衡后获得脱钩免疫");
+  ST.blocOverride.CHN = "WP";
+  ST.blocSince = curMonthIdx();
+  const blocEff = curBlocEffect();
+  assert("decoupleFrictionZero", blocEff.friction === 0, "脱钩免疫使阵营迁移脱钩震荡摩擦归零");
+
+  // 11. 界面渲染测试
+  const agendaBox = $("p-agenda-box");
+  assert("agendaBoxDomExists", !!agendaBox, "#p-agenda-box DOM 容器存在");
+  refreshAgendaBox("CHN");
+  assert("chnRenderedCards", agendaBox.innerHTML.includes("设立经济特区") && agendaBox.querySelectorAll(".ag-card").length >= 3, "成功渲染中国议程卡片列表");
+  refreshAgendaBox("JPN");
+  assert("jpnRenderedCards", agendaBox.innerHTML.includes("半导体与精密制造") && agendaBox.innerHTML.includes("恪守专守防卫"), "成功渲染日本议程卡片列表");
+  refreshAgendaBox("DEU");
+  assert("deuRenderedCards", agendaBox.innerHTML.includes("单一欧洲法案"), "成功渲染欧洲单一市场议程卡片");
+}
+
+// G（收尾评审）：runAgendaProbe 的 步骤 12-14：后日谈联动、旁观零漂移、存档往返与状态复原（原样搬运，无逻辑改动）
+function agendaProbeEndgameAndState(r, assert, ctx) {
+  // 12. 终局后日谈专属篇章与称号联动
+  const epSt = {
+    date: "1991-12",
+    world: { gdp: 24000, gdp0: 12000, gdpDelta: 100, pop: 5300, pop0: 4400, popDelta: 20.4 },
+    blocs: [{ b: "CHN", zh: "中国", gdpShare: 18, gdpShare0: 12, popShare: 22, popShare0: 22 }],
+    player: {
+      k: "CHN", zh: "中国", mil: 2,
+      gdp: 2600, gdp0: 1200, gdpDelta: 116,
+      pop: 1100, pop0: 980, popDelta: 12.2,
+      rank0: 8, rank1: 4, dr: 4, pctl: 0.95,
+      E: 28, R: 12, M: 15, G: 20, G_bloc: 10, G_act: 12, total: 87
+    }
+  };
+  const epRes = generateEpilogue(epSt);
+  assert("epilogueHasAgendaSection", epRes.sections.some((s) => s.sec.includes("专属国家战略路线")), "终局后日谈包含专属战略议程篇章");
+  assert("epilogueSpecialTitle", epRes.rankTitle.includes("总设计师") || epRes.rankTitle.includes("擎天"), "达成双核心议程荣膺专属历史称号");
+
+  // 13. 旁观模式零漂移验证
+  ST.player = null;
+  applyPlayerDecisions();
+  const pmodsCount = Object.keys((SIM.S && SIM.S.P && SIM.S.P.pmods) || {}).length;
+  assert("observerZeroPmods", pmodsCount === 0, "旁观模式下 applyPlayerDecisions 绝对 0 pmods (0 漂移)");
+
+  // 14. 存档读档往返序列化
+  ST.player = "CHN";
+  ST.agendas.CHN.completed = ["chn_sez", "chn_triangle"];
+  ST.agendas.CHN.active = "chn_disarm";
+  ST.agendas.CHN.progress = 45.5;
+  simSave();
+  initAgendaState();
+  assert("stateCleanedBeforeLoad", Object.keys(ST.agendas).length === 0, "读档前清空状态生效");
+  simLoad();
+  assert("stateRestoredAfterLoad", ST.agendas.CHN && ST.agendas.CHN.active === "chn_disarm" && Math.abs(ST.agendas.CHN.progress - 45.5) < 0.1 && ST.agendas.CHN.completed.length === 2, "simSave/simLoad 100% 完美往返恢复议程状态");
+
+  // 复原状态
+  ST.player = null;
+  ST.mil = 0;
+  ST.blocOverride = {};
+  ST.blocSince = null;
+  initAgendaState();
+  applyPlayerDecisions();
+  refreshAgendaBox(ST.sel);
 }
 
 // ---- R12C: 中局突发危机抉择卡与升级阶梯系统 ----

@@ -45,12 +45,12 @@ const BLOC_NET_BASE = {
 //   写主 = 唯一在正常运行中写入该字段的模块；其他模块只读。
 // 例外是 10-events-save.js 的 simLoad 系列：它是存档还原的通用入口，
 // 按字段逐一还原所有子系统的值（这是设计意图，见 loadXxxState 注释）。
-// 另有 12-probes.js / 13-boot.js 为测试与启动参数注入，属于受控外部写入。
+// 另有 app/probes/* 与 13-boot.js 为测试与启动参数注入，属于受控外部写入。
 // 字段归属表（写主 → 字段）：
 //   11-shell.js    mode, sortKey, sel, hover, hoverC, layers
 //   09-endgame.js  player, mil —— 运行时入口为 setPlayer / setMil（09-endgame.js:105/118）；
 //                   存档还原走 10-events-save.js 的 loadPlayerProfile；其余直写点集中在
-//                   07-domestic.js / 08-covert.js 的探针夹具与 12-probes.js / 13-boot.js
+//                   07-domestic.js / 08-covert.js 的探针夹具与 app/probes/* / 13-boot.js
 //                   （测试注入与 ?player=/ ?mil= 启动参数），属受控外部写入。
 //   03-decisions.js sanctions, aid, blocOverride, blocSince（setBloc 为阵营写入入口）
 //   04-frontlines.js frontlines（setFrontline 为唯一入口）
