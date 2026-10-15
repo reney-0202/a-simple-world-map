@@ -13,125 +13,155 @@ function applyPlayerDecisions() {
   Object.keys(W1980_SIM.pmap(SIM.S)).forEach((k) => W1980_SIM.clearPMod(SIM.S, k));
   if (!ST.player) return;                       // 旁观：清空后即退出（不施加任何 pmods）
   const acc = {};
-  let selfPP = -ST.mil;                         // 军费
-  // R7A（C2 经济网络）：并入阵营经贸协作与脱钩震荡（单位 pp/年）
-  const be = curBlocEffect();
-  if (be.net !== 0) selfPP += be.net;
-  // R9C（能源短缺冲击）：若遭受严重能源供给休克（如海峡全面封锁），叠加结构性经济折损
-  if (typeof calcResourcePenalty === "function") {
-    const rp = calcResourcePenalty(ST.player);
-    if (rp.penalty !== 0) selfPP += rp.penalty;
-  }
-  // R12B（次极大国与专属国家议程）：并入已达成战略议程结构性 GDP 增速加成
-  if (ST.agendas && ST.agendas[ST.player]) {
-    const agState = ST.agendas[ST.player];
-    if (agState && agState.bonuses && typeof agState.bonuses.gdpBonus === "number" && agState.bonuses.gdpBonus !== 0) {
-      selfPP += agState.bonuses.gdpBonus;
-    }
-  }
-  // R12A（大国内政生态与派系权力天平）：并入国内动荡与工潮折损（仅玩家自身实体）
-  if (ST.domestic) {
-    let unrestVal = 0;
-    if (ST.player === "SUN" && ST.domestic.sun) unrestVal = ST.domestic.sun.unrest || 0;
-    else if (ST.player === "USA" && ST.domestic.usa) unrestVal = ST.domestic.usa.unrest || 0;
-    else if (ST.domestic.generals && ST.domestic.generals[ST.player]) unrestVal = ST.domestic.generals[ST.player].unrest || 0;
-    if (unrestVal > 30) {
-      const drag = -Math.min(0.35, ((unrestVal - 30) / 70) * 0.35);
-      selfPP += drag;
-    }
-    if (ST.player === "USA" && ST.domestic.usa && ST.domestic.usa.budgetCapActive) {
-      if (ST.mil > 6.0) {
-        ST.mil = 6.0;
-        selfPP = -6.0;
-      }
-    }
-  }
-  // R13B: 阿富汗战争撤军和平红利（仅苏联玩家完成撤军后生效）
-  if (ST.player === "SUN" && ST.afghan && ST.afghan.withdrawn) {
-    selfPP += 0.35;
-  }
-  for (let i = 0; i < ST.sanctions.length; i++) {
-    const s = ST.sanctions[i], ek = entKeys(s.t);
-    for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
-    selfPP -= DEC_TIERS.san[s.l].self;          // 自身反噬（逐个目标累加）
-  }
-  for (let i = 0; i < ST.aid.length; i++) {
-    const a = ST.aid[i], ek = entKeys(a.t);
-    for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
-    selfPP -= DEC_TIERS.aid[a.l].self;          // 转移损耗（逐个目标累加）
-  }
+  // G（收尾评审）：贡献分四类累加器封装（见下方 playerSelfDelta / acc* 函数）。
+  // 全部是对同一 acc 的加法，累加顺序不影响结果，故与原先逐段写入等价。
+  const selfPP = playerSelfDelta() + accDecisionListCost(acc);
   if (selfPP !== 0) {
     const ek = entKeys(ST.player);
     for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + selfPP;   // 本国全部成员（求和）
   }
-  // R10A：并入 AI 反应式对抗决策（通过单一事实源 P.pmods 驱动）
-  if (isAIActive() && ST.ai && ST.ai.decisions) {
-    for (const aiKey in ST.ai.decisions) {
-      const dec = ST.ai.decisions[aiKey];
-      if (!dec) continue;
-      let selfPP_ai = 0;
-      const doc = (window.W1980_AI && window.W1980_AI.getDoctrine) ? window.W1980_AI.getDoctrine(aiKey, CM.countries[aiKey]) : null;
-      const baseMil = doc ? doc.baseMil : 2.0;
-      if (typeof dec.mil === "number" && dec.mil > baseMil) {
-        selfPP_ai -= (dec.mil - baseMil);
-      }
-      if (Array.isArray(dec.sanctions)) {
-        for (let i = 0; i < dec.sanctions.length; i++) {
-          const s = dec.sanctions[i], ek = entKeys(s.t);
-          for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
-          selfPP_ai -= DEC_TIERS.san[s.l].self;
-        }
-      }
-      if (Array.isArray(dec.aid)) {
-        for (let i = 0; i < dec.aid.length; i++) {
-          const a = dec.aid[i], ek = entKeys(a.t);
-          for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
-          selfPP_ai -= DEC_TIERS.aid[a.l].self;
-        }
-      }
-      if (selfPP_ai !== 0) {
-        const ek = entKeys(aiKey);
-        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + selfPP_ai;
-      }
-    }
-  }
-  // R10B：并入生效军控条约释放的结构性和平红利（Détente Dividend）
-  if (isAIActive() && ST.ai && Array.isArray(ST.ai.treaties)) {
-    for (let i = 0; i < ST.ai.treaties.length; i++) {
-      const tr = ST.ai.treaties[i];
-      if (tr && tr.status === "active" && tr.dividend) {
-        acc[ST.player] = (acc[ST.player] || 0) + tr.dividend;
-        if (tr.with) acc[tr.with] = (acc[tr.with] || 0) + tr.dividend;
-      }
-    }
-  }
-  // R10C：并入联合国安理会（UNSC）生效决议效应
-  if (isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed)) {
-    for (let i = 0; i < ST.ai.unsc.passed.length; i++) {
-      const resId = ST.ai.unsc.passed[i];
-      const resDef = (window.W1980_AI && window.W1980_AI.UNSC_RESOLUTIONS) ? window.W1980_AI.UNSC_RESOLUTIONS[resId] : null;
-      if (resDef && resDef.effects) {
-        if (resDef.effects.multilateralEmbargo && resDef.effects.embargoPenalty) {
-          const tgtKeys = entKeys(resDef.effects.multilateralEmbargo);
-          for (let j = 0; j < tgtKeys.length; j++) {
-            acc[tgtKeys[j]] = (acc[tgtKeys[j]] || 0) + resDef.effects.embargoPenalty;
-          }
-        }
-        if (resDef.effects.economicRelief && Array.isArray(resDef.parties)) {
-          for (let p = 0; p < resDef.parties.length; p++) {
-            const pKeys = entKeys(resDef.parties[p]);
-            for (let j = 0; j < pKeys.length; j++) {
-              acc[pKeys[j]] = (acc[pKeys[j]] || 0) + resDef.effects.economicRelief;
-            }
-          }
-        }
-      }
-    }
-  }
+  accAiDecisions(acc);
+  accTreatyDividends(acc);
+  accUnscResolutionEffects(acc);
   for (const k in acc) {
     if (acc[k] !== 0) W1980_SIM.setPMod(SIM.S, k, acc[k]);
   }
 }
+
+// G（收尾评审）：玩家自身结构性自损/加成链（军费/阵营/能源/议程/内政/阿富汗），原样搬运
+function playerSelfDelta() {
+let selfPP = -ST.mil;                         // 军费
+// R7A（C2 经济网络）：并入阵营经贸协作与脱钩震荡（单位 pp/年）
+const be = curBlocEffect();
+if (be.net !== 0) selfPP += be.net;
+// R9C（能源短缺冲击）：若遭受严重能源供给休克（如海峡全面封锁），叠加结构性经济折损
+if (typeof calcResourcePenalty === "function") {
+  const rp = calcResourcePenalty(ST.player);
+  if (rp.penalty !== 0) selfPP += rp.penalty;
+}
+// R12B（次极大国与专属国家议程）：并入已达成战略议程结构性 GDP 增速加成
+if (ST.agendas && ST.agendas[ST.player]) {
+  const agState = ST.agendas[ST.player];
+  if (agState && agState.bonuses && typeof agState.bonuses.gdpBonus === "number" && agState.bonuses.gdpBonus !== 0) {
+    selfPP += agState.bonuses.gdpBonus;
+  }
+}
+// R12A（大国内政生态与派系权力天平）：并入国内动荡与工潮折损（仅玩家自身实体）
+if (ST.domestic) {
+  let unrestVal = 0;
+  if (ST.player === "SUN" && ST.domestic.sun) unrestVal = ST.domestic.sun.unrest || 0;
+  else if (ST.player === "USA" && ST.domestic.usa) unrestVal = ST.domestic.usa.unrest || 0;
+  else if (ST.domestic.generals && ST.domestic.generals[ST.player]) unrestVal = ST.domestic.generals[ST.player].unrest || 0;
+  if (unrestVal > 30) {
+    const drag = -Math.min(0.35, ((unrestVal - 30) / 70) * 0.35);
+    selfPP += drag;
+  }
+  if (ST.player === "USA" && ST.domestic.usa && ST.domestic.usa.budgetCapActive) {
+    if (ST.mil > 6.0) {
+      ST.mil = 6.0;
+      selfPP = -6.0;
+    }
+  }
+}
+// R13B: 阿富汗战争撤军和平红利（仅苏联玩家完成撤军后生效）
+if (ST.player === "SUN" && ST.afghan && ST.afghan.withdrawn) {
+  selfPP += 0.35;
+}
+  return selfPP;
+}
+
+// G（收尾评审）：对外决策名单（制裁/军援）的目标分写入 acc，并返回自身反噬总和，原样搬运
+function accDecisionListCost(acc) {
+  let selfPP = 0;
+for (let i = 0; i < ST.sanctions.length; i++) {
+  const s = ST.sanctions[i], ek = entKeys(s.t);
+  for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
+  selfPP -= DEC_TIERS.san[s.l].self;          // 自身反噬（逐个目标累加）
+}
+for (let i = 0; i < ST.aid.length; i++) {
+  const a = ST.aid[i], ek = entKeys(a.t);
+  for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
+  selfPP -= DEC_TIERS.aid[a.l].self;          // 转移损耗（逐个目标累加）
+}
+  return selfPP;
+}
+
+// G（收尾评审）：并入 AI 反应式对抗决策（单一事实源 P.pmods），原样搬运
+function accAiDecisions(acc) {
+// R10A：并入 AI 反应式对抗决策（通过单一事实源 P.pmods 驱动）
+if (isAIActive() && ST.ai && ST.ai.decisions) {
+  for (const aiKey in ST.ai.decisions) {
+    const dec = ST.ai.decisions[aiKey];
+    if (!dec) continue;
+    let selfPP_ai = 0;
+    const doc = (window.W1980_AI && window.W1980_AI.getDoctrine) ? window.W1980_AI.getDoctrine(aiKey, CM.countries[aiKey]) : null;
+    const baseMil = doc ? doc.baseMil : 2.0;
+    if (typeof dec.mil === "number" && dec.mil > baseMil) {
+      selfPP_ai -= (dec.mil - baseMil);
+    }
+    if (Array.isArray(dec.sanctions)) {
+      for (let i = 0; i < dec.sanctions.length; i++) {
+        const s = dec.sanctions[i], ek = entKeys(s.t);
+        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
+        selfPP_ai -= DEC_TIERS.san[s.l].self;
+      }
+    }
+    if (Array.isArray(dec.aid)) {
+      for (let i = 0; i < dec.aid.length; i++) {
+        const a = dec.aid[i], ek = entKeys(a.t);
+        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
+        selfPP_ai -= DEC_TIERS.aid[a.l].self;
+      }
+    }
+    if (selfPP_ai !== 0) {
+      const ek = entKeys(aiKey);
+      for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + selfPP_ai;
+    }
+  }
+}
+}
+
+// G（收尾评审）：并入生效军控条约的结构性和平红利，原样搬运
+function accTreatyDividends(acc) {
+// R10B：并入生效军控条约释放的结构性和平红利（Détente Dividend）
+if (isAIActive() && ST.ai && Array.isArray(ST.ai.treaties)) {
+  for (let i = 0; i < ST.ai.treaties.length; i++) {
+    const tr = ST.ai.treaties[i];
+    if (tr && tr.status === "active" && tr.dividend) {
+      acc[ST.player] = (acc[ST.player] || 0) + tr.dividend;
+      if (tr.with) acc[tr.with] = (acc[tr.with] || 0) + tr.dividend;
+    }
+  }
+}
+}
+
+// G（收尾评审）：并入安理会生效决议效应，原样搬运
+function accUnscResolutionEffects(acc) {
+// R10C：并入联合国安理会（UNSC）生效决议效应
+if (isAIActive() && ST.ai && ST.ai.unsc && Array.isArray(ST.ai.unsc.passed)) {
+  for (let i = 0; i < ST.ai.unsc.passed.length; i++) {
+    const resId = ST.ai.unsc.passed[i];
+    const resDef = (window.W1980_AI && window.W1980_AI.UNSC_RESOLUTIONS) ? window.W1980_AI.UNSC_RESOLUTIONS[resId] : null;
+    if (resDef && resDef.effects) {
+      if (resDef.effects.multilateralEmbargo && resDef.effects.embargoPenalty) {
+        const tgtKeys = entKeys(resDef.effects.multilateralEmbargo);
+        for (let j = 0; j < tgtKeys.length; j++) {
+          acc[tgtKeys[j]] = (acc[tgtKeys[j]] || 0) + resDef.effects.embargoPenalty;
+        }
+      }
+      if (resDef.effects.economicRelief && Array.isArray(resDef.parties)) {
+        for (let p = 0; p < resDef.parties.length; p++) {
+          const pKeys = entKeys(resDef.parties[p]);
+          for (let j = 0; j < pKeys.length; j++) {
+            acc[pKeys[j]] = (acc[pKeys[j]] || 0) + resDef.effects.economicRelief;
+          }
+        }
+      }
+    }
+  }
+}
+}
+
 // 战区/成员至所属联邦可玩实体映射（如 ARG -> LAP, KWT -> ARA）
 // D（数据层评审）：别名表与 resolve/isEntity/isMember/memberKeys 合并为 01-core.js 的
 // 单一事实源（FED_ALIAS + resolve()）；本函数保留「不可解析时原样返回」的旧契约，

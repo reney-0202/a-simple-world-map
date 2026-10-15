@@ -48,112 +48,10 @@ function updateAIDecisions(y, m, silent) {
   const newDecisions = {};
   const newTensions = {};
 
-  for (const k in CM.countries) {
-    if (k === ST.player) continue;
-    const att = window.W1980_AI.calcAttitude(k, ST.player, playerDecisions, worldState);
-    newTensions[k] = att;
-
-    const react = window.W1980_AI.evaluateReactions(k, ST.player, playerDecisions, worldState);
-    if (react) {
-      // E（玩法评审）：主动战略目标 —— 与玩家是否出手无关，AI 按自身议程行动。
-      // 合并规则：mil 取 max(反应式, 基础+目标偏移)；aid 名单合并去重（受 maxAid 限）；
-      // 自主 sanctions 仅在反应式没有对该玩家反制时追加（避免双重惩罚）。
-      let mil = react.mil;
-      let aidList = (react.aid || []).slice();
-      let sanList = (react.sanctions || []).slice();
-      let objectives = [];
-      if (window.W1980_AI.objectivesToActions) {
-        const ow = {
-          countries: CM.countries, year: curY, month: curM,
-          tension: (newTensions[k] && typeof newTensions[k].tension === "number") ? newTensions[k].tension : 20,
-          warActive: !!(ST.frontlines && Object.keys(ST.frontlines).length),
-          peace: false, playerKey: ST.player
-        };
-        const act = window.W1980_AI.objectivesToActions(k, ow);
-        objectives = act.objectives || [];
-        if (act.milDelta > 0) mil = Math.max(mil, react.mil + act.milDelta);
-        const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
-        const maxAid = doc.maxAid || 1;
-        for (const a of act.aid) {
-          if (aidList.length >= maxAid) break;
-          if (!aidList.some((x) => x.t === a.t)) aidList.push(a);
-        }
-        if (sanList.length === 0 && act.sanctions.length) sanList = act.sanctions.slice();
-      }
-
-      newDecisions[k] = {
-        mil: mil,
-        sanctions: sanList,
-        aid: aidList,
-        objectives: objectives.map((o) => ({ id: o.id, zh: o.zh, kind: o.kind, note: o.note || "" }))
-      };
-
-      const oldDec = ST.ai.decisions ? ST.ai.decisions[k] : null;
-      const hadSan = oldDec && Array.isArray(oldDec.sanctions) && oldDec.sanctions.length > 0;
-      const nowSan = Array.isArray(sanList) && sanList.length > 0;
-      const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
-      const hadMilUp = oldDec && typeof oldDec.mil === "number" && oldDec.mil > doc.baseMil + 0.05;
-      const nowMilUp = mil > doc.baseMil + 0.05;
-
-      if (!hadSan && nowSan && react.cable) {
-        dispatchDiplomaticCable(react.cable, curY, curM, silent);
-      } else if (hadSan && !nowSan) {
-        const kZh = (CM.countries[k] || {}).zh || k;
-        dispatchDiplomaticCable({
-          type: "counter_sanction_revoked",
-          from: k,
-          target: ST.player,
-          zh: "解除经贸反制",
-          desc: kZh + "鉴于双方经贸争端缓解，宣布撤销对我国施加的一切反制裁措施。"
-        }, curY, curM, silent);
-      } else if (!hadMilUp && nowMilUp) {
-        const kZh = (CM.countries[k] || {}).zh || k;
-        dispatchDiplomaticCable({
-          type: "arms_race_escalation",
-          from: k,
-          target: ST.player,
-          zh: "防务戒备升级",
-          desc: kZh + "鉴于我国强化战略军备态势，正式进入防务戒备并将预算提升至 " + mil.toFixed(1) + "% GDP！"
-        }, curY, curM, silent);
-      }
-    }
-  }
-
-  // R10B：军控条约履约与违约判定回路 (Treaty Compliance & Breach Evaluation)
-  if (Array.isArray(ST.ai.treaties)) {
-    for (let i = 0; i < ST.ai.treaties.length; i++) {
-      const tr = ST.ai.treaties[i];
-      if (tr && tr.status === "active") {
-        const br = window.W1980_AI.evaluateBreach(tr, playerDecisions, newDecisions[tr.with]);
-        if (br && br.breached) {
-          tr.warnings = (tr.warnings || 0) + 1;
-          const aiZh = (CM.countries[tr.with] || {}).zh || tr.with;
-          const tZh = (window.W1980_AI.TREATY_DEFS[tr.id] || {}).zh || tr.id;
-          if (tr.warnings === 1) {
-            dispatchDiplomaticCable({
-              type: "treaty_breach_warning",
-              from: tr.with,
-              target: ST.player,
-              zh: "军控履约照会",
-              desc: "【违约抗议照会】" + aiZh + "抗议我国违反" + tZh + "规定：" + br.reason + "！敦促立即纠正，否则将单方面撕毁条约！"
-            }, curY, curM, silent);
-          } else if (tr.warnings >= 2) {
-            tr.status = "nullified";
-            tr.nullifiedReason = br.reason;
-            dispatchDiplomaticCable({
-              type: "treaty_nullified",
-              from: tr.with,
-              target: ST.player,
-              zh: "条约单方面作废",
-              desc: "【军控体系破裂】鉴于我国屡次违背军控承诺，" + aiZh + "正式宣告" + tZh + "废止！和平红利立即清零，双边戒备全面升级！"
-            }, curY, curM, silent);
-          }
-        } else {
-          tr.warnings = 0; // 恢复合规
-        }
-      }
-    }
-  }
+  // G（收尾评审）：两个回路抽为独立函数（见下方 ai*），本函数只负责编排。
+  const ctx = { curY: curY, curM: curM, silent: silent, playerDecisions: playerDecisions, worldState: worldState };
+  aiComputeDecisions(newDecisions, newTensions, ctx);
+  aiEnforceTreatyCompliance(playerDecisions, newDecisions, ctx);
 
   ST.ai.tensions = newTensions;
   ST.ai.decisions = newDecisions;
@@ -161,6 +59,123 @@ function updateAIDecisions(y, m, silent) {
   applyPlayerDecisions();
   if (ST.sel) refreshAIBox(ST.sel);
 }
+
+// G（收尾评审）：逐国计算 AI 决策与张力（反应式 + 主动战略目标合并），原样搬运
+function aiComputeDecisions(newDecisions, newTensions, ctx) {
+  const curY = ctx.curY, curM = ctx.curM, silent = ctx.silent;
+  const playerDecisions = ctx.playerDecisions, worldState = ctx.worldState;
+for (const k in CM.countries) {
+  if (k === ST.player) continue;
+  const att = window.W1980_AI.calcAttitude(k, ST.player, playerDecisions, worldState);
+  newTensions[k] = att;
+
+  const react = window.W1980_AI.evaluateReactions(k, ST.player, playerDecisions, worldState);
+  if (react) {
+    // E（玩法评审）：主动战略目标 —— 与玩家是否出手无关，AI 按自身议程行动。
+    // 合并规则：mil 取 max(反应式, 基础+目标偏移)；aid 名单合并去重（受 maxAid 限）；
+    // 自主 sanctions 仅在反应式没有对该玩家反制时追加（避免双重惩罚）。
+    let mil = react.mil;
+    let aidList = (react.aid || []).slice();
+    let sanList = (react.sanctions || []).slice();
+    let objectives = [];
+    if (window.W1980_AI.objectivesToActions) {
+      const ow = {
+        countries: CM.countries, year: curY, month: curM,
+        tension: (newTensions[k] && typeof newTensions[k].tension === "number") ? newTensions[k].tension : 20,
+        warActive: !!(ST.frontlines && Object.keys(ST.frontlines).length),
+        peace: false, playerKey: ST.player
+      };
+      const act = window.W1980_AI.objectivesToActions(k, ow);
+      objectives = act.objectives || [];
+      if (act.milDelta > 0) mil = Math.max(mil, react.mil + act.milDelta);
+      const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
+      const maxAid = doc.maxAid || 1;
+      for (const a of act.aid) {
+        if (aidList.length >= maxAid) break;
+        if (!aidList.some((x) => x.t === a.t)) aidList.push(a);
+      }
+      if (sanList.length === 0 && act.sanctions.length) sanList = act.sanctions.slice();
+    }
+
+    newDecisions[k] = {
+      mil: mil,
+      sanctions: sanList,
+      aid: aidList,
+      objectives: objectives.map((o) => ({ id: o.id, zh: o.zh, kind: o.kind, note: o.note || "" }))
+    };
+
+    const oldDec = ST.ai.decisions ? ST.ai.decisions[k] : null;
+    const hadSan = oldDec && Array.isArray(oldDec.sanctions) && oldDec.sanctions.length > 0;
+    const nowSan = Array.isArray(sanList) && sanList.length > 0;
+    const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
+    const hadMilUp = oldDec && typeof oldDec.mil === "number" && oldDec.mil > doc.baseMil + 0.05;
+    const nowMilUp = mil > doc.baseMil + 0.05;
+
+    if (!hadSan && nowSan && react.cable) {
+      dispatchDiplomaticCable(react.cable, curY, curM, silent);
+    } else if (hadSan && !nowSan) {
+      const kZh = (CM.countries[k] || {}).zh || k;
+      dispatchDiplomaticCable({
+        type: "counter_sanction_revoked",
+        from: k,
+        target: ST.player,
+        zh: "解除经贸反制",
+        desc: kZh + "鉴于双方经贸争端缓解，宣布撤销对我国施加的一切反制裁措施。"
+      }, curY, curM, silent);
+    } else if (!hadMilUp && nowMilUp) {
+      const kZh = (CM.countries[k] || {}).zh || k;
+      dispatchDiplomaticCable({
+        type: "arms_race_escalation",
+        from: k,
+        target: ST.player,
+        zh: "防务戒备升级",
+        desc: kZh + "鉴于我国强化战略军备态势，正式进入防务戒备并将预算提升至 " + mil.toFixed(1) + "% GDP！"
+      }, curY, curM, silent);
+    }
+  }
+}
+}
+
+// G（收尾评审）：军控条约履约与违约判定回路，原样搬运
+function aiEnforceTreatyCompliance(playerDecisions, newDecisions, ctx) {
+  const curY = ctx.curY, curM = ctx.curM, silent = ctx.silent;
+// R10B：军控条约履约与违约判定回路 (Treaty Compliance & Breach Evaluation)
+if (Array.isArray(ST.ai.treaties)) {
+  for (let i = 0; i < ST.ai.treaties.length; i++) {
+    const tr = ST.ai.treaties[i];
+    if (tr && tr.status === "active") {
+      const br = window.W1980_AI.evaluateBreach(tr, playerDecisions, newDecisions[tr.with]);
+      if (br && br.breached) {
+        tr.warnings = (tr.warnings || 0) + 1;
+        const aiZh = (CM.countries[tr.with] || {}).zh || tr.with;
+        const tZh = (window.W1980_AI.TREATY_DEFS[tr.id] || {}).zh || tr.id;
+        if (tr.warnings === 1) {
+          dispatchDiplomaticCable({
+            type: "treaty_breach_warning",
+            from: tr.with,
+            target: ST.player,
+            zh: "军控履约照会",
+            desc: "【违约抗议照会】" + aiZh + "抗议我国违反" + tZh + "规定：" + br.reason + "！敦促立即纠正，否则将单方面撕毁条约！"
+          }, curY, curM, silent);
+        } else if (tr.warnings >= 2) {
+          tr.status = "nullified";
+          tr.nullifiedReason = br.reason;
+          dispatchDiplomaticCable({
+            type: "treaty_nullified",
+            from: tr.with,
+            target: ST.player,
+            zh: "条约单方面作废",
+            desc: "【军控体系破裂】鉴于我国屡次违背军控承诺，" + aiZh + "正式宣告" + tZh + "废止！和平红利立即清零，双边戒备全面升级！"
+          }, curY, curM, silent);
+        }
+      } else {
+        tr.warnings = 0; // 恢复合规
+      }
+    }
+  }
+}
+}
+
 
 function refreshAIBox(selKey) {
   const box = $("p-ai-box");
@@ -547,104 +562,115 @@ function openUNSCModal(resolutionId) {
   const isPassed = Array.isArray(ST.ai.unsc.passed) && ST.ai.unsc.passed.includes(curUNSCResId);
   const vetoRecord = Array.isArray(ST.ai.unsc.history) ? ST.ai.unsc.history.slice().reverse().find((h) => h.id === curUNSCResId && h.status === "vetoed") : null;
 
-  // 渲染五常席位卡片
-  const gridEl = $("unsc-p5-grid");
-  if (gridEl) {
-    gridEl.innerHTML = "";
-    const flags = { USA: "🇺🇸", SUN: "☭", CHN: "🇨🇳", GBR: "🇬🇧", FRA: "🇫🇷" };
-
-    for (let i = 0; i < window.W1980_AI.UNSC_P5.length; i++) {
-      const p5Key = window.W1980_AI.UNSC_P5[i];
-      const ctry = CM.countries[p5Key] || {};
-      const isPlayer = (ST.player === p5Key);
-
-      const card = document.createElement("div");
-      card.className = "p5-card" + (isPlayer ? " is-player" : "");
-
-      let voteClass = "in_favor";
-      let voteLabel = "赞成 (In Favor)";
-      let reasonText = "支持维护和平与国际法秩序";
-
-      if (isPassed) {
-        voteClass = "in_favor";
-        voteLabel = "赞成 (In Favor)";
-        reasonText = isPlayer ? "本国常任理事国席位投赞成票" : "决议已通过生效";
-      } else if (vetoRecord && vetoRecord.votes && vetoRecord.votes[p5Key]) {
-        const v = vetoRecord.votes[p5Key];
-        voteClass = v.vote;
-        voteLabel = v.vote === "veto" ? "一票否决 (VETO)" : (v.vote === "abstain" ? "弃权 (Abstain)" : "赞成 (In Favor)");
-        reasonText = v.reason || "";
-      } else {
-        if (isPlayer) {
-          voteClass = "abstain";
-          voteLabel = "待表决 (Pending)";
-          reasonText = "等待玩家行使常任理事国表决权";
-        } else {
-          const aiV = window.W1980_AI.evaluateUNSCVote(p5Key, res, { countries: CM.countries, player: ST.player });
-          voteClass = aiV.vote;
-          voteLabel = aiV.vote === "veto" ? "一票否决 (VETO)" : (aiV.vote === "abstain" ? "弃权 (Abstain)" : "赞成 (In Favor)");
-          reasonText = aiV.reason;
-        }
-      }
-
-      let ch = '<div class="p5-flag">' + (flags[p5Key] || "") + " " + (ctry.zh || p5Key) + '</div>';
-      ch += '<div class="p5-role">' + (isPlayer ? '常任理事国 (本国席位)' : '常任理事国') + '</div>';
-      ch += '<div class="p5-vote-tag ' + voteClass + '">' + voteLabel + '</div>';
-      ch += '<div class="p5-reason">' + reasonText + '</div>';
-      card.innerHTML = ch;
-      gridEl.appendChild(card);
-    }
-  }
-
-  // 状态横幅与表决按钮状态
-  const banner = $("unsc-status-banner");
-  const bannerText = $("unsc-status-text");
-  const btnFavor = $("unsc-vote-favor");
-  const btnAbstain = $("unsc-vote-abstain");
-  const btnVeto = $("unsc-vote-veto");
-
-  const isP5Player = !!(ST.player && window.W1980_AI.UNSC_P5.includes(ST.player));
-
-  if (isPassed) {
-    if (banner) banner.className = "unsc-status-banner passed";
-    if (bannerText) bannerText.textContent = "【决议已生效】该决议已在安理会表决通过，各项国际法效力履约中。";
-    if (btnFavor) btnFavor.disabled = true;
-    if (btnAbstain) btnAbstain.disabled = true;
-    if (btnVeto) btnVeto.disabled = true;
-  } else if (vetoRecord) {
-    const vZh = (CM.countries[vetoRecord.vetoBy] || {}).zh || vetoRecord.vetoBy;
-    if (banner) banner.className = "unsc-status-banner vetoed";
-    if (bannerText) bannerText.textContent = "【草案遭否决】该草案在安理会审议中遭常任理事国（" + vZh + "）行使一票否决权（VETO）否决。";
-    if (btnFavor) btnFavor.disabled = true;
-    if (btnAbstain) btnAbstain.disabled = true;
-    if (btnVeto) btnVeto.disabled = true;
-  } else {
-    if (banner) banner.className = "unsc-status-banner";
-    if (bannerText) bannerText.textContent = isP5Player ?
-      "草案审议中：需要至少 3 票赞成且零否决方可通过。请常任理事国代表行使表决权。" :
-      (!ST.player ? "旁观模式仅供列席观摩联合国安理会审议。" : "非五常国家仅供列席观摩安理会多边审议程序。");
-
-    if (btnFavor) btnFavor.disabled = !isP5Player;
-    if (btnAbstain) btnAbstain.disabled = !isP5Player;
-    if (btnVeto) btnVeto.disabled = !isP5Player;
-  }
-
-  // R14: 安理会决议裁决印章
-  const uStamp = $("unsc-stamp-img");
-  if (uStamp) {
-    if (isPassed) {
-      uStamp.src = "assets/ui/stamp_ratified.png";
-      uStamp.style.display = "block";
-    } else if (vetoRecord) {
-      uStamp.src = "assets/ui/stamp_vetoed.png";
-      uStamp.style.display = "block";
-    } else {
-      uStamp.style.display = "none";
-    }
-  }
+  // G（收尾评审）：五常席位卡片与裁决横幅两段渲染抽为独立函数（见下方 unscRender*）。
+  unscRenderP5Grid(isPassed, vetoRecord, res);
+  unscRenderVerdictBanner(isPassed, vetoRecord);
 
   modal.style.display = "flex";
 }
+
+// G（收尾评审）：渲染安理会五常席位卡片，原样搬运
+function unscRenderP5Grid(isPassed, vetoRecord, res) {
+// 渲染五常席位卡片
+const gridEl = $("unsc-p5-grid");
+if (gridEl) {
+  gridEl.innerHTML = "";
+  const flags = { USA: "🇺🇸", SUN: "☭", CHN: "🇨🇳", GBR: "🇬🇧", FRA: "🇫🇷" };
+
+  for (let i = 0; i < window.W1980_AI.UNSC_P5.length; i++) {
+    const p5Key = window.W1980_AI.UNSC_P5[i];
+    const ctry = CM.countries[p5Key] || {};
+    const isPlayer = (ST.player === p5Key);
+
+    const card = document.createElement("div");
+    card.className = "p5-card" + (isPlayer ? " is-player" : "");
+
+    let voteClass = "in_favor";
+    let voteLabel = "赞成 (In Favor)";
+    let reasonText = "支持维护和平与国际法秩序";
+
+    if (isPassed) {
+      voteClass = "in_favor";
+      voteLabel = "赞成 (In Favor)";
+      reasonText = isPlayer ? "本国常任理事国席位投赞成票" : "决议已通过生效";
+    } else if (vetoRecord && vetoRecord.votes && vetoRecord.votes[p5Key]) {
+      const v = vetoRecord.votes[p5Key];
+      voteClass = v.vote;
+      voteLabel = v.vote === "veto" ? "一票否决 (VETO)" : (v.vote === "abstain" ? "弃权 (Abstain)" : "赞成 (In Favor)");
+      reasonText = v.reason || "";
+    } else {
+      if (isPlayer) {
+        voteClass = "abstain";
+        voteLabel = "待表决 (Pending)";
+        reasonText = "等待玩家行使常任理事国表决权";
+      } else {
+        const aiV = window.W1980_AI.evaluateUNSCVote(p5Key, res, { countries: CM.countries, player: ST.player });
+        voteClass = aiV.vote;
+        voteLabel = aiV.vote === "veto" ? "一票否决 (VETO)" : (aiV.vote === "abstain" ? "弃权 (Abstain)" : "赞成 (In Favor)");
+        reasonText = aiV.reason;
+      }
+    }
+
+    let ch = '<div class="p5-flag">' + (flags[p5Key] || "") + " " + (ctry.zh || p5Key) + '</div>';
+    ch += '<div class="p5-role">' + (isPlayer ? '常任理事国 (本国席位)' : '常任理事国') + '</div>';
+    ch += '<div class="p5-vote-tag ' + voteClass + '">' + voteLabel + '</div>';
+    ch += '<div class="p5-reason">' + reasonText + '</div>';
+    card.innerHTML = ch;
+    gridEl.appendChild(card);
+  }
+}
+}
+
+// G（收尾评审）：渲染状态横幅、表决按钮状态与裁决印章，原样搬运
+function unscRenderVerdictBanner(isPassed, vetoRecord) {
+// 状态横幅与表决按钮状态
+const banner = $("unsc-status-banner");
+const bannerText = $("unsc-status-text");
+const btnFavor = $("unsc-vote-favor");
+const btnAbstain = $("unsc-vote-abstain");
+const btnVeto = $("unsc-vote-veto");
+
+const isP5Player = !!(ST.player && window.W1980_AI.UNSC_P5.includes(ST.player));
+
+if (isPassed) {
+  if (banner) banner.className = "unsc-status-banner passed";
+  if (bannerText) bannerText.textContent = "【决议已生效】该决议已在安理会表决通过，各项国际法效力履约中。";
+  if (btnFavor) btnFavor.disabled = true;
+  if (btnAbstain) btnAbstain.disabled = true;
+  if (btnVeto) btnVeto.disabled = true;
+} else if (vetoRecord) {
+  const vZh = (CM.countries[vetoRecord.vetoBy] || {}).zh || vetoRecord.vetoBy;
+  if (banner) banner.className = "unsc-status-banner vetoed";
+  if (bannerText) bannerText.textContent = "【草案遭否决】该草案在安理会审议中遭常任理事国（" + vZh + "）行使一票否决权（VETO）否决。";
+  if (btnFavor) btnFavor.disabled = true;
+  if (btnAbstain) btnAbstain.disabled = true;
+  if (btnVeto) btnVeto.disabled = true;
+} else {
+  if (banner) banner.className = "unsc-status-banner";
+  if (bannerText) bannerText.textContent = isP5Player ?
+    "草案审议中：需要至少 3 票赞成且零否决方可通过。请常任理事国代表行使表决权。" :
+    (!ST.player ? "旁观模式仅供列席观摩联合国安理会审议。" : "非五常国家仅供列席观摩安理会多边审议程序。");
+
+  if (btnFavor) btnFavor.disabled = !isP5Player;
+  if (btnAbstain) btnAbstain.disabled = !isP5Player;
+  if (btnVeto) btnVeto.disabled = !isP5Player;
+}
+
+// R14: 安理会决议裁决印章
+const uStamp = $("unsc-stamp-img");
+if (uStamp) {
+  if (isPassed) {
+    uStamp.src = "assets/ui/stamp_ratified.png";
+    uStamp.style.display = "block";
+  } else if (vetoRecord) {
+    uStamp.src = "assets/ui/stamp_vetoed.png";
+    uStamp.style.display = "block";
+  } else {
+    uStamp.style.display = "none";
+  }
+}
+}
+
 
 function closeUNSCModal() {
   const modal = $("unsc-modal");
