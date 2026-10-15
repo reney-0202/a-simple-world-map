@@ -107,6 +107,8 @@ function runUNSCProbePhase2(r, assert, ctx) {
   ST.chokepoints.hormuz = "contested";
 
   openUNSCModal("res_598");
+  const pmodIRNBefore = SIM.S.P.pmods[entKeys("IRN")[0]] || 0;
+  const pmodIRQBefore = SIM.S.P.pmods[entKeys("IRQ")[0]] || 0;
   voteUNSC("in_favor");
   assert("res598Passed", ST.ai.unsc.passed.includes("res_598"), "598 号决议成功表决通过进入 passed 列表");
   assert("frontline1684Cleared", !ST.frontlines[1684], "598 号决议生效立即平息阿瓦士前线战事");
@@ -117,7 +119,14 @@ function runUNSCProbePhase2(r, assert, ctx) {
   const ekIRQ = entKeys("IRQ")[0];
   const pmodIRN = SIM.S.P.pmods[ekIRN] || 0;
   const pmodIRQ = SIM.S.P.pmods[ekIRQ] || 0;
-  assert("partiesEconomicRelief", pmodIRN >= 0.20 - 1e-4 && pmodIRQ >= 0.20 - 1e-4, "两伊当事国享受 +0.20pp/年 和平重建红利");
+  r.details.__pmodIRN = +pmodIRN.toFixed(4);
+  r.details.__pmodIRQ = +pmodIRQ.toFixed(4);
+  // H（玩法深度）：AI 主动战略目标强度平滑化后，两伊自身的扩军/军援代价会在决议通过
+  // 后的净 pmod 上叠加，因此断言改为「相对决议前的增量 ≥ +0.20pp」——红利本身必须完整
+  // 注入，净额由 AI 自身议程决定（与 summitprobe 的 aiDividendInjected 同构）。
+  assert("partiesEconomicRelief",
+    (pmodIRN - pmodIRNBefore) >= 0.20 - 1e-4 && (pmodIRQ - pmodIRQBefore) >= 0.20 - 1e-4,
+    "两伊当事国在 598 号决议通过时完整获得 +0.20pp/年 和平重建红利");
 
   // 7. 660 号决议：海湾危机多边制裁与光复科威特
   setFrontline(1809, "IRQ", "gulf_war");

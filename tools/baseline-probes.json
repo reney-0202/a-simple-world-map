@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 47,
+    "bloc": 44,
     "pop": 41,
-    "ind": 46,
-    "province": 44,
-    "delta": 47,
-    "resource": 50
+    "ind": 43,
+    "province": 41,
+    "delta": 46,
+    "resource": 53
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1282
+   "totalMs": 1298
   },
   "failed": false
  },
@@ -534,6 +534,14 @@
     "armsRaceEscalation": true,
     "armsRaceDetente": true,
     "proxyCounterAidTriggered": true,
+    "objectiveRampRange": true,
+    "objectiveRampMonotonic": true,
+    "objectiveRampSaturates": true,
+    "objectiveRampTransitionBand": true,
+    "objectiveRampYearSmooth": true,
+    "objectiveWarStaysBinary": true,
+    "objectiveMilScaledByIntensity": true,
+    "objectiveAidCarriesIntensity": true,
     "aiDecisionsPopulated": true,
     "sunCountersUSA": true,
     "pmodDecouplingLoss": true,
@@ -551,6 +559,8 @@
     "loadSuccess": true,
     "aiDecisionsRestored": true,
     "cablesRestored": true,
+    "objectiveProgressInDecisions": true,
+    "aiBoxObjectiveBar": true,
     "spectatorNoDecisions": true,
     "spectatorZeroPmods": true
    },
@@ -577,7 +587,7 @@
     "modalTitleContent": "PASS",
     "modalTreatyListRendered": "PASS",
     "modalCloses": "PASS",
-    "__pmodSUNBefore": -3,
+    "__pmodSUNBefore": -3.3333333333333335,
     "treatyActiveInState": "PASS",
     "playerReceivesDividend": "PASS",
     "__pmodSUNDelta": 0.4,
@@ -630,6 +640,8 @@
     "frontline1684Cleared": "PASS",
     "frontline1692Cleared": "PASS",
     "hormuzRestoredOpen": "PASS",
+    "__pmodIRN": -0.8,
+    "__pmodIRQ": 0.2,
     "partiesEconomicRelief": "PASS",
     "res660Passed": "PASS",
     "kuwaitLiberated": "PASS",

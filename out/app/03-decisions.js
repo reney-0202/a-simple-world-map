@@ -102,15 +102,19 @@ if (isAIActive() && ST.ai && ST.ai.decisions) {
     if (Array.isArray(dec.sanctions)) {
       for (let i = 0; i < dec.sanctions.length; i++) {
         const s = dec.sanctions[i], ek = entKeys(s.t);
-        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
-        selfPP_ai -= DEC_TIERS.san[s.l].self;
+        // H（玩法深度）：自主制裁条目携带目标强度 intensity，效应按比例折算
+        const k = (typeof s.intensity === "number") ? s.intensity : 1;
+        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt * k;
+        selfPP_ai -= DEC_TIERS.san[s.l].self * k;
       }
     }
     if (Array.isArray(dec.aid)) {
       for (let i = 0; i < dec.aid.length; i++) {
         const a = dec.aid[i], ek = entKeys(a.t);
-        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
-        selfPP_ai -= DEC_TIERS.aid[a.l].self;
+        // H（玩法深度）：自主军援条目携带目标强度 intensity，效应按比例折算
+        const k = (typeof a.intensity === "number") ? a.intensity : 1;
+        for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt * k;
+        selfPP_ai -= DEC_TIERS.aid[a.l].self * k;
       }
     }
     if (selfPP_ai !== 0) {

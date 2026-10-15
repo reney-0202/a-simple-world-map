@@ -617,78 +617,100 @@
   //   sanction   —— 对目标的制裁（{t: KEY, l: 0..2}）
   //   cohesion   —— 阵营内聚力（体现为对同阵营弱国的军援倾向）
   // weight 决定同 tick 内多个目标同时成立时的优先级（高者先）。
+  //
+  // H（玩法深度）：目标强度平滑化 ---------------------------------------------------
+  // 旧版每个目标只有硬阈值 cond（成立=满强度 1、不成立=0），AI 在阈值两侧行为突变。
+  // 现在给目标加 ramp(w) → [0,1] 连续强度：effWeight = weight × intensity 决定同 tick
+  // 优先级，mil 偏移按 intensity 线性缩放，aid/sanction 档位按强度量化，强度同时作为
+  // UI 进度条数据源（progress）。
+  // **不变量**：ramp 的饱和点一律取旧 cond 的阈值（或更低），因此「旧 cond 成立」的
+  // 状态区间内 intensity 恒为 1 —— 既有决策逐位不变；新行为只出现在旧 cond 不成立的
+  // 过渡带（阈值下方），即把「突变开关」变为「渐进爬坡」。
+  // 纯事件型条件（warActive）保持二值：战争本身就是开/关，不存在中间态。
+  function rampLin(v, a, b) {
+    if (typeof v !== "number" || !isFinite(v)) return 0;
+    if (b === a) return v >= b ? 1 : 0;
+    const t = (v - a) / (b - a);
+    return t <= 0 ? 0 : (t >= 1 ? 1 : t);
+  }
+  // 张力爬坡：张力到达旧阈值 thr 时饱和为 1
+  function rampTension(lo, thr) { return (w) => rampLin(w.tension, lo, thr); }
+  // 年份爬坡：年份到达旧阈值 thr 时饱和为 1
+  function rampYear(lo, thr) { return (w) => rampLin(w.year, lo, thr); }
+  const OBJ_MIN_INTENSITY = 0.02;
+
   const STRATEGIC_OBJECTIVES = {
     USA: [
       { id: "usa_frontline_deterrence", kind: "mil", delta: +0.6, weight: 8,
-        zh: "前沿遏制", cond: (w) => w.tension >= 55,
+        zh: "前沿遏制", ramp: rampTension(40, 55),
         note: "对苏张力高企时追加前沿威慑军费" },
       { id: "usa_ally_binding", kind: "aid", target: "DEU", l: 1, weight: 5,
-        zh: "同盟绑定", cond: (w) => w.year >= 1983,
+        zh: "同盟绑定", ramp: rampYear(1980, 1983),
         note: "潘兴/中导部署后强化对西德安全承诺" },
       { id: "usa_gulf_oil", kind: "aid", target: "SAU", l: 1, weight: 6,
-        zh: "海湾石油线", cond: (w) => w.year >= 1981 && !w.peace,
+        zh: "海湾石油线", cond: (w) => !w.peace, ramp: rampYear(1978, 1981),
         note: "两伊开战后保障沙特油线与地区存在" }
     ],
     SUN: [
       { id: "sun_parity", kind: "mil", delta: +0.8, weight: 9,
-        zh: "战略均势", cond: (w) => w.tension >= 50,
+        zh: "战略均势", ramp: rampTension(38, 50),
         note: "对美张力升高时恢复军备竞赛投入" },
       { id: "sun_bloc_glue", kind: "aid", target: "POL", l: 1, weight: 5,
-        zh: "华约黏合", cond: (w) => w.year >= 1980,
+        zh: "华约黏合", ramp: rampYear(1977, 1980),
         note: "以经援/军援维系波兰团结工会危机后的阵营" },
       { id: "sun_third_world", kind: "aid", target: "LEV", l: 1, weight: 4,
-        zh: "第三世界支点", cond: (w) => w.year >= 1982,
+        zh: "第三世界支点", ramp: rampYear(1979, 1982),
         note: "在地中海东岸维持苏联海军与顾问存在" }
     ],
     CHN: [
       { id: "chn_sez_growth", kind: "mil", delta: -0.4, weight: 7,
-        zh: "韬光养晦", cond: (w) => w.year >= 1980,
+        zh: "韬光养晦", ramp: rampYear(1977, 1980),
         note: "特区开放期主动压缩军费占比，把资源让给经济建设" },
       { id: "chn_prk_deterrence", kind: "aid", target: "PRK", l: 1, weight: 5,
-        zh: "半岛威慑", cond: (w) => w.year >= 1984,
+        zh: "半岛威慑", ramp: rampYear(1981, 1984),
         note: "南北对峙升温时维持对朝安全承诺" },
       { id: "chn_pak_balance", kind: "aid", target: "PAK", l: 1, weight: 5,
-        zh: "南亚制衡", cond: (w) => w.year >= 1982,
+        zh: "南亚制衡", ramp: rampYear(1979, 1982),
         note: "苏联入侵阿富汗后深化中巴战略协作" }
     ],
     DEU: [
       { id: "deu_detente", kind: "mil", delta: -0.5, weight: 7,
-        zh: "新东方政策", cond: (w) => w.year >= 1980,
+        zh: "新东方政策", ramp: rampYear(1977, 1980),
         note: "推动东西欧缓和，克制军费增速" },
       { id: "deu_gas_pipeline", kind: "aid", target: "SUN", l: 0, weight: 4,
-        zh: "油气换钢管", cond: (w) => w.year >= 1981,
+        zh: "油气换钢管", ramp: rampYear(1978, 1981),
         note: "以经贸纽带换取能源供应与缓和红利（低档往来）" },
       { id: "deu_atlantic_bond", kind: "cohesion", weight: 5,
-        zh: "大西洋纽带", cond: (w) => w.tension >= 45,
+        zh: "大西洋纽带", ramp: rampTension(30, 45),
         note: "对抗升级时向西约同盟靠拢" }
     ],
     GBR: [
       { id: "gbr_special_relationship", kind: "aid", target: "USA", l: 1, weight: 6,
-        zh: "特殊关系", cond: (w) => w.year >= 1982,
+        zh: "特殊关系", ramp: rampYear(1979, 1982),
         note: "马岛胜利后强化对美协调" },
       { id: "gbr_falklands_vigil", kind: "mil", delta: +0.3, weight: 5,
-        zh: "远海警戒", cond: (w) => w.year >= 1982 && w.year <= 1984,
+        zh: "远海警戒", cond: (w) => w.year <= 1984, ramp: rampYear(1980, 1982),
         note: "马岛战后维持远海投送能力" }
     ],
     FRA: [
       { id: "fra_independence", kind: "mil", delta: +0.4, weight: 6,
-        zh: "戴高乐主义", cond: (w) => w.tension >= 50,
+        zh: "戴高乐主义", ramp: rampTension(38, 50),
         note: "对抗升级时强化独立核威慑与常规力量" },
       { id: "fra_africa_sway", kind: "aid", target: "LBY", l: 1, weight: 4,
-        zh: "非洲影响", cond: (w) => w.year >= 1983,
+        zh: "非洲影响", ramp: rampYear(1980, 1983),
         note: "在乍得/非洲之角维系法语区影响" }
     ],
     JPN: [
       { id: "jpn_economic_security", kind: "mil", delta: -0.2, weight: 5,
-        zh: "经济优先", cond: (w) => w.year >= 1980,
+        zh: "经济优先", ramp: rampYear(1977, 1980),
         note: "贸易立国，压低军费占比" },
       { id: "jpn_sea_lane", kind: "aid", target: "KOR", l: 1, weight: 6,
-        zh: "海上生命线", cond: (w) => w.year >= 1983,
+        zh: "海上生命线", ramp: rampYear(1980, 1983),
         note: "保障对马海峡—波斯湾航线安全" }
     ],
     IRN: [
       { id: "irn_revolution_export", kind: "aid", target: "LEV", l: 1, weight: 6,
-        zh: "革命输出", cond: (w) => w.year >= 1982,
+        zh: "革命输出", ramp: rampYear(1979, 1982),
         note: "两伊战争中向黎凡特方向延伸影响" },
       { id: "irn_war_mobilization", kind: "mil", delta: +0.7, weight: 8,
         zh: "战争动员", cond: (w) => w.warActive,
@@ -699,13 +721,15 @@
         zh: "战争动员", cond: (w) => w.warActive,
         note: "两伊战争期间全力扩军" },
       { id: "irq_gulf_sway", kind: "aid", target: "LEV", l: 1, weight: 4,
-        zh: "阿拉伯纽带", cond: (w) => w.year >= 1983,
+        zh: "阿拉伯纽带", ramp: rampYear(1980, 1983),
         note: "在阿拉伯世界维系盟友圈" }
     ]
   };
 
-  // 评估某 AI 国当前成立的目标（按 weight 降序）。worldState 需带：
-  //   tension（该国对玩家张力 0-100）、year、month、warActive、peace
+  // 评估某 AI 国当前成立的目标（按 effWeight = weight × intensity 降序）。worldState 需带：
+  //   tension（该国对玩家张力 0-100）、year、month、warActive、peace、
+  //   playerMil（玩家军费占比，供军备落差类目标使用）、treatyCount（生效军控条约数）
+  // H（玩法深度）：返回浅拷贝并附加 intensity / effWeight / progress，不再外泄数据表引用。
   function evaluateObjectives(aiKey, worldState) {
     const list = STRATEGIC_OBJECTIVES[aiKey];
     if (!list || !worldState) return [];
@@ -714,22 +738,39 @@
       year: worldState.year || 1980,
       month: worldState.month || 1,
       warActive: !!worldState.warActive,
-      peace: !!worldState.peace
+      peace: !!worldState.peace,
+      playerMil: typeof worldState.playerMil === "number" ? worldState.playerMil : 0,
+      treatyCount: typeof worldState.treatyCount === "number" ? worldState.treatyCount : 0
     };
     const out = [];
     for (const o of list) {
-      let ok = true;
-      if (typeof o.cond === "function") { try { ok = o.cond(w); } catch (e) { ok = false; } }
-      if (ok) out.push(o);
+      let gate = true;
+      if (typeof o.cond === "function") { try { gate = o.cond(w); } catch (e) { gate = false; } }
+      if (!gate) continue;
+      let inten = 1;
+      if (typeof o.ramp === "function") { try { inten = o.ramp(w); } catch (e) { inten = 1; } }
+      if (typeof inten !== "number" || !isFinite(inten)) inten = 1;
+      inten = inten <= 0 ? 0 : (inten >= 1 ? 1 : inten);
+      if (inten <= OBJ_MIN_INTENSITY) continue;
+      out.push({
+        id: o.id, zh: o.zh, kind: o.kind, note: o.note || "",
+        delta: typeof o.delta === "number" ? o.delta : 0,
+        target: o.target, l: o.l, weight: o.weight || 0,
+        intensity: inten, effWeight: (o.weight || 0) * inten, progress: inten
+      });
     }
-    out.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    // Array.prototype.sort 稳定：effWeight 相同时保持声明顺序（与旧版 weight 排序逐位一致）。
+    out.sort((a, b) => b.effWeight - a.effWeight);
     return out;
   }
 
   // 把成立目标折算成「与反应式结果合并前」的自主行动增量：
-  //   mil      —— 军费偏移（多个 mil 目标取最大正值，避免叠加失控）
-  //   aid      —— 军援名单（按 weight 降序，受 maxAid 限制）
+  //   mil      —— 军费偏移（多个 mil 目标取最大正值 × 强度，避免叠加失控）
+  //   aid      —— 军援名单（按 effWeight 降序，受 maxAid 限制）
   //   sanctions—— 自主制裁（kind=sanction，受 maxSanctions 限制）
+  // H（玩法深度）：名单条目携带 intensity，由引擎（accAiDecisions）按比例折算其
+  // 对目标国与自身的 pmod 效应——半心半意的目标只产生一半的军援/制裁强度。
+  // 强度 = 1 时条目形态与旧版等价（只多一个 intensity 字段），既有数值逐位不变。
   function objectivesToActions(aiKey, worldState) {
     const doc = getDoctrine(aiKey, worldState && worldState.countries ? worldState.countries[aiKey] : null);
     const objs = evaluateObjectives(aiKey, worldState);
@@ -737,21 +778,22 @@
     let aidN = 0, sanN = 0;
     for (const o of objs) {
       if (o.kind === "mil") {
-        if (o.delta > act.milDelta) act.milDelta = o.delta;
+        const d = o.delta * o.intensity;
+        if (d > act.milDelta) act.milDelta = d;
       } else if (o.kind === "aid") {
         if (aidN >= (doc.maxAid || 1)) continue;
         if (!o.target || o.target === worldState.playerKey) continue;
         // 目标必须是已知实体（数据层外键自检）
         const tgt = worldState && worldState.countries ? worldState.countries[o.target] : null;
         if (!tgt) continue;
-        act.aid.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id });
+        act.aid.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id, intensity: o.intensity });
         aidN++;
       } else if (o.kind === "sanction") {
         if (sanN >= (doc.maxSanctions || 1)) continue;
         if (!o.target) continue;
         const tgt = worldState && worldState.countries ? worldState.countries[o.target] : null;
         if (!tgt) continue;
-        act.sanctions.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id });
+        act.sanctions.push({ t: o.target, l: typeof o.l === "number" ? o.l : 1, since: 0, obj: o.id, intensity: o.intensity });
         sanN++;
       }
       // cohesion 类目标只作为「倾向」参与态度计算，不直接产生名单动作

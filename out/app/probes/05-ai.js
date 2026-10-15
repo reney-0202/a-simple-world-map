@@ -81,6 +81,40 @@ function runAIProbePhase1(r, assert, ctx) {
   // 8. 代理人对冲军援 (Proxy Aid)
   const reactAidIrq = AI.evaluateReactions("SUN", "USA", { mil: 0, sanctions: [], aid: [{ t: "IRQ", l: 1 }] }, { countries: CM.countries });
   assert("proxyCounterAidTriggered", reactAidIrq && reactAidIrq.aid.some((x) => x.t === "IRN"), "美国军援伊拉克触发苏联对冲军援伊朗");
+
+  // 16. H（玩法深度）：主动战略目标强度平滑化（静态阈值 → ramp 平滑函数）
+  const objW = (tension, year, warActive) => ({ countries: CM.countries, year: year, month: 6, tension: tension, warActive: !!warActive });
+  const progOf = (list, id) => { for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i].progress; return -1; };
+  const objsT40 = AI.evaluateObjectives("SUN", objW(40, 1984));
+  const objsT44 = AI.evaluateObjectives("SUN", objW(44, 1984));
+  const objsT60 = AI.evaluateObjectives("SUN", objW(60, 1984));
+  assert("objectiveRampRange", objsT60.length > 0 && objsT60.every((o) => o.progress >= 0 && o.progress <= 1),
+    "目标强度恒落在 [0,1] 区间");
+  assert("objectiveRampMonotonic",
+    progOf(objsT40, "sun_parity") < progOf(objsT44, "sun_parity") && progOf(objsT44, "sun_parity") < progOf(objsT60, "sun_parity"),
+    "sun_parity 强度随张力单调递增（40 < 44 < 60）");
+  assert("objectiveRampSaturates", progOf(objsT60, "sun_parity") === 1,
+    "张力高于旧阈值时强度饱和为 1（既有决策逐位不变的不变量）");
+  assert("objectiveRampTransitionBand", progOf(objsT40, "sun_parity") > 0 && progOf(objsT40, "sun_parity") < 1,
+    "张力低于旧阈值时强度落在 (0,1) 过渡带（旧版为硬关断）");
+  const objChn1980 = AI.evaluateObjectives("CHN", objW(30, 1980));
+  const objChn1982 = AI.evaluateObjectives("CHN", objW(30, 1982));
+  assert("objectiveRampYearSmooth",
+    progOf(objChn1980, "chn_pak_balance") > 0 && progOf(objChn1980, "chn_pak_balance") < 1 && progOf(objChn1982, "chn_pak_balance") === 1,
+    "chn_pak_balance 按年份渐进爬坡并在旧阈值 1982 处饱和");
+  assert("objectiveWarStaysBinary",
+    progOf(AI.evaluateObjectives("IRQ", objW(60, 1984, true)), "irq_war_mobilization") === 1 &&
+    progOf(AI.evaluateObjectives("IRQ", objW(60, 1984, false)), "irq_war_mobilization") === -1,
+    "战争型目标保持二值（warActive 开/关），不引入中间态");
+  const actSunHi = AI.objectivesToActions("SUN", objW(60, 1984));
+  const actSunLo = AI.objectivesToActions("SUN", objW(41, 1984));
+  assert("objectiveMilScaledByIntensity",
+    actSunHi.milDelta === 0.8 && actSunLo.milDelta > 0 && actSunLo.milDelta < 0.8,
+    "军费偏移按目标强度线性缩放（满强度 0.8，过渡带内严格小于 0.8）");
+  const chnMid = AI.objectivesToActions("CHN", objW(30, 1980.5));
+  assert("objectiveAidCarriesIntensity",
+    chnMid.aid.length === 1 && chnMid.aid[0].t === "PAK" && chnMid.aid[0].l === 1 && Math.abs(chnMid.aid[0].intensity - 0.5) < 1e-9,
+    "军援条目携带目标强度（过渡带 0.5），由引擎按比例折算效应");
 }
 
 // G（收尾评审）：runAIProbe 的阶段二（原样搬运，无逻辑改动）
@@ -141,7 +175,20 @@ function runAIProbePhase2(r, assert, ctx) {
   assert("aiDecisionsRestored", ST.ai.decisions.SUN && ST.ai.decisions.SUN.sanctions.length === 1, "读档后苏联反制裁决策完美还原");
   assert("cablesRestored", ST.ai.cables.length === cableCountBefore, "读档后外交照会档案完美还原");
 
-  // 15. 旁观模式零漂移铁律
+  // 15. H（玩法深度）：目标强度下传决策载荷，并渲染为 UI 进度条
+  setPlayer("USA");
+  updateAIDecisions(1984, 6, true);
+  const decSun = ST.ai.decisions.SUN;
+  assert("objectiveProgressInDecisions",
+    decSun && Array.isArray(decSun.objectives) && decSun.objectives.length > 0 &&
+    decSun.objectives.every((o) => typeof o.progress === "number" && o.progress > 0 && o.progress <= 1),
+    "AI 决策载荷携带目标强度 progress ∈ (0,1]，供 UI 消费");
+  select("SUN");
+  const aiBoxObj = $("p-ai-box");
+  assert("aiBoxObjectiveBar", aiBoxObj && aiBoxObj.innerHTML.includes("ai-obj-bar"),
+    "AI 面板把目标强度渲染为进度条");
+
+  // 16. 旁观模式零漂移铁律
   simReset();
   setPlayer(null);
   assert("spectatorNoDecisions", Object.keys(ST.ai.decisions).length === 0, "旁观模式下 ST.ai.decisions 绝对为空");

@@ -83,7 +83,9 @@ for (const k in CM.countries) {
         countries: CM.countries, year: curY, month: curM,
         tension: (newTensions[k] && typeof newTensions[k].tension === "number") ? newTensions[k].tension : 20,
         warActive: !!(ST.frontlines && Object.keys(ST.frontlines).length),
-        peace: false, playerKey: ST.player
+        peace: false, playerKey: ST.player,
+        playerMil: (playerDecisions && typeof playerDecisions.mil === "number") ? playerDecisions.mil : 0,
+        treatyCount: (ST.ai && Array.isArray(ST.ai.treaties)) ? ST.ai.treaties.filter((t) => t && t.status === "active").length : 0
       };
       const act = window.W1980_AI.objectivesToActions(k, ow);
       objectives = act.objectives || [];
@@ -101,7 +103,7 @@ for (const k in CM.countries) {
       mil: mil,
       sanctions: sanList,
       aid: aidList,
-      objectives: objectives.map((o) => ({ id: o.id, zh: o.zh, kind: o.kind, note: o.note || "" }))
+      objectives: objectives.map((o) => ({ id: o.id, zh: o.zh, kind: o.kind, note: o.note || "", progress: o.progress }))
     };
 
     const oldDec = ST.ai.decisions ? ST.ai.decisions[k] : null;
@@ -217,17 +219,19 @@ function refreshAIBox(selKey) {
     (milDelta > 0.05 ? '（跟进动员 +' + milDelta.toFixed(1) + '%）' : (milDelta < -0.05 ? '（军备缓和 ' + milDelta.toFixed(1) + '%）' : '')) + '</span></div>';
 
   const actions = [];
+  // H（玩法深度）：名单条目可能只带部分强度（ramp 过渡带），在文案上如实标注
+  const intenTag = (v) => (typeof v === "number" && v < 1) ? ' · 强度 ' + Math.round(v * 100) + '%' : '';
   if (dec && Array.isArray(dec.sanctions) && dec.sanctions.length > 0) {
     for (let i = 0; i < dec.sanctions.length; i++) {
       const s = dec.sanctions[i];
-      actions.push('⚠️ 对我国实施对等反制裁（' + DEC_TIERS.san[s.l].zh + '，对方 -' + DEC_TIERS.san[s.l].tgt.toFixed(1) + 'pp/年）');
+      actions.push('⚠️ 对我国实施对等反制裁（' + DEC_TIERS.san[s.l].zh + '，对方 -' + DEC_TIERS.san[s.l].tgt.toFixed(1) + 'pp/年' + intenTag(s.intensity) + '）');
     }
   }
   if (dec && Array.isArray(dec.aid) && dec.aid.length > 0) {
     for (let i = 0; i < dec.aid.length; i++) {
       const a = dec.aid[i];
       const tZh = (CM.countries[a.t] || {}).zh || a.t;
-      actions.push('🛡️ 向 ' + tZh + ' 提供对冲军援（' + DEC_TIERS.aid[a.l].zh + '）');
+      actions.push('🛡️ 向 ' + tZh + ' 提供对冲军援（' + DEC_TIERS.aid[a.l].zh + intenTag(a.intensity) + '）');
     }
   }
   if (milDelta > 0.05) {
@@ -236,13 +240,17 @@ function refreshAIBox(selKey) {
 
   // E（玩法评审）：主动战略目标展示 —— 让玩家看见 AI「自己在想什么」，
   // 而不只是它对玩家动作的反应。
+  // H（玩法深度）：目标强度以进度条呈现（ramp 平滑函数的可见结果）。
   if (dec && Array.isArray(dec.objectives) && dec.objectives.length > 0) {
     h += '<div class="ai-treaties-wrap"><div class="ai-treaty-title">🎯 主动战略目标（与我国行动无关）</div>';
     for (let i = 0; i < dec.objectives.length; i++) {
       const o = dec.objectives[i];
       const kindZh = o.kind === "mil" ? "军费调整" : (o.kind === "aid" ? "对外军援" :
         (o.kind === "sanction" ? "自主制裁" : "阵营倾向"));
+      const pct = Math.round((typeof o.progress === "number" ? o.progress : 1) * 100);
       h += '<div class="ai-action-item">🎯 <b>' + o.zh + '</b>（' + kindZh + '）' +
+        '<span class="ai-obj-bar"><i style="width:' + pct + '%"></i></span>' +
+        '<span style="color:var(--dim)">' + pct + '%</span>' +
         (o.note ? '<span style="color:var(--dim)"> — ' + o.note + '</span>' : '') + '</div>';
     }
     h += '</div>';
