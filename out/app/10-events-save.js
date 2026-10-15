@@ -241,7 +241,7 @@ function evRebuild(y, m) {
 function simSave(slot) {
   if (!SIM.ready) return { ok: false, reason: "not-ready" };
   const key = saveKeyFor(slot);
-  const d = { v: 2, slot: slotKeyOf(slot), S: W1980_SIM.serialize(SIM.S),
+  const d = { v: SAVE_VERSION, slot: slotKeyOf(slot), S: W1980_SIM.serialize(SIM.S),
     player: ST.player, mil: ST.mil, vol: SIM.vol, speed: SIM.speed,
     sanctions: ST.sanctions, aid: ST.aid,             // R5C'：对外决策名单（单一事实源，pmods 由名单重建）
     blocOverride: ST.blocOverride,                    // R5E：阵营迁移（旧档缺省 = 原阵营）
@@ -261,6 +261,9 @@ function simSave(slot) {
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
     sandbox: !!ST.sandbox,                            // E：沙盒模式开关（随存档持久化）
+    // J1（v3 新增）：三项此前未持久化的 UI 偏好 —— 面板选项卡、时代大新闻开关、终局长卷选项卡。
+    // v2 旧档缺这三项，由 v2→v3 迁移按缺省值补齐（见 SAVE_MIGRATIONS）。
+    panelTab: ST.panelTab, newsModalEnabled: !!ST.newsModalEnabled, endTab: ST.endTab,
     cr: CR.choices,                                   // R5D：十字路口选择记录（读档重建 deny/active）
     view: { x: view.x, y: view.y, s: view.s },
     savedAt: new Date().toISOString() };               // C（存档评审）：多槽展示用存档时间戳
@@ -282,8 +285,10 @@ function simLoad(slot) {
   if (raw === null) return { ok: false, reason: "empty" };
   try { d = JSON.parse(raw); } catch (e) { return { ok: false, reason: "corrupt", detail: String(e && e.message || e), bytes: raw.length }; }
   if (!d || typeof d !== "object") return { ok: false, reason: "corrupt", detail: "存档不是对象", bytes: raw.length };
-  // C（存档评审）：版本迁移表——未知版本号一律拒绝并显式报出（不许静默当 v2 解析）
-  if (d.v !== 2 || !d.S) return { ok: false, reason: "version", detail: "存档版本 v" + (d && d.v) + " 不被支持（当前 v2）", bytes: raw.length };
+  // J1：走迁移链把旧版本升到当前版本（v2→v3 自动补齐新增字段；v1 明确 dropped）
+  const mig = migrateSave(d);
+  if (!mig.ok) return { ok: false, reason: mig.reason, detail: mig.detail, bytes: raw.length };
+  d = mig.data;
   loadPlayerProfile(d);        // R5C'/R5E/R7A：玩家决策、阵营迁移与领袖军费
   loadFrontlineState(d);       // R8A：交战前线占领态
   loadEconomyState(d);         // R9B/R9C：贸易航线、双轨储备与经济战
@@ -462,6 +467,11 @@ function loadUiPreferences(d) {
   // E：沙盒模式开关还原（旧档缺省 = 非沙盒）
   ST.sandbox = !!d.sandbox;
   updateSandboxBadge();
+  // J1（v3 新增字段）：面板选项卡 / 时代大新闻开关 / 终局长卷选项卡。
+  // v2 旧档的这三项已由 v2→v3 迁移补上缺省值，故此处总能读到。
+  if (typeof setPanelTab === "function" && typeof d.panelTab === "string") setPanelTab(d.panelTab);
+  if (typeof d.newsModalEnabled === "boolean") ST.newsModalEnabled = d.newsModalEnabled;
+  if (typeof setEndTab === "function" && typeof d.endTab === "string") setEndTab(d.endTab);
   if (d.mode && MODES.some((m) => m[0] === d.mode)) setMode(d.mode);
   else { fillLegend(); render(); drawOverlay(); }
   if (d.layers) { for (const k in ST.layers) if (k in d.layers) ST.layers[k] = !!d.layers[k]; refreshLayerBtns(); }
@@ -471,10 +481,12 @@ function loadUiPreferences(d) {
   updateDate();
 }
 // ---- C（存档评审）：多槽 + 配额/失败诊断 + 版本迁移表 -------------------------
-// 槽位布局：0 = 默认槽（键名保持 w1980_save_v2，向后兼容旧存档与既有探针），
+// 槽位布局：0 = 默认槽（localStorage 键名沿用 w1980_save_v2 —— 键名是存储位置、
+// 与格式版本无关；格式版本现为 v3，旧 v2 档由迁移链自动升版），
 // 1..3 = 扩展槽 w1980_save_v2_s1 .. _s3。SAVE_KEY_V1 是 v1 旧档，只读提示、不再加载。
 const SAVE_SLOTS = 4;                       // 总槽位数（含默认槽）
-const SAVE_VERSION = 2;                     // 当前存档格式版本（迁移表见 saveFormatNote）
+const SAVE_VERSION = 3;                     // 当前存档格式版本（迁移链见 SAVE_MIGRATIONS）
+const MIN_LOADABLE_VERSION = 2;             // 最低可载入版本（v1 明确 dropped，见迁移链）
 function saveKeyFor(slot) {
   const i = slotIdx(slot);
   return i === 0 ? SAVE_KEY : SAVE_KEY + "_s" + i;
@@ -485,12 +497,39 @@ function slotIdx(slot) {
   return Math.min(SAVE_SLOTS - 1, Math.floor(n));
 }
 function slotKeyOf(slot) { return String(slotIdx(slot)); }
-// 版本迁移表：v1（重放式存档，无玩家决策）→ 故意不支持，只提示；
-// v2 = 全量序列化（当前）。任何其他版本号一律拒绝并报出版本号。
+// J1：版本迁移链 —— 每个可迁移段带 migrate()，simLoad 逐段升版至当前版本。
+// v1（重放式存档，无玩家决策）明确 dropped，只提示不迁移（与 v2 全量序列化是两条真相）。
 const SAVE_MIGRATIONS = [
-  { from: 1, to: 2, status: "dropped", note: "v1 为「同种子重放」式存档，与 v2 全量序列化是两条真相（SIM.md §10），故不再迁移" }
+  { from: 1, to: 2, status: "dropped",
+    note: "v1 为「同种子重放」式存档，与 v2 全量序列化是两条真相（SIM.md §10），故不再迁移" },
+  { from: 2, to: 3, status: "migrated",
+    note: "v3 起持久化面板选项卡 / 时代大新闻开关 / 终局长卷选项卡；v2 旧档按缺省值补齐",
+    migrate: function (d) {
+      if (typeof d.panelTab !== "string") d.panelTab = "overview";
+      if (typeof d.newsModalEnabled !== "boolean") d.newsModalEnabled = true;
+      if (typeof d.endTab !== "string") d.endTab = "rubric";
+      d.v = 3;
+      return d;
+    } }
 ];
-function saveFormatNote() { return SAVE_MIGRATIONS.map((m) => "v" + m.from + "→v" + m.to + ": " + m.status).join("；"); }
+function saveFormatNote() {
+  return SAVE_MIGRATIONS.map((m) => "v" + m.from + "→v" + m.to + ": " + m.status).join("；");
+}
+// 把任意可载入版本的存档升到 SAVE_VERSION。返回 { ok, data } 或 { ok:false, reason, detail }。
+function migrateSave(d) {
+  if (!d || typeof d !== "object" || !d.S) return { ok: false, reason: "corrupt" };
+  if (typeof d.v !== "number" || d.v < 1) return { ok: false, reason: "corrupt", detail: "存档缺少版本号" };
+  if (d.v > SAVE_VERSION) return { ok: false, reason: "version", detail: "存档版本 v" + d.v + " 高于当前 v" + SAVE_VERSION + "（请更新游戏）" };
+  if (d.v < MIN_LOADABLE_VERSION) return { ok: false, reason: "version", detail: "存档版本 v" + d.v + " 已不再支持（最低 v" + MIN_LOADABLE_VERSION + "）" };
+  let cur = d, guard = 0;
+  while (cur.v < SAVE_VERSION && guard++ < 16) {
+    const step = SAVE_MIGRATIONS.find((m) => m.from === cur.v && m.status === "migrated" && typeof m.migrate === "function");
+    if (!step) return { ok: false, reason: "version", detail: "缺少 v" + cur.v + " → v" + (cur.v + 1) + " 的迁移规则" };
+    cur = step.migrate(cur);
+  }
+  if (cur.v !== SAVE_VERSION) return { ok: false, reason: "version", detail: "迁移未到达 v" + SAVE_VERSION };
+  return { ok: true, data: cur };
+}
 // 配额估算：navigator.storage.estimate() 可用时给出真实用量，否则回退为本地已用字节
 function quotaInfo() {
   try {
@@ -510,13 +549,15 @@ function saveSlotInfo(slot) {
   if (raw === null) return { slot: slotIdx(slot), key: key, empty: true };
   try {
     const d = JSON.parse(raw);
-    if (!d || typeof d !== "object" || d.v !== SAVE_VERSION || !d.S) {
-      return { slot: slotIdx(slot), key: key, empty: true, reason: d && d.v !== SAVE_VERSION ? "version" : "corrupt", detail: d && d.v !== SAVE_VERSION ? "版本 v" + d.v : "结构损坏" };
+    // J1：摘要接受任何「可迁移」版本（v2 与 v3 都能读，载入时自动升版）
+    const mig = migrateSave(d);
+    if (!mig.ok) {
+      return { slot: slotIdx(slot), key: key, empty: true, reason: mig.reason || "corrupt", detail: mig.detail || "结构损坏" };
     }
     return { slot: slotIdx(slot), key: key, empty: false, bytes: raw.length, savedAt: d.savedAt || null,
       year: d.S && typeof d.S.year === "number" ? d.S.year : null,
       month: d.S && typeof d.S.month === "number" ? d.S.month : null,
-      player: d.player || null, mil: typeof d.mil === "number" ? d.mil : null };
+      player: d.player || null, mil: typeof d.mil === "number" ? d.mil : null, ver: d.v };
   } catch (e) { return { slot: slotIdx(slot), key: key, empty: true, reason: "corrupt", detail: String(e && e.message || e) }; }
 }
 function saveSlots() { const a = []; for (let i = 0; i < SAVE_SLOTS; i++) a.push(saveSlotInfo(i)); return a; }
@@ -537,12 +578,14 @@ function saveImportInto(slot, text) {
   if (typeof text !== "string" || !text.trim()) return { ok: false, reason: "corrupt", detail: "文件为空" };
   let d = null;
   try { d = JSON.parse(text); } catch (e) { return { ok: false, reason: "corrupt", detail: String(e && e.message || e) }; }
-  if (!d || typeof d !== "object" || d.v !== SAVE_VERSION || !d.S) {
-    return { ok: false, reason: "version", detail: "导入文件版本 v" + (d && d.v) + " 不被支持（当前 v" + SAVE_VERSION + "）" };
-  }
-  try { localStorage.setItem(saveKeyFor(slot), text); }
+  // J1：导入即升版 —— 校验文件可迁移，落盘时写入迁移后的当前版本，槽位不残留旧格式
+  const mig = migrateSave(d);
+  if (!mig.ok) return { ok: false, reason: mig.reason || "version", detail: mig.detail || "导入文件版本不被支持" };
+  let payload = text;
+  if (mig.data !== d) { try { payload = JSON.stringify(mig.data); } catch (e) { payload = text; } }
+  try { localStorage.setItem(saveKeyFor(slot), payload); }
   catch (e) { return { ok: false, reason: (e && e.name === "QuotaExceededError") ? "quota" : "storage", detail: String(e && e.message || e) }; }
-  return { ok: true, slot: slotIdx(slot) };
+  return { ok: true, slot: slotIdx(slot), migratedFrom: mig.data.v !== d.v ? d.v : null };
 }
 // 失败原因 → 中文（调用方共用，保证各处提示一致）
 function saveReasonZh(r) {

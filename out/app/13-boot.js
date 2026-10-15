@@ -183,9 +183,33 @@ load().then(() => {
     } catch (e) { quotaSeen = false; }
     finally { Storage.prototype.setItem = realSet; }
     r.quotaReported = quotaSeen;
-    // 9) 迁移表可读（v1→v2 状态为 dropped）
+    // 9) 迁移表可读（v1→v2 dropped；v2→v3 migrated）
     r.migrationNote = saveFormatNote();
-    // 10) 恢复现场：把好存档写回，确认一切功能正常
+    // 11) J1：v2→v3 迁移实测 —— 用先前捕获的真实存档造一份「v2 形状」载荷
+    //     （去掉 v3 三项新字段、版本号回退为 2），simLoad 必须成功载入且补齐缺省值。
+    let v2payload = null;
+    try {
+      const obj = JSON.parse(goodRaw);
+      delete obj.panelTab; delete obj.newsModalEnabled; delete obj.endTab;
+      obj.v = 2;
+      v2payload = JSON.stringify(obj);
+      localStorage.setItem(SAVE_KEY, v2payload);
+    } catch (e) { v2payload = null; }
+    // 先把内存里的三项改成非缺省值，才能证明是「迁移补缺省」而不是「碰巧已是缺省」
+    ST.panelTab = "diplomacy"; ST.newsModalEnabled = false; ST.endTab = "chronicle";
+    const migLoad = v2payload ? simLoad() : { ok: false };
+    r.v2MigratedLoadOk = !!migLoad.ok;
+    r.v2MigratedDefaults = ST.panelTab === "overview" && ST.newsModalEnabled === true && ST.endTab === "rubric";
+    // 载入 v2 后再存一次 → 落盘应为当前版本（证明「v2 进、v3 出」的往返）
+    if (migLoad.ok) simSave();
+    let storedVer = null;
+    try { storedVer = JSON.parse(localStorage.getItem(SAVE_KEY)).v; } catch (e) { storedVer = null; }
+    r.v2SavedAsCurrent = storedVer === SAVE_VERSION;
+    // 高于当前版本必须明确拒绝（不许当旧档解析）
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VERSION + 1, S: {} })); } catch (e) {}
+    const tooNew = simLoad();
+    r.futureVersionRejected = (!tooNew.ok && tooNew.reason === "version");
+    // 恢复现场：把好存档写回，确认一切功能正常
     try { if (goodRaw) localStorage.setItem(SAVE_KEY, goodRaw); } catch (e) {}
     const lr3 = simLoad();
     r.recoveredAfterCorruption = lr3.ok;
@@ -193,7 +217,8 @@ load().then(() => {
       && r.corruptReported && r.versionReported && r.emptyReported
       && r.importRejectsCorrupt && r.importRejectsVersion
       && r.slot2InfoOk && r.slotInfoFlagsCorrupt && r.slot2DeleteOk
-      && r.quotaReported && r.recoveredAfterCorruption;
+      && r.quotaReported && r.recoveredAfterCorruption
+      && r.v2MigratedLoadOk && r.v2MigratedDefaults && r.v2SavedAsCurrent && r.futureVersionRejected;
     // 供无头断言判负：任一失败诊断缺失即显式 FAIL（runner 匹配字符串约定）
     r.diag = r.allOk ? "ok" : "FAIL 存档失败诊断缺失";
     // ----------------------------------------------------------------------

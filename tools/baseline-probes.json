@@ -7,11 +7,11 @@
    "modeSwitchMs": {
     "political": 0,
     "bloc": 47,
-    "pop": 42,
-    "ind": 44,
-    "province": 42,
-    "delta": 46,
-    "resource": 53
+    "pop": 41,
+    "ind": 46,
+    "province": 44,
+    "delta": 47,
+    "resource": 50
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1352
+   "totalMs": 1282
   },
   "failed": false
  },
@@ -140,7 +140,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 139774,
+   "saveBytes": 139838,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -184,7 +184,7 @@
    "corruptReasonZh": "存档已损坏（JSON 解析失败）",
    "versionReason": "version",
    "versionReported": true,
-   "versionDetail": "存档版本 v99 不被支持（当前 v2）",
+   "versionDetail": "存档版本 v99 高于当前 v3（请更新游戏）",
    "emptyReason": "empty",
    "emptyReported": true,
    "importRejectsCorrupt": true,
@@ -194,7 +194,11 @@
    "slot2DeleteOk": true,
    "quotaReasonZh": "本地存储空间已满，请删除旧存档或导出后清理",
    "quotaReported": true,
-   "migrationNote": "v1→v2: dropped",
+   "migrationNote": "v1→v2: dropped；v2→v3: migrated",
+   "v2MigratedLoadOk": true,
+   "v2MigratedDefaults": true,
+   "v2SavedAsCurrent": true,
+   "futureVersionRejected": true,
    "recoveredAfterCorruption": true,
    "diag": "ok"
   },
