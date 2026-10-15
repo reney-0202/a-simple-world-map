@@ -109,7 +109,7 @@ JITTER_FIELDS = {
 # They are still asserted inside each probe (the `run` gate is authoritative);
 # they are excluded only from the cross-platform baseline diff, where a
 # Windows/Edge baseline would otherwise differ from a Linux/Chrome CI run.
-PLATFORM_FIELD_PREFIXES = ("sig", "c0Rgb", "cOccRgb", "dbg")
+PLATFORM_FIELD_PREFIXES = ("sig", "c0Rgb", "cOccRgb")
 PLATFORM_FIELD_SUFFIXES = ("Rgb",)
 PLATFORM_FIELDS = {"exportPng"}
 
