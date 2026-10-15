@@ -478,161 +478,176 @@ function renderEpilogueHTML(ep) {
 function generateChronicle() {
   const items = [];
 
-  // 0. 全局时间锚点：1980-01 冷战大格局确立
-  items.push({
-    y: 1980,
-    m: 1,
-    time: "1980-01",
-    tag: "历史大事件",
-    tagClass: "event",
-    title: "冷战终局推演启幕",
-    desc: "两极对峙与铁幕并立，1980 全球 54 实体与 133 成员进入十二年大战略演进"
-  });
-
-  // 1. 历史事件与时代特刊 (来自 EV.items)
-  if (typeof EV !== "undefined" && EV.items && EV.items.length) {
-    for (const e of EV.items) {
-      const isNews = !!(window.W1980_NEWS && window.W1980_NEWS[e.id]);
-      items.push({
-        y: e.y,
-        m: e.m,
-        time: e.y + "-" + String(e.m).padStart(2, "0"),
-        tag: isNews ? "时代特刊" : "历史大事件",
-        tagClass: isNews ? "news" : "event",
-        title: e.zh,
-        desc: e.note || (isNews ? "时代标志性历史转折点" : "国际地缘与经济事件")
-      });
-    }
-  }
-
-  // 2. 架空十字路口决断 (来自 CR.picks)
-  if (typeof CR !== "undefined" && Array.isArray(CR.choices) && CR.choices.length) {
-    const crMeta = {
-      cr_gulf: { y: 1980, m: 9, zh: "波斯湾十字路口" },
-      cr_able: { y: 1983, m: 11, zh: "优秀射手演习核危机" },
-      cr_plaza: { y: 1985, m: 9, zh: "广场协议汇率谈判" },
-      cr_chernobyl: { y: 1986, m: 4, zh: "切尔诺贝利核事故处置" },
-      cr_east: { y: 1989, m: 6, zh: "东欧的历史抉择" },
-      cr_ussr: { y: 1991, m: 3, zh: "苏维埃联盟命运公投" }
-    };
-    for (const pair of CR.choices) {
-      if (!pair || !pair[0]) continue;
-      const crId = pair[0], ci = pair[1];
-      const meta = crMeta[crId] || { y: 1985, m: 1, zh: crId };
-      items.push({
-        y: meta.y,
-        m: meta.m,
-        time: meta.y + "-" + String(meta.m).padStart(2, "0"),
-        tag: "历史抉择",
-        tagClass: "player",
-        title: meta.zh,
-        desc: "做出历史十字路口决断（选项: " + ci + "）"
-      });
-    }
-  }
-
-  // 3. 军控条约签署 (来自 ST.ai.treaties)
-  if (ST.ai && ST.ai.treaties) {
-    for (const tid in ST.ai.treaties) {
-      const tr = ST.ai.treaties[tid];
-      const y = tr.signedYear || 1987;
-      const m = tr.signedMonth || 12;
-      items.push({
-        y: y,
-        m: m,
-        time: y + "-" + String(m).padStart(2, "0"),
-        tag: "军控条约",
-        tagClass: "treaty",
-        title: "签署《" + (tr.name || tid) + "》",
-        desc: "美苏首脑峰会达成历史性妥协，条约生效并释放和平红利"
-      });
-    }
-  }
-
-  // 4. 联合国安理会决议通过 (来自 ST.ai.unsc.resolutions)
-  if (ST.ai && ST.ai.unsc && ST.ai.unsc.resolutions) {
-    const unscMeta = {
-      res598: { y: 1987, m: 7, zh: "安理会 598 号决议（两伊停火）" },
-      res660: { y: 1990, m: 8, zh: "安理会 660/678 号决议（海湾集体多边制裁）" },
-      res502: { y: 1982, m: 4, zh: "安理会 502 号决议（马岛冲突调停）" }
-    };
-    for (const rid of ST.ai.unsc.resolutions) {
-      const meta = unscMeta[rid] || { y: 1988, m: 1, zh: "安理会决议 " + rid };
-      items.push({
-        y: meta.y,
-        m: meta.m,
-        time: meta.y + "-" + String(meta.m).padStart(2, "0"),
-        tag: "安理会决议",
-        tagClass: "unsc",
-        title: meta.zh,
-        desc: "联合国安理会表决通过多边调停/制裁草案"
-      });
-    }
-  }
-
-  // 5. 玩家执政核心决策
-  if (ST.player && CM.countries && CM.countries[ST.player]) {
-    const pzh = CM.countries[ST.player].zh;
-    items.push({
-      y: 1980,
-      m: 1,
-      time: "1980-01",
-      tag: "国家决策",
-      tagClass: "player",
-      title: pzh + " 执政启程",
-      desc: "设定初始防务预算为 GDP 的 " + ST.mil + "%，确立冷战大战略施政方针"
-    });
-    if (ST.sanctions && ST.sanctions.length) {
-      for (const s of ST.sanctions) {
-        const tgtName = (CM.countries[s.t] || { zh: s.t }).zh;
-        items.push({
-          y: 1980,
-          m: 1,
-          time: "1980-01",
-          tag: "国家决策",
-          tagClass: "player",
-          title: "对 " + tgtName + " 启动" + (DEC_TIERS.san[s.l] ? DEC_TIERS.san[s.l].zh : "制裁"),
-          desc: "对外实施经贸制裁遏制（目标增速 -" + (DEC_TIERS.san[s.l] ? DEC_TIERS.san[s.l].tgt : 1) + "pp/年）"
-        });
-      }
-    }
-    if (ST.aid && ST.aid.length) {
-      for (const a of ST.aid) {
-        const tgtName = (CM.countries[a.t] || { zh: a.t }).zh;
-        items.push({
-          y: 1980,
-          m: 1,
-          time: "1980-01",
-          tag: "国家决策",
-          tagClass: "player",
-          title: "向 " + tgtName + " 提供" + (DEC_TIERS.aid[a.l] ? DEC_TIERS.aid[a.l].zh : "军援"),
-          desc: "提供战略防务与经济军援扶植（受援增速 +" + (DEC_TIERS.aid[a.l] ? DEC_TIERS.aid[a.l].tgt : 1) + "pp/年）"
-        });
-      }
-    }
-  }
-
-  // 6. 突发危机历史决断 (来自 ST.crises.history)
-  if (ST.crises && Array.isArray(ST.crises.history) && ST.crises.history.length) {
-    for (const h of ST.crises.history) {
-      const cr = window.W1980_CRISES ? window.W1980_CRISES.getCrisisById(h.id) : null;
-      const opt = cr ? (cr.options || []).find((o) => o.tier === h.tier) : null;
-      items.push({
-        y: h.y,
-        m: h.m,
-        time: h.y + "-" + String(h.m).padStart(2, "0"),
-        tag: "突发危机",
-        tagClass: "crisis",
-        title: (cr ? cr.title : h.id) + " · 阶梯 " + h.tier + " " + (opt ? opt.title : ""),
-        desc: opt ? (opt.icon + " " + (opt.effects && opt.effects.summary ? opt.effects.summary : opt.desc)) : "做出中局突发危机升级阶梯裁决"
-      });
-    }
-  }
+  // G（收尾评审）：各来源的条目收集抽为独立函数（见下方 chronicle*），本函数只负责编排与排序。
+  chronicleGlobalItems(items);
+  chronicleDiplomacyItems(items);
+  chroniclePlayerItems(items);
 
   // 排序：按时间升序
   items.sort((a, b) => (a.y * 12 + a.m) - (b.y * 12 + b.m));
   return items;
 }
+
+// G（收尾评审）：时间锚点 + 历史事件与时代特刊，原样搬运
+function chronicleGlobalItems(items) {
+// 0. 全局时间锚点：1980-01 冷战大格局确立
+items.push({
+  y: 1980,
+  m: 1,
+  time: "1980-01",
+  tag: "历史大事件",
+  tagClass: "event",
+  title: "冷战终局推演启幕",
+  desc: "两极对峙与铁幕并立，1980 全球 54 实体与 133 成员进入十二年大战略演进"
+});
+
+// 1. 历史事件与时代特刊 (来自 EV.items)
+if (typeof EV !== "undefined" && EV.items && EV.items.length) {
+  for (const e of EV.items) {
+    const isNews = !!(window.W1980_NEWS && window.W1980_NEWS[e.id]);
+    items.push({
+      y: e.y,
+      m: e.m,
+      time: e.y + "-" + String(e.m).padStart(2, "0"),
+      tag: isNews ? "时代特刊" : "历史大事件",
+      tagClass: isNews ? "news" : "event",
+      title: e.zh,
+      desc: e.note || (isNews ? "时代标志性历史转折点" : "国际地缘与经济事件")
+    });
+  }
+}
+}
+
+// G（收尾评审）：十字路口决断 + 军控条约 + 安理会决议，原样搬运
+function chronicleDiplomacyItems(items) {
+// 2. 架空十字路口决断 (来自 CR.picks)
+if (typeof CR !== "undefined" && Array.isArray(CR.choices) && CR.choices.length) {
+  const crMeta = {
+    cr_gulf: { y: 1980, m: 9, zh: "波斯湾十字路口" },
+    cr_able: { y: 1983, m: 11, zh: "优秀射手演习核危机" },
+    cr_plaza: { y: 1985, m: 9, zh: "广场协议汇率谈判" },
+    cr_chernobyl: { y: 1986, m: 4, zh: "切尔诺贝利核事故处置" },
+    cr_east: { y: 1989, m: 6, zh: "东欧的历史抉择" },
+    cr_ussr: { y: 1991, m: 3, zh: "苏维埃联盟命运公投" }
+  };
+  for (const pair of CR.choices) {
+    if (!pair || !pair[0]) continue;
+    const crId = pair[0], ci = pair[1];
+    const meta = crMeta[crId] || { y: 1985, m: 1, zh: crId };
+    items.push({
+      y: meta.y,
+      m: meta.m,
+      time: meta.y + "-" + String(meta.m).padStart(2, "0"),
+      tag: "历史抉择",
+      tagClass: "player",
+      title: meta.zh,
+      desc: "做出历史十字路口决断（选项: " + ci + "）"
+    });
+  }
+}
+
+// 3. 军控条约签署 (来自 ST.ai.treaties)
+if (ST.ai && ST.ai.treaties) {
+  for (const tid in ST.ai.treaties) {
+    const tr = ST.ai.treaties[tid];
+    const y = tr.signedYear || 1987;
+    const m = tr.signedMonth || 12;
+    items.push({
+      y: y,
+      m: m,
+      time: y + "-" + String(m).padStart(2, "0"),
+      tag: "军控条约",
+      tagClass: "treaty",
+      title: "签署《" + (tr.name || tid) + "》",
+      desc: "美苏首脑峰会达成历史性妥协，条约生效并释放和平红利"
+    });
+  }
+}
+
+// 4. 联合国安理会决议通过 (来自 ST.ai.unsc.resolutions)
+if (ST.ai && ST.ai.unsc && ST.ai.unsc.resolutions) {
+  const unscMeta = {
+    res598: { y: 1987, m: 7, zh: "安理会 598 号决议（两伊停火）" },
+    res660: { y: 1990, m: 8, zh: "安理会 660/678 号决议（海湾集体多边制裁）" },
+    res502: { y: 1982, m: 4, zh: "安理会 502 号决议（马岛冲突调停）" }
+  };
+  for (const rid of ST.ai.unsc.resolutions) {
+    const meta = unscMeta[rid] || { y: 1988, m: 1, zh: "安理会决议 " + rid };
+    items.push({
+      y: meta.y,
+      m: meta.m,
+      time: meta.y + "-" + String(meta.m).padStart(2, "0"),
+      tag: "安理会决议",
+      tagClass: "unsc",
+      title: meta.zh,
+      desc: "联合国安理会表决通过多边调停/制裁草案"
+    });
+  }
+}
+}
+
+// G（收尾评审）：玩家执政决策 + 突发危机决断，原样搬运
+function chroniclePlayerItems(items) {
+// 5. 玩家执政核心决策
+if (ST.player && CM.countries && CM.countries[ST.player]) {
+  const pzh = CM.countries[ST.player].zh;
+  items.push({
+    y: 1980,
+    m: 1,
+    time: "1980-01",
+    tag: "国家决策",
+    tagClass: "player",
+    title: pzh + " 执政启程",
+    desc: "设定初始防务预算为 GDP 的 " + ST.mil + "%，确立冷战大战略施政方针"
+  });
+  if (ST.sanctions && ST.sanctions.length) {
+    for (const s of ST.sanctions) {
+      const tgtName = (CM.countries[s.t] || { zh: s.t }).zh;
+      items.push({
+        y: 1980,
+        m: 1,
+        time: "1980-01",
+        tag: "国家决策",
+        tagClass: "player",
+        title: "对 " + tgtName + " 启动" + (DEC_TIERS.san[s.l] ? DEC_TIERS.san[s.l].zh : "制裁"),
+        desc: "对外实施经贸制裁遏制（目标增速 -" + (DEC_TIERS.san[s.l] ? DEC_TIERS.san[s.l].tgt : 1) + "pp/年）"
+      });
+    }
+  }
+  if (ST.aid && ST.aid.length) {
+    for (const a of ST.aid) {
+      const tgtName = (CM.countries[a.t] || { zh: a.t }).zh;
+      items.push({
+        y: 1980,
+        m: 1,
+        time: "1980-01",
+        tag: "国家决策",
+        tagClass: "player",
+        title: "向 " + tgtName + " 提供" + (DEC_TIERS.aid[a.l] ? DEC_TIERS.aid[a.l].zh : "军援"),
+        desc: "提供战略防务与经济军援扶植（受援增速 +" + (DEC_TIERS.aid[a.l] ? DEC_TIERS.aid[a.l].tgt : 1) + "pp/年）"
+      });
+    }
+  }
+}
+
+// 6. 突发危机历史决断 (来自 ST.crises.history)
+if (ST.crises && Array.isArray(ST.crises.history) && ST.crises.history.length) {
+  for (const h of ST.crises.history) {
+    const cr = window.W1980_CRISES ? window.W1980_CRISES.getCrisisById(h.id) : null;
+    const opt = cr ? (cr.options || []).find((o) => o.tier === h.tier) : null;
+    items.push({
+      y: h.y,
+      m: h.m,
+      time: h.y + "-" + String(h.m).padStart(2, "0"),
+      tag: "突发危机",
+      tagClass: "crisis",
+      title: (cr ? cr.title : h.id) + " · 阶梯 " + h.tier + " " + (opt ? opt.title : ""),
+      desc: opt ? (opt.icon + " " + (opt.effects && opt.effects.summary ? opt.effects.summary : opt.desc)) : "做出中局突发危机升级阶梯裁决"
+    });
+  }
+}
+}
+
 
 function renderChronicleHTML(items) {
   if (!items || !items.length) {

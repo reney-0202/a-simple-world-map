@@ -111,64 +111,9 @@ function executeCovertAction(actionId, targetKey, forceSuccess, forceBlowback) {
   const y = SIM.S ? SIM.S.year : 1980;
   const m = SIM.S ? SIM.S.month : 1;
 
-  // 执行具体行动效果
-  let note = "";
-  if (actionId === "counter_intel") {
-    intel.counterLevel = clamp(intel.counterLevel + 15, 10, 100);
-    note = "本土反间谍网已全面加固升级，抓获 2 名潜伏特工！当前防御等级：" + intel.counterLevel + "%";
-  } else if (actionId === "proxy_insurgency") {
-    if (rollSuccess) {
-      if (ST.domestic && ST.domestic.generals && ST.domestic.generals[tgt]) {
-        ST.domestic.generals[tgt].stability = clamp(ST.domestic.generals[tgt].stability - 12, 10, 100);
-      }
-      if (ST.ai && ST.ai.tensions && ST.ai.tensions["USA:SUN"]) {
-        ST.ai.tensions["USA:SUN"] = clamp(ST.ai.tensions["USA:SUN"] + 5, 0, 100);
-      }
-      note = "成功向 " + tgtZh + " 境内游击战线运抵战略物资与无线电，削弱其政权稳定性！";
-    } else {
-      note = "运送军械的车队遭遇拦截缴获，赞助计划受挫。";
-    }
-  } else if (actionId === "coup_attempt") {
-    if (rollSuccess) {
-      if (ST.domestic && ST.domestic.generals && ST.domestic.generals[tgt]) {
-        ST.domestic.generals[tgt].stability = 75;
-      }
-      note = "目标国前线兵变成功！亲己方军政过渡委员会宣布接管政权！";
-    } else {
-      note = "政变阴谋被当事国卫队提前破获，多名联络官被捕。";
-    }
-  } else if (actionId === "tech_smuggle") {
-    if (rollSuccess) {
-      if (ST.domestic && ST.domestic.sun && ST.player === "SUN") {
-        ST.domestic.sun.shortage = clamp(ST.domestic.sun.shortage - 6, 0, 100);
-      }
-      note = "成功经由离岸走私网络获取关键工业数控图纸与微电子芯片，逆向测绘完成！";
-    } else {
-      note = "走私皮包公司遭海关与联邦特工查封，技术样本被扣押。";
-    }
-  }
-
-  // 丑闻反噬判断
-  if (rollBlowback) {
-    intel.scandalCooldown = 6;
-    if (ST.player === "USA" && ST.domestic && ST.domestic.usa) {
-      ST.domestic.usa.congressApproval = clamp(ST.domestic.usa.congressApproval - 10, 15, 90);
-    }
-    if (ST.ai && ST.ai.tensions && ST.ai.tensions["USA:SUN"]) {
-      ST.ai.tensions["USA:SUN"] = clamp(ST.ai.tensions["USA:SUN"] + 15, 0, 100);
-    }
-    const scandalItem = {
-      y: y,
-      m: m,
-      zh: "【特情丑闻曝光】" + act.name + " 败露！",
-      note: "行动败露遭国际媒体披露！引发两党国会调查与严重政治外交反噬！",
-      isScandal: true
-    };
-    EV.items.push(scandalItem);
-    EV.unread++;
-    renderInbox();
-    toast(scandalItem);
-  }
+  // G（收尾评审）：具体行动效果与丑闻反噬两段抽为独立函数（见下方 covertApply*）。
+  const note = covertApplyActionEffect(actionId, { intel: intel, tgt: tgt, tgtZh: tgtZh, rollSuccess: rollSuccess });
+  covertApplyBlowback({ intel: intel, act: act, y: y, m: m, rollBlowback: rollBlowback });
 
   // 记入特情局档案
   const histItem = {
@@ -198,6 +143,73 @@ function executeCovertAction(actionId, targetKey, forceSuccess, forceBlowback) {
   if (ST.sel) refreshCovertBox(ST.sel);
   return { ok: true, success: rollSuccess, blowback: rollBlowback, note: note };
 }
+
+// G（收尾评审）：按行动类型施加效果并返回结果文案，原样搬运
+function covertApplyActionEffect(actionId, ctx) {
+  const intel = ctx.intel, tgt = ctx.tgt, tgtZh = ctx.tgtZh, rollSuccess = ctx.rollSuccess;
+  let note = "";
+if (actionId === "counter_intel") {
+  intel.counterLevel = clamp(intel.counterLevel + 15, 10, 100);
+  note = "本土反间谍网已全面加固升级，抓获 2 名潜伏特工！当前防御等级：" + intel.counterLevel + "%";
+} else if (actionId === "proxy_insurgency") {
+  if (rollSuccess) {
+    if (ST.domestic && ST.domestic.generals && ST.domestic.generals[tgt]) {
+      ST.domestic.generals[tgt].stability = clamp(ST.domestic.generals[tgt].stability - 12, 10, 100);
+    }
+    if (ST.ai && ST.ai.tensions && ST.ai.tensions["USA:SUN"]) {
+      ST.ai.tensions["USA:SUN"] = clamp(ST.ai.tensions["USA:SUN"] + 5, 0, 100);
+    }
+    note = "成功向 " + tgtZh + " 境内游击战线运抵战略物资与无线电，削弱其政权稳定性！";
+  } else {
+    note = "运送军械的车队遭遇拦截缴获，赞助计划受挫。";
+  }
+} else if (actionId === "coup_attempt") {
+  if (rollSuccess) {
+    if (ST.domestic && ST.domestic.generals && ST.domestic.generals[tgt]) {
+      ST.domestic.generals[tgt].stability = 75;
+    }
+    note = "目标国前线兵变成功！亲己方军政过渡委员会宣布接管政权！";
+  } else {
+    note = "政变阴谋被当事国卫队提前破获，多名联络官被捕。";
+  }
+} else if (actionId === "tech_smuggle") {
+  if (rollSuccess) {
+    if (ST.domestic && ST.domestic.sun && ST.player === "SUN") {
+      ST.domestic.sun.shortage = clamp(ST.domestic.sun.shortage - 6, 0, 100);
+    }
+    note = "成功经由离岸走私网络获取关键工业数控图纸与微电子芯片，逆向测绘完成！";
+  } else {
+    note = "走私皮包公司遭海关与联邦特工查封，技术样本被扣押。";
+  }
+}
+  return note;
+}
+
+// G（收尾评审）：丑闻反噬（冷却、国会/张力冲击、收件箱入账），原样搬运
+function covertApplyBlowback(ctx) {
+  const intel = ctx.intel, act = ctx.act, y = ctx.y, m = ctx.m, rollBlowback = ctx.rollBlowback;
+if (rollBlowback) {
+  intel.scandalCooldown = 6;
+  if (ST.player === "USA" && ST.domestic && ST.domestic.usa) {
+    ST.domestic.usa.congressApproval = clamp(ST.domestic.usa.congressApproval - 10, 15, 90);
+  }
+  if (ST.ai && ST.ai.tensions && ST.ai.tensions["USA:SUN"]) {
+    ST.ai.tensions["USA:SUN"] = clamp(ST.ai.tensions["USA:SUN"] + 15, 0, 100);
+  }
+  const scandalItem = {
+    y: y,
+    m: m,
+    zh: "【特情丑闻曝光】" + act.name + " 败露！",
+    note: "行动败露遭国际媒体披露！引发两党国会调查与严重政治外交反噬！",
+    isScandal: true
+  };
+  EV.items.push(scandalItem);
+  EV.unread++;
+  renderInbox();
+  toast(scandalItem);
+}
+}
+
 
 function refreshCovertBox(selKey) {
   const box = $("p-covert-box");
