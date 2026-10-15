@@ -36,12 +36,17 @@ load().then(() => {
   };
   const sanQ = decParse("sanction"), aidQ = decParse("aid");
   const probeQ = /[?&]sanprobe=1/.test(location.search);
+  const decQ = /[?&]decprobe=1/.test(location.search);
   if (sanQ) ST.sanctions = sanQ;
   if (aidQ) ST.aid = aidQ;
-  if (sanQ || aidQ || probeQ) CR.probeMode = true;
+  // F（快赢/CI 评审）：decprobe 与 sanprobe 同属「玩家决策」探针，其期望值假定只有玩家
+  // 决策作用于 pmods。原先只对 sanprobe 置 probeMode，decprobe 下 AI 仍激活并会反制裁
+  // 玩家，使 pmodSelf/pmodSUN 偏离断言值（探针长期 allOk=false 的根因）。此处统一置位，
+  // 与 isAIActive() 的 probeMode 门控一致。
+  if (sanQ || aidQ || probeQ || decQ) CR.probeMode = true;
   applyPlayerDecisions(); updPlayerTag(); refreshMilBox();
   if (probeQ) runSanProbe();       // 自带 reset/ff/存档往返，结束回到 1980-01（名单保留）
-  if (/[?&]decprobe=1/.test(location.search)) runDecProbe();
+  if (decQ) runDecProbe();
   // R5E：?bloc=<BLOC> 结盟探针（探针需越过十字路口 → probeMode）
   const blq = /[?&]bloc=([A-Za-z]+)/.exec(location.search);
   if (blq) { CR.probeMode = true; runBlocProbe(blq[1].toUpperCase()); }

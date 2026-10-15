@@ -7,3 +7,7 @@ __pycache__/
 *.err
 .DS_Store
 Thumbs.db
+
+# CI probe artifacts (regenerated on every run; the committed baseline is
+# tools/baseline-probes.json, which is intentionally tracked)
+tools/probe-results.json

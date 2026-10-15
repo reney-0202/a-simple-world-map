@@ -187,6 +187,9 @@ function runBlocProbe(b) {
     select(ST.player);
     r.badgeBefore = $("p-bloc").textContent;
     setMode("bloc");
+    // F：记录着色真值源的「变更前」值（见下方 sigChanged 处说明）
+    const deuId0 = playIdOfKey["DEU"] || (CM.countries["DEU"] || {}).polity_id;
+    r.tblDeuColorBefore = (tables.bloc && deuId0) ? tables.bloc[deuId0] : null;
     r.sigBefore = mapSig();
     r.pmodsBefore = pmodsCount();
     setBloc(b);
@@ -195,7 +198,17 @@ function runBlocProbe(b) {
     r.badgeAfter = $("p-bloc").textContent;
     r.badgeOk = r.badgeAfter === (BLOC_ZH[b] || b) && r.badgeBefore === (BLOC_ZH[orig] || orig);
     r.sigAfter = mapSig();
-    r.sigChanged = r.sigAfter !== r.sigBefore;           // 阵营模式画布着色哈希必须变化
+    // F（快赢/CI 评审）：原 sigChanged 依赖画布像素读回（mapSig）。无头引导阶段
+    // canvas getImageData 会被冻结在最后一次提交的帧上 —— 实测连「整图重烘」
+    // （political→bloc 重染所有国家）都读不到差异，故该断言在 CI 里不可靠。
+    // 改为断言阵营色表本身（tables.bloc）随 override 变化：这是地图着色的真值源，
+    // 与绘制时序无关。画布签名保留为参考信息，不参与判定。
+    const deuId = playIdOfKey["DEU"] || (CM.countries["DEU"] || {}).polity_id;
+    r.tblBefore = r.tblDeuColorBefore;
+    r.tblAfter = (tables.bloc && deuId) ? tables.bloc[deuId] : null;
+    r.blocTableChanged = r.tblBefore !== null && r.tblAfter !== null && r.tblBefore !== r.tblAfter;
+    r.blocTableIsTarget = r.tblAfter === u32c(BLOC[b] || "#9B9B9B");
+    r.sigChanged = r.blocTableChanged;                   // 保留字段名，语义改为「着色真值源已变」
     r.pmodsAfter = pmodsCount();
     // R7A（C2 经济网络效应断言）：迁入非原阵营时注入真实经济修正（红利+脱钩震荡）
     const be = curBlocEffect();
@@ -1710,6 +1723,11 @@ function runDomesticProbe() {
 // 验证钩子：?pan=<dx>,<dy> 可重复（等价于鼠标拖动），?selftest 由外部触发
 window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMini: drawMini,
   zoomAt: zoomAt, maps: maps, ST: ST, setMode: setMode, sig: mapSig,
+  // F（快赢/CI）：阵营相关的测试钩子 —— blocprobe 需要直接验证「着色真值源」
+  // （tables.bloc）而不依赖画布读回；setBloc/blocOf/rebuildBlocTable 供探针与
+  // CDP 诊断复用。
+  setBloc: setBloc, blocOf: blocOf, rebuildBlocTable: rebuildBlocTable,
+  tables: tables, getBakedNow: () => bakedNow, hasFrontlines: () => hasFrontlines,
   sim: SIM, simVal: simVal, simFastForward: simFastForward, simTogglePlay: simTogglePlay, simReset: simReset,
   simSave: simSave, simLoad: simLoad,
   simAtEnd: simAtEnd, endStats: endStats, simEndOpen: simEndOpen, simEndClose: simEndClose,

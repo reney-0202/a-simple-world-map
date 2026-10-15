@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data-contract:
+    name: Data-layer contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate data layer (foreign keys + effect vocabulary)
+        run: node tools/validate_data.js out
+
+  probes:
+    name: Headless probes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Locate a Chromium-family browser
+        run: |
+          set -euo pipefail
+          for c in google-chrome google-chrome-stable chromium chromium-browser msedge; do
+            if command -v "$c" >/dev/null 2>&1; then
+              echo "W1980_BROWSER=$(command -v "$c")" >> "$GITHUB_ENV"
+              echo "using $c at $(command -v "$c")"
+              exit 0
+            fi
+          done
+          echo "::error::no Chromium-family browser found on this runner" >&2
+          exit 1
+
+      - name: Run all headless probes (assertions)
+        run: python tools/probe_runner.py run out tools/probe-results.json
+
+      - name: Compare against the committed baseline (regression gate)
+        run: python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json
+
+      - name: Upload probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-results
+          path: tools/probe-results.json
+          if-no-files-found: warn
