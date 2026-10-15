@@ -128,14 +128,17 @@ function initDomesticState() {
       planned: 48,            // 计划/国营派权重 (0~100)
       dualTrackPrice: 35,     // 双轨物价扭曲度 (0~100，越高越冲击民生)
       unrest: 3,              // 社会动荡度
-      sezMomentum: 40         // 特区开放动能 (0~100)
+      sezMomentum: 40,        // 特区开放动能 (0~100)
+      externalStress: 20      // H：外部环境压力 (0~100，禁运/外汇/能源缺口)
     },
     deu: {
       spdApproval: 55,        // 社民党（SPD，施密特）支持率
       cduApproval: 45,        // 基民盟/基社盟（CDU/CSU）支持率
       detenteDepth: 60,       // 东西欧缓和深度 (0~100)
       natoBurden: 50,         // 北约防务义务分担度
-      pipelineDependency: 30  // 对苏能源管道依赖度
+      pipelineDependency: 30, // 对苏能源管道依赖度
+      energyPressure: 24,     // H：能源供应压力 (0~100，油气通道受阻累积)
+      unrest: 2               // H：社会动荡度 (0~100)
     },
     generals: {}              // 通用国家缓存
   };
@@ -160,8 +163,8 @@ function sanitizeDomesticState(d) {
     sun: { conservative: 55, reformist: 45, shortage: 28, unrest: 5, crisisWarning: null },
     usa: { congressApproval: 62, presidentialApproval: 58, nextElectionYear: 1984, electionResult: null, budgetCapActive: false, unrest: 2 },
     // E：CHN/DEU 专属内政（与 initDomesticState 同构）
-    chn: { reformist: 52, planned: 48, dualTrackPrice: 35, unrest: 3, sezMomentum: 40 },
-    deu: { spdApproval: 55, cduApproval: 45, detenteDepth: 60, natoBurden: 50, pipelineDependency: 30 },
+    chn: { reformist: 52, planned: 48, dualTrackPrice: 35, unrest: 3, sezMomentum: 40, externalStress: 20 },
+    deu: { spdApproval: 55, cduApproval: 45, detenteDepth: 60, natoBurden: 50, pipelineDependency: 30, energyPressure: 24, unrest: 2 },
     generals: {}
   };
   if (!d || typeof d !== "object") return fresh;
@@ -187,6 +190,7 @@ function sanitizeDomesticState(d) {
     fresh.chn.dualTrackPrice = clamp(typeof d.chn.dualTrackPrice === "number" ? d.chn.dualTrackPrice : 35, 0, 100);
     fresh.chn.unrest = clamp(typeof d.chn.unrest === "number" ? d.chn.unrest : 3, 0, 100);
     fresh.chn.sezMomentum = clamp(typeof d.chn.sezMomentum === "number" ? d.chn.sezMomentum : 40, 0, 100);
+    fresh.chn.externalStress = clamp(typeof d.chn.externalStress === "number" ? d.chn.externalStress : 20, 0, 100);
   }
   if (d.deu && typeof d.deu === "object") {
     fresh.deu.spdApproval = clamp(typeof d.deu.spdApproval === "number" ? d.deu.spdApproval : 55, 0, 100);
@@ -194,6 +198,8 @@ function sanitizeDomesticState(d) {
     fresh.deu.detenteDepth = clamp(typeof d.deu.detenteDepth === "number" ? d.deu.detenteDepth : 60, 0, 100);
     fresh.deu.natoBurden = clamp(typeof d.deu.natoBurden === "number" ? d.deu.natoBurden : 50, 0, 100);
     fresh.deu.pipelineDependency = clamp(typeof d.deu.pipelineDependency === "number" ? d.deu.pipelineDependency : 30, 0, 100);
+    fresh.deu.energyPressure = clamp(typeof d.deu.energyPressure === "number" ? d.deu.energyPressure : 24, 0, 100);
+    fresh.deu.unrest = clamp(typeof d.deu.unrest === "number" ? d.deu.unrest : 2, 0, 100);
   }
   if (d.generals && typeof d.generals === "object") {
     for (const k in d.generals) {
@@ -337,6 +343,48 @@ function updateDomesticUsa(dom, y, m, silent) {
     }
 }
 
+// ---- H（玩法深度）：CHN/DEU 内政 ↔ 经济系统双向耦合 ---------------------------
+// 旧版 CHN/DEU 内政只受「军费」单变量驱动，与经济系统（贸易/禁运/能源）完全脱钩，
+// 玩家看得见的两套系统互不相干。这里补一层「外部环境压力」：
+//   禁运（巴统技术封锁）、单边制裁、能源通道受阻 → 转化为国内政治压力；
+//   国内变量（特区动能 / 能源压力）再反向注入单一事实源 P.pmods（见 03-decisions.js）。
+//
+// 中国：外部环境压力（外汇/禁运/能源缺口）→ 特区动能、双轨物价、社会动荡。
+// 西德：能源压力（油气通道通行度 + 巴统技术封锁 + 制裁，受管道依赖度放大）
+//       → 执政联盟天平、缓和深度、社会动荡。
+function chnExternalStress() {
+  let s = 0;
+  if (ST.sanctions && ST.sanctions.some((x) => x.t === "CHN")) s += 0.55;
+  if (ST.cocom && ST.cocom.active) s += (ST.cocom.strict ? 0.35 : 0.15);
+  if (typeof calcResourcePenalty === "function") {
+    const rp = calcResourcePenalty("CHN");
+    if (rp && typeof rp.ratio === "number" && rp.ratio < 1) s += Math.min(0.35, (1 - rp.ratio) * 1.5);
+  }
+  return clamp(s, 0, 1);
+}
+
+function deuEnergyStress() {
+  let s = 0;
+  const routes = (ST.tradeRoutes && ST.tradeRoutes.length) ? ST.tradeRoutes : [];
+  // 油气进口通道通行度：东方（苏）管道权重高于海湾海运
+  for (let i = 0; i < routes.length; i++) {
+    const r = routes[i];
+    if (r.to !== "DEU" || r.res !== "oil") continue;
+    const st = getRouteStatus(r);
+    const f = (st && typeof st.factor === "number") ? st.factor : 1;
+    s += (1 - f) * (r.from === "SUN" ? 0.60 : 0.40);
+  }
+  // 巴统封锁西德→苏技术出口：油气换钢管的对价被切断，缓和红利流失
+  for (let i = 0; i < routes.length; i++) {
+    const r = routes[i];
+    if (r.from !== "DEU" || r.res !== "tech") continue;
+    const st = getRouteStatus(r);
+    if (st && st.status !== "ok" && st.status !== "smuggled") s += 0.25;
+  }
+  if (ST.sanctions && ST.sanctions.some((x) => x.t === "DEU")) s += 0.50;
+  return clamp(s, 0, 1);
+}
+
 // G（收尾评审）：updateDomesticPolitics 的「中国：双轨制博弈（市场派 vs 计划派、双轨物价、特区动能）」块抽为独立推进器（原样搬运，无逻辑改动）
 function updateDomesticChn(dom, y, m, silent) {
     const chn = dom.chn;
@@ -358,6 +406,20 @@ function updateDomesticChn(dom, y, m, silent) {
     // 双轨物价过高 → 民生动荡
     if (chn.dualTrackPrice >= 70) chn.unrest = clamp(chn.unrest + 0.28, 0, 100);
     else chn.unrest = clamp(chn.unrest - 0.10, 0, 100);
+    // H（玩法深度）：外部环境压力（禁运/外汇/能源缺口）→ 内政压力。
+    // 压力向目标值平滑收敛（外部条件不变时不会无限累积），高压力压制特区动能、
+    // 抬升双轨物价并累积动荡；低压力则释放开放红利。
+    const cs = chnExternalStress();
+    const csTarget = clamp(10 + cs * 75, 0, 100);
+    chn.externalStress = clamp(chn.externalStress + (csTarget - chn.externalStress) * 0.12, 0, 100);
+    if (chn.externalStress >= 55) {
+      chn.sezMomentum = clamp(chn.sezMomentum - 0.30, 0, 100);
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice + 0.25, 0, 100);
+      chn.unrest = clamp(chn.unrest + 0.18, 0, 100);
+    } else if (chn.externalStress <= 30) {
+      chn.sezMomentum = clamp(chn.sezMomentum + 0.12, 0, 100);
+      chn.dualTrackPrice = clamp(chn.dualTrackPrice - 0.12, 0, 100);
+    }
     // 特区动能低速衰减（开放红利边际递减）
     chn.sezMomentum = clamp(chn.sezMomentum - 0.05, 0, 100);
 }
@@ -383,6 +445,20 @@ function updateDomesticDeu(dom, y, m, silent) {
     }
     // 缓和越深，管道依赖越高（历史史实：新东方政策伴随油气换钢管）
     if (deu.detenteDepth >= 65) deu.pipelineDependency = clamp(deu.pipelineDependency + 0.08, 0, 100);
+    // H（玩法深度）：能源供应压力 —— 由油气通道通行度、巴统技术封锁与制裁共同决定，
+    // 并被对苏管道依赖度放大（依赖越深，同一条通道中断的政治代价越大）。
+    // 压力向目标值平滑收敛；越过阈值后冲击执政联盟、缓和深度与社会安定。
+    const ds = deuEnergyStress();
+    const dsTarget = clamp(10 + ds * 70 * (0.6 + (deu.pipelineDependency / 100) * 0.8), 0, 100);
+    deu.energyPressure = clamp(deu.energyPressure + (dsTarget - deu.energyPressure) * 0.10, 0, 100);
+    if (deu.energyPressure >= 50) {
+      deu.spdApproval = clamp(deu.spdApproval - 0.15, 0, 100);
+      deu.cduApproval = clamp(deu.cduApproval + 0.15, 0, 100);
+      deu.detenteDepth = clamp(deu.detenteDepth - 0.10, 0, 100);
+      deu.unrest = clamp(deu.unrest + 0.20, 0, 100);
+    } else {
+      deu.unrest = clamp(deu.unrest - 0.10, 0, 100);
+    }
 }
 
 // G（收尾评审）：updateDomesticPolitics 的「通用实体：社会安定度与制裁抗议」块抽为独立推进器（原样搬运，无逻辑改动）
@@ -613,6 +689,7 @@ function domesticChnHtml(isMine) {
   const priceClass = chn.dualTrackPrice >= 70 ? "danger" : chn.dualTrackPrice >= 45 ? "warn" : "good";
   const unrestClass = chn.unrest >= 30 ? "danger" : chn.unrest >= 15 ? "warn" : "good";
   const sezClass = chn.sezMomentum >= 60 ? "good" : chn.sezMomentum >= 30 ? "warn" : "danger";
+  const extClass = chn.externalStress >= 55 ? "danger" : chn.externalStress >= 35 ? "warn" : "good";
 
   h += '<div class="pdb-title"><span>🏛️ 改革开放 · 双轨制博弈</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
   h += '<div class="pdb-desc">特区/市场派与计划/国营派围绕改革节奏拉锯。高军费强化计划派并推高双轨物价扭曲；低军费释放特区动能、逐步理顺价格，但需防范民生冲击。</div>';
@@ -641,6 +718,11 @@ function domesticChnHtml(isMine) {
   h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.unrest.toFixed(1) + (chn.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
   h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + chn.unrest + '%"></div></div>';
   h += '  </div>';
+  // H（玩法深度）：外部环境压力（禁运/外汇/能源缺口 → 内政压力）
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🌐 外部环境压力（禁运/外汇）</span><span class="pdb-meter-val" style="color:' + (extClass === 'danger' ? '#f87171' : extClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + chn.externalStress.toFixed(1) + (chn.externalStress >= 55 ? ' · 封锁压制改革动能' : chn.externalStress >= 35 ? ' · 外部环境趋紧' : ' · 外部环境可控') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + extClass + '" style="width:' + chn.externalStress + '%"></div></div>';
+  h += '  </div>';
   h += '</div>';
 
   if (isMine) {
@@ -662,6 +744,7 @@ function domesticDeuHtml(isMine) {
   const detClass = deu.detenteDepth >= 65 ? "good" : deu.detenteDepth >= 40 ? "warn" : "danger";
   const burdenClass = deu.natoBurden >= 65 ? "warn" : "good";
   const pipeClass = deu.pipelineDependency >= 60 ? "danger" : deu.pipelineDependency >= 35 ? "warn" : "good";
+  const epClass = deu.energyPressure >= 50 ? "danger" : deu.energyPressure >= 35 ? "warn" : "good";
 
   h += '<div class="pdb-title"><span>🏛️ 新东方政策 · 波恩联合政府</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
   h += '<div class="pdb-desc">身处冷战对抗前沿：社民党主张缓和与东方贸易，基民盟强调北约义务。军费抬升加重北约分担并激化反核民意；克制军费换取缓和红利，但加深对苏能源管道依赖。</div>';
@@ -689,6 +772,11 @@ function domesticDeuHtml(isMine) {
   h += '  <div class="pdb-meter">';
   h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🛢️ 对苏能源管道依赖度</span><span class="pdb-meter-val" style="color:' + (pipeClass === 'danger' ? '#f87171' : pipeClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.pipelineDependency.toFixed(1) + (deu.pipelineDependency >= 60 ? '（能源杠杆风险）' : '') + '</span></div>';
   h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + pipeClass + '" style="width:' + deu.pipelineDependency + '%"></div></div>';
+  h += '  </div>';
+  // H（玩法深度）：能源供应压力（油气通道受阻 + 巴统封锁 + 制裁 → 内政压力）
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">⚡ 能源供应压力</span><span class="pdb-meter-val" style="color:' + (epClass === 'danger' ? '#f87171' : epClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + deu.energyPressure.toFixed(1) + (deu.energyPressure >= 50 ? ' · 工业成本攀升' : deu.energyPressure >= 35 ? ' · 供应趋紧' : ' · 供应稳定') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + epClass + '" style="width:' + deu.energyPressure + '%"></div></div>';
   h += '  </div>';
   h += '</div>';
 

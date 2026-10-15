@@ -19,6 +19,7 @@ function runDomesticProbe() {
   const ctx = {};
   runDomesticProbePhase1(r, assert, ctx);
   runDomesticProbePhase2(r, assert, ctx);
+  runDomesticProbePhase3(r, assert, ctx);
 
   } catch (e) {
     r.pass = false;
@@ -150,6 +151,122 @@ function runDomesticProbePhase2(r, assert, ctx) {
   // 清理复原
   ST.player = null;
   ST.mil = 0;
+  applyPlayerDecisions();
+  initDomesticState();
+  refreshDomesticBox(ST.sel);
+}
+
+// H（玩法深度）：CHN/DEU 内政 ↔ 经济系统双向耦合探针
+function runDomesticProbePhase3(r, assert, ctx) {
+  // 16. 新增经济耦合字段完备
+  initDomesticState();
+  ST.player = null;
+  ST.sanctions = [];
+  ST.mil = 0;
+  assert("chnDeuEconFields",
+    ST.domestic.chn && ST.domestic.deu &&
+    typeof ST.domestic.chn.externalStress === "number" &&
+    typeof ST.domestic.deu.energyPressure === "number" &&
+    typeof ST.domestic.deu.unrest === "number",
+    "CHN/DEU 内政状态包含外部环境压力 / 能源供应压力 / 动荡字段");
+  assert("stressHelpersExist",
+    typeof chnExternalStress === "function" && typeof deuEnergyStress === "function",
+    "chnExternalStress / deuEnergyStress 外部环境评估函数存在");
+
+  // 17. 中国：禁运/制裁 → 外部环境压力累积 → 特区动能流失、双轨物价抬头、动荡上升
+  const chnBase = { sez: ST.domestic.chn.sezMomentum, price: ST.domestic.chn.dualTrackPrice, unrest: ST.domestic.chn.unrest };
+  ST.domestic.chn.externalStress = 20;
+  ST.player = "USA";
+  ST.sanctions = [{ t: "CHN", l: 2 }];
+  for (let i = 0; i < 60; i++) updateDomesticPolitics(1986, 1 + (i % 12), true);
+  assert("chnSanctionRaisesExternalStress", ST.domestic.chn.externalStress >= 55,
+    "对华全面制裁令外部环境压力越过 55 阈值（实测 " + ST.domestic.chn.externalStress.toFixed(1) + "）");
+  assert("chnExternalStressDrainsSez",
+    ST.domestic.chn.sezMomentum < chnBase.sez && ST.domestic.chn.dualTrackPrice > chnBase.price && ST.domestic.chn.unrest > chnBase.unrest,
+    "外部环境压力压制特区动能、抬升双轨物价并累积社会动荡");
+  ST.sanctions = [];
+
+  // 18. 中国：特区动能 → 长期 GDP 增速弹性注入单一事实源 P.pmods
+  ST.player = "CHN";
+  ST.mil = 2.5;
+  ST.domestic.chn.sezMomentum = 100;
+  ST.domestic.chn.unrest = 0;
+  applyPlayerDecisions();
+  const pmodChnHigh = SIM.S.P.pmods[entKeys("CHN")[0]] || 0;
+  ST.domestic.chn.sezMomentum = 0;
+  applyPlayerDecisions();
+  const pmodChnLow = SIM.S.P.pmods[entKeys("CHN")[0]] || 0;
+  r.details.__pmodChnHigh = +pmodChnHigh.toFixed(4);
+  r.details.__pmodChnLow = +pmodChnLow.toFixed(4);
+  assert("chnSezMomentumGdpElasticity", pmodChnHigh > pmodChnLow,
+    "特区动能高低直接决定中国结构性 GDP 增速（高动能 > 低动能）");
+
+  // 19. 西德：油气通道受阻 → 能源压力累积（未越阈值），叠加制裁后越过阈值冲击执政联盟
+  initDomesticState();
+  ST.player = "USA";
+  ST.mil = 0;
+  ST.sanctions = [];
+  const hormuzBefore = ST.chokepoints ? ST.chokepoints.hormuz : null;
+  if (ST.chokepoints) ST.chokepoints.hormuz = "blocked";
+  const epBase = ST.domestic.deu.energyPressure;
+  for (let i = 0; i < 60; i++) updateDomesticPolitics(1986, 1 + (i % 12), true);
+  r.details.__deuEpBlocked = +ST.domestic.deu.energyPressure.toFixed(4);
+  assert("deuOilBlockadeRaisesEnergyPressure", ST.domestic.deu.energyPressure > epBase,
+    "霍尔木兹断航令西德能源供应压力累积（实测 " + ST.domestic.deu.energyPressure.toFixed(1) + "）");
+
+  ST.sanctions = [{ t: "DEU", l: 2 }];
+  for (let i = 0; i < 60; i++) updateDomesticPolitics(1986, 1 + (i % 12), true);
+  r.details.__deuEpSanctioned = +ST.domestic.deu.energyPressure.toFixed(4);
+  assert("deuSanctionCrossesEnergyThreshold", ST.domestic.deu.energyPressure >= 50,
+    "制裁叠加断航令能源压力越过 50 阈值（实测 " + ST.domestic.deu.energyPressure.toFixed(1) + "）");
+  assert("deuEnergyPressureHitsCoalition",
+    ST.domestic.deu.spdApproval < 55 && ST.domestic.deu.cduApproval > 45 && ST.domestic.deu.unrest > 2,
+    "高能源压力冲击社民党支持率、抬升基民盟与国内动荡");
+  if (ST.chokepoints) ST.chokepoints.hormuz = hormuzBefore || "open";
+  ST.sanctions = [];
+
+  // 20. 西德：能源压力 → 工业成本拖累注入 P.pmods
+  ST.player = "DEU";
+  ST.mil = 3.0;
+  ST.domestic.deu.energyPressure = 0;
+  ST.domestic.deu.unrest = 0;
+  applyPlayerDecisions();
+  const pmodDeuLow = SIM.S.P.pmods[entKeys("DEU")[0]] || 0;
+  ST.domestic.deu.energyPressure = 100;
+  applyPlayerDecisions();
+  const pmodDeuHigh = SIM.S.P.pmods[entKeys("DEU")[0]] || 0;
+  r.details.__pmodDeuLow = +pmodDeuLow.toFixed(4);
+  r.details.__pmodDeuHigh = +pmodDeuHigh.toFixed(4);
+  assert("deuEnergyPressureDragsGdp", pmodDeuHigh < pmodDeuLow,
+    "能源供应压力转化为西德工业成本拖累（高压 < 低压）");
+
+  // 21. CHN/DEU 专属内政面板渲染（含 H 新增仪表）
+  const domBox = $("p-domestic-box");
+  refreshDomesticBox("CHN");
+  assert("chnEconMeterRendered", domBox.innerHTML.includes("外部环境压力"),
+    "中国内政面板渲染外部环境压力仪表");
+  refreshDomesticBox("DEU");
+  assert("deuEconMeterRendered", domBox.innerHTML.includes("能源供应压力"),
+    "西德内政面板渲染能源供应压力仪表");
+
+  // 22. 序列化往返：新增经济耦合字段随存档还原
+  ST.player = "CHN";
+  ST.domestic.chn.externalStress = 61.5;
+  ST.domestic.deu.energyPressure = 44.25;
+  ST.domestic.deu.unrest = 7.75;
+  simSave();
+  initDomesticState();
+  simLoad();
+  assert("chnDeuEconFieldsRestored",
+    Math.abs(ST.domestic.chn.externalStress - 61.5) < 0.1 &&
+    Math.abs(ST.domestic.deu.energyPressure - 44.25) < 0.1 &&
+    Math.abs(ST.domestic.deu.unrest - 7.75) < 0.1,
+    "新增经济耦合字段随 simSave/simLoad 完整往返");
+
+  // 清理复原
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
   applyPlayerDecisions();
   initDomesticState();
   refreshDomesticBox(ST.sel);

@@ -51,10 +51,22 @@ if (ST.domestic) {
   let unrestVal = 0;
   if (ST.player === "SUN" && ST.domestic.sun) unrestVal = ST.domestic.sun.unrest || 0;
   else if (ST.player === "USA" && ST.domestic.usa) unrestVal = ST.domestic.usa.unrest || 0;
+  else if (ST.player === "CHN" && ST.domestic.chn) unrestVal = ST.domestic.chn.unrest || 0;
+  else if (ST.player === "DEU" && ST.domestic.deu) unrestVal = ST.domestic.deu.unrest || 0;
   else if (ST.domestic.generals && ST.domestic.generals[ST.player]) unrestVal = ST.domestic.generals[ST.player].unrest || 0;
   if (unrestVal > 30) {
     const drag = -Math.min(0.35, ((unrestVal - 30) / 70) * 0.35);
     selfPP += drag;
+  }
+  // H（玩法深度）：中国特区动能 → 长期 GDP 增速弹性（40 为基准，±0.30pp 上限）。
+  // 开放动能越高，外向型增长的复利效应越强；封锁下动能流失则直接拖累增速。
+  if (ST.player === "CHN" && ST.domestic.chn) {
+    selfPP += clamp(((ST.domestic.chn.sezMomentum || 0) - 40) / 60, -1, 1) * 0.30;
+  }
+  // H（玩法深度）：西德能源供应压力 → 工业成本拖累（>30 起线性加深，上限 -0.30pp）。
+  if (ST.player === "DEU" && ST.domestic.deu) {
+    const ep = ST.domestic.deu.energyPressure || 0;
+    if (ep > 30) selfPP -= Math.min(0.30, ((ep - 30) / 70) * 0.30);
   }
   if (ST.player === "USA" && ST.domestic.usa && ST.domestic.usa.budgetCapActive) {
     if (ST.mil > 6.0) {

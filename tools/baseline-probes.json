@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 44,
-    "pop": 41,
-    "ind": 43,
-    "province": 41,
-    "delta": 46,
-    "resource": 53
+    "bloc": 48,
+    "pop": 44,
+    "ind": 49,
+    "province": 50,
+    "delta": 52,
+    "resource": 57
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1298
+   "totalMs": 1383
   },
   "failed": false
  },
@@ -140,7 +140,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 139838,
+   "saveBytes": 139937,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -776,7 +776,25 @@
     "generalDomRendered": "PASS",
     "observerZeroPmods": "PASS",
     "stateTamperedBeforeLoad": "PASS",
-    "stateRestoredAfterLoad": "PASS"
+    "stateRestoredAfterLoad": "PASS",
+    "chnDeuEconFields": "PASS",
+    "stressHelpersExist": "PASS",
+    "chnSanctionRaisesExternalStress": "PASS",
+    "chnExternalStressDrainsSez": "PASS",
+    "__pmodChnHigh": -2.2,
+    "__pmodChnLow": -2.7,
+    "chnSezMomentumGdpElasticity": "PASS",
+    "__deuEpBlocked": 28.8073,
+    "deuOilBlockadeRaisesEnergyPressure": "PASS",
+    "__deuEpSanctioned": 58.1632,
+    "deuSanctionCrossesEnergyThreshold": "PASS",
+    "deuEnergyPressureHitsCoalition": "PASS",
+    "__pmodDeuLow": -3,
+    "__pmodDeuHigh": -3.3,
+    "deuEnergyPressureDragsGdp": "PASS",
+    "chnEconMeterRendered": "PASS",
+    "deuEconMeterRendered": "PASS",
+    "chnDeuEconFieldsRestored": "PASS"
    }
   },
   "failed": false
