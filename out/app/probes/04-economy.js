@@ -172,147 +172,13 @@ function runEmbargoProbe() {
     }
   };
   try {
-    // 1. 数据模块与多边出口管制规则检测
-    assert("embargoMetaLoaded", !!E && !!E.COCOM && !!E.CHOKEPOINTS, "巴统与咽喉海峡元数据加载完整");
-    assert("cocomRestrictedTech", E.isCocomRestricted("NATO", "WP", "tech") === true &&
-      E.isCocomRestricted("W", "SOV", "tech") === true &&
-      E.isCocomRestricted("W", "CHN", "tech") === true, "西方对华约与社会主义阵营高新技术实施管制");
-    assert("cocomAllowNonTech", E.isCocomRestricted("NATO", "WP", "oil") === false &&
-      E.isCocomRestricted("W", "SOV", "agr") === false, "非高新技术常规物资不禁运");
-    assert("cocomAllowInternal", E.isCocomRestricted("NATO", "W", "tech") === false &&
-      E.isCocomRestricted("WP", "WP", "tech") === false, "阵营内部技术流动不禁运");
 
-    // 2. 1980 史实基准与东芝机械特种走私原型验证
-    assert("stateCocomInitialized", ST.cocom && ST.cocom.active === true && ST.cocom.strict === false,
-      "ST.cocom 初始化生效但默认非极限制裁");
-    assert("stateSmuggleInitialized", ST.smuggle && ST.smuggle.tr_deu_sun_tech === true,
-      "ST.smuggle 默认启用东芝机械特种走私渠道原型");
-    assert("stateHormuzInitialized", ST.chokepoints && ST.chokepoints.hormuz === "open",
-      "ST.chokepoints 霍尔木兹海峡默认正常通航");
+  // G（收尾评审）：本探针的阶段正文抽为两个推进器（见下方 runEmbargoProbePhase*）。
+  const ctx = {};
+  ctx.E = E;
+  runEmbargoProbePhase1(r, assert, ctx);
+  runEmbargoProbePhase2(r, assert, ctx);
 
-    const techRoute = ST.tradeRoutes.find((x) => x.id === "tr_deu_sun_tech");
-    assert("deuSunTechRouteFound", !!techRoute, "存在西德向苏联出口技术航线");
-    const st0 = getRouteStatus(techRoute);
-    assert("baselineSmuggleStatus", st0.status === "smuggled" && st0.factor === 1.0 && st0.costMultiplier === 1.5,
-      "基准状态下西德至苏联技术航线为特种走私(1.5x外汇溢价)");
-
-    // 3. 巴统极限升级与反走私阻断测试
-    ST.smuggle.tr_deu_sun_tech = false;
-    const stBlocked = getRouteStatus(techRoute);
-    assert("cocomBanEnforced", stBlocked.status === "blocked_cocom" && stBlocked.factor === 0,
-      "关闭特种走私后巴统高技术航线被彻底阻断(运力归零)");
-    ST.smuggle.tr_deu_sun_tech = true; // 还原
-
-    // 4. 双边二级极限制裁切断航线测试
-    const origPlayer = ST.player;
-    const origSan = ST.sanctions.slice();
-    ST.player = "USA";
-    ST.sanctions = [{ t: "SUN", l: 2, since: 0 }];
-    const usSunRoute = ST.tradeRoutes.find((x) => (x.from === "USA" && x.to === "SUN") || (x.from === "SUN" && x.to === "USA"));
-    assert("usSunRouteFound", !!usSunRoute, "存在美苏跨铁幕贸易航线");
-    const stSan = getRouteStatus(usSunRoute);
-    assert("tier2SanctionBlockade", stSan.status === "sanctioned" && stSan.factor === 0,
-      "美国对苏联实施二级极限制裁切断美苏直接贸易航线");
-    ST.player = origPlayer;
-    ST.sanctions = origSan;
-
-    // 5. 战略咽喉海峡（霍尔木兹海峡）状态机与油轮战推演
-    const sauJpnRoute = ST.tradeRoutes.find((x) => x.id === "tr_sau_jpn_oil");
-    assert("sauJpnRouteFound", !!sauJpnRoute, "存在沙特向日本输出原油航线");
-
-    // (a) 正常状态
-    ST.chokepoints.hormuz = "open";
-    const stHormuzOpen = getRouteStatus(sauJpnRoute);
-    assert("hormuzOpenDelivery", stHormuzOpen.status === "ok" && stHormuzOpen.factor === 1.0,
-      "霍尔木兹畅通时沙特-日本原油全额交付");
-
-    // (b) 油轮战交火 (contested: 运力-30%, 成本+25%)
-    ST.chokepoints.hormuz = "contested";
-    const stHormuzContested = getRouteStatus(sauJpnRoute);
-    assert("hormuzContestedDelivery", stHormuzContested.status === "chokepoint_contested" &&
-      Math.abs(stHormuzContested.factor - 0.7) < 1e-4 && Math.abs(stHormuzContested.costMultiplier - 1.25) < 1e-4,
-      "霍尔木兹油轮战期间运力折损至70%且运费溢价125%");
-
-    // (c) 极端封锁断航 (blocked: 运力-80%, 成本翻倍)
-    ST.chokepoints.hormuz = "blocked";
-    const stHormuzBlocked = getRouteStatus(sauJpnRoute);
-    assert("hormuzBlockedDelivery", stHormuzBlocked.status === "blocked_chokepoint" &&
-      Math.abs(stHormuzBlocked.factor - 0.2) < 1e-4,
-      "霍尔木兹极端封锁运力仅剩20%");
-
-    // 6. 能源短缺休克与宏观经济折损（Resource Deficit Shock）
-    // (a) 畅通时日本无短缺折损
-    ST.chokepoints.hormuz = "open";
-    const rpOpen = calcResourcePenalty("JPN");
-    assert("jpnNoDeficitWhenOpen", rpOpen.penalty === 0 && rpOpen.ratio >= 0.45,
-      "霍尔木兹畅通时日本原油满足率正常无折损 (满足率: " + Math.round(rpOpen.ratio * 100) + "%)");
-
-    // (b) 极端封锁时日本触发工业减速惩罚
-    ST.chokepoints.hormuz = "blocked";
-    const rpBlocked = calcResourcePenalty("JPN");
-    assert("jpnDeficitShockTriggered", rpBlocked.penalty < -0.3 && rpBlocked.ratio < 0.45,
-      "霍尔木兹封锁触发日本原油短缺休克 (满足率: " + Math.round(rpBlocked.ratio * 100) + "%, 惩罚: " + rpBlocked.penalty.toFixed(2) + "pp)");
-
-    // 7. 时序状态演进与十字路口因果检验
-    ST.chokepoints.hormuz = "open";
-    updateTimelineEmbargo(1983, 12);
-    assert("timelineBeforeTankerWar", ST.chokepoints.hormuz === "open", "1983年油轮战未爆发保持open");
-    updateTimelineEmbargo(1984, 5);
-    assert("timelineTankerWarActive", ST.chokepoints.hormuz === "contested", "1984年油轮战爆发进入contested");
-    updateTimelineEmbargo(1988, 9);
-    assert("timelineTankerWarEnded", ST.chokepoints.hormuz === "open", "1988年停火后海峡恢复open");
-
-    // 十字路口克制分支：若阻止两伊战争，则油轮战不爆发
-    CR.deny.add("iran_iraq_war");
-    ST.chokepoints.hormuz = "open";
-    updateTimelineEmbargo(1984, 5);
-    assert("crossroadPreventsTankerWar", ST.chokepoints.hormuz === "open", "阻止两伊战争后油轮战被抑制不发生");
-    CR.deny.delete("iran_iraq_war");
-
-    // 8. UI 面板渲染与交互控制台断言
-    select("JPN");
-    const tb = $("p-trade-box");
-    assert("jpnPanelTradeRendered", tb && tb.style.display !== "none", "日本贸易面板正常展开");
-    assert("embargoConsoleRendered", tb && tb.innerHTML.indexOf("经济战与航道安全态势") >= 0,
-      "贸易面板内嵌经济战与航道安全态势控制台");
-    assert("cocomItemRendered", tb && tb.innerHTML.indexOf("巴统高技术禁运") >= 0,
-      "控制台正确展示巴统管制条目");
-    assert("hormuzItemRendered", tb && tb.innerHTML.indexOf("霍尔木兹海峡") >= 0,
-      "控制台正确展示霍尔木兹海峡状态");
-
-    select("SUN");
-    assert("sunSmuggleTagRendered", tb && tb.innerHTML.indexOf("特种走私") >= 0,
-      "苏联贸易面板内包含特种走私航线标签");
-
-    // 玩家身份下交互按钮渲染断言
-    ST.player = "USA"; ST.sel = "USA"; select("USA");
-    assert("usaPlayerActionBtns", !!$("p-btn-cocom") && !!$("p-btn-escort"),
-      "美国玩家面板提供升级巴统管制与护航行动按钮");
-
-    ST.player = "SUN"; ST.sel = "SUN"; select("SUN");
-    assert("sunPlayerActionBtns", !!$("p-btn-smuggle"),
-      "苏联玩家面板提供开启/关闭特种技术走私按钮");
-
-    ST.player = origPlayer; ST.sel = null; select(null);
-
-    // 9. 权威持久化往返验证 (Save/Load Round-Trip)
-    ST.cocom.strict = true;
-    ST.chokepoints.hormuz = "blocked";
-    ST.smuggle.tr_deu_sun_tech = false;
-    const saveOk = simSave();
-    assert("saveRoundtripSuccess", saveOk.ok, "simSave 成功持久化经济战状态");
-
-    simReset();
-    assert("resetCleanDefaults", ST.cocom.strict === false && ST.chokepoints.hormuz === "open" &&
-      ST.smuggle.tr_deu_sun_tech === true, "simReset 成功还原经济战基准状态");
-
-    const loadOk = simLoad();
-    assert("loadRoundtripSuccess", loadOk.ok, "simLoad 成功反序列化");
-    assert("cocomStrictRestored", ST.cocom.strict === true, "巴统极限制裁状态成功恢复");
-    assert("hormuzBlockedRestored", ST.chokepoints.hormuz === "blocked", "霍尔木兹封锁状态成功恢复");
-    assert("smuggleStateRestored", ST.smuggle.tr_deu_sun_tech === false, "特种走私开关成功恢复");
-
-    simReset();
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -322,5 +188,156 @@ function runEmbargoProbe() {
   document.body.appendChild(d);
   return r;
 }
+
+// G（收尾评审）：runEmbargoProbe 的阶段一（原样搬运，无逻辑改动）
+function runEmbargoProbePhase1(r, assert, ctx) {
+  const E = ctx.E;
+
+  // 1. 数据模块与多边出口管制规则检测
+  assert("embargoMetaLoaded", !!E && !!E.COCOM && !!E.CHOKEPOINTS, "巴统与咽喉海峡元数据加载完整");
+  assert("cocomRestrictedTech", E.isCocomRestricted("NATO", "WP", "tech") === true &&
+    E.isCocomRestricted("W", "SOV", "tech") === true &&
+    E.isCocomRestricted("W", "CHN", "tech") === true, "西方对华约与社会主义阵营高新技术实施管制");
+  assert("cocomAllowNonTech", E.isCocomRestricted("NATO", "WP", "oil") === false &&
+    E.isCocomRestricted("W", "SOV", "agr") === false, "非高新技术常规物资不禁运");
+  assert("cocomAllowInternal", E.isCocomRestricted("NATO", "W", "tech") === false &&
+    E.isCocomRestricted("WP", "WP", "tech") === false, "阵营内部技术流动不禁运");
+
+  // 2. 1980 史实基准与东芝机械特种走私原型验证
+  assert("stateCocomInitialized", ST.cocom && ST.cocom.active === true && ST.cocom.strict === false,
+    "ST.cocom 初始化生效但默认非极限制裁");
+  assert("stateSmuggleInitialized", ST.smuggle && ST.smuggle.tr_deu_sun_tech === true,
+    "ST.smuggle 默认启用东芝机械特种走私渠道原型");
+  assert("stateHormuzInitialized", ST.chokepoints && ST.chokepoints.hormuz === "open",
+    "ST.chokepoints 霍尔木兹海峡默认正常通航");
+
+  const techRoute = ST.tradeRoutes.find((x) => x.id === "tr_deu_sun_tech");
+  assert("deuSunTechRouteFound", !!techRoute, "存在西德向苏联出口技术航线");
+  const st0 = getRouteStatus(techRoute);
+  assert("baselineSmuggleStatus", st0.status === "smuggled" && st0.factor === 1.0 && st0.costMultiplier === 1.5,
+    "基准状态下西德至苏联技术航线为特种走私(1.5x外汇溢价)");
+
+  // 3. 巴统极限升级与反走私阻断测试
+  ST.smuggle.tr_deu_sun_tech = false;
+  const stBlocked = getRouteStatus(techRoute);
+  assert("cocomBanEnforced", stBlocked.status === "blocked_cocom" && stBlocked.factor === 0,
+    "关闭特种走私后巴统高技术航线被彻底阻断(运力归零)");
+  ST.smuggle.tr_deu_sun_tech = true; // 还原
+}
+
+// G（收尾评审）：runEmbargoProbe 的阶段二（原样搬运，无逻辑改动）
+function runEmbargoProbePhase2(r, assert, ctx) {
+  // 4. 双边二级极限制裁切断航线测试
+  const origPlayer = ST.player;
+  const origSan = ST.sanctions.slice();
+  ST.player = "USA";
+  ST.sanctions = [{ t: "SUN", l: 2, since: 0 }];
+  const usSunRoute = ST.tradeRoutes.find((x) => (x.from === "USA" && x.to === "SUN") || (x.from === "SUN" && x.to === "USA"));
+  assert("usSunRouteFound", !!usSunRoute, "存在美苏跨铁幕贸易航线");
+  const stSan = getRouteStatus(usSunRoute);
+  assert("tier2SanctionBlockade", stSan.status === "sanctioned" && stSan.factor === 0,
+    "美国对苏联实施二级极限制裁切断美苏直接贸易航线");
+  ST.player = origPlayer;
+  ST.sanctions = origSan;
+
+  // 5. 战略咽喉海峡（霍尔木兹海峡）状态机与油轮战推演
+  const sauJpnRoute = ST.tradeRoutes.find((x) => x.id === "tr_sau_jpn_oil");
+  assert("sauJpnRouteFound", !!sauJpnRoute, "存在沙特向日本输出原油航线");
+
+  // (a) 正常状态
+  ST.chokepoints.hormuz = "open";
+  const stHormuzOpen = getRouteStatus(sauJpnRoute);
+  assert("hormuzOpenDelivery", stHormuzOpen.status === "ok" && stHormuzOpen.factor === 1.0,
+    "霍尔木兹畅通时沙特-日本原油全额交付");
+
+  // (b) 油轮战交火 (contested: 运力-30%, 成本+25%)
+  ST.chokepoints.hormuz = "contested";
+  const stHormuzContested = getRouteStatus(sauJpnRoute);
+  assert("hormuzContestedDelivery", stHormuzContested.status === "chokepoint_contested" &&
+    Math.abs(stHormuzContested.factor - 0.7) < 1e-4 && Math.abs(stHormuzContested.costMultiplier - 1.25) < 1e-4,
+    "霍尔木兹油轮战期间运力折损至70%且运费溢价125%");
+
+  // (c) 极端封锁断航 (blocked: 运力-80%, 成本翻倍)
+  ST.chokepoints.hormuz = "blocked";
+  const stHormuzBlocked = getRouteStatus(sauJpnRoute);
+  assert("hormuzBlockedDelivery", stHormuzBlocked.status === "blocked_chokepoint" &&
+    Math.abs(stHormuzBlocked.factor - 0.2) < 1e-4,
+    "霍尔木兹极端封锁运力仅剩20%");
+
+  // 6. 能源短缺休克与宏观经济折损（Resource Deficit Shock）
+  // (a) 畅通时日本无短缺折损
+  ST.chokepoints.hormuz = "open";
+  const rpOpen = calcResourcePenalty("JPN");
+  assert("jpnNoDeficitWhenOpen", rpOpen.penalty === 0 && rpOpen.ratio >= 0.45,
+    "霍尔木兹畅通时日本原油满足率正常无折损 (满足率: " + Math.round(rpOpen.ratio * 100) + "%)");
+
+  // (b) 极端封锁时日本触发工业减速惩罚
+  ST.chokepoints.hormuz = "blocked";
+  const rpBlocked = calcResourcePenalty("JPN");
+  assert("jpnDeficitShockTriggered", rpBlocked.penalty < -0.3 && rpBlocked.ratio < 0.45,
+    "霍尔木兹封锁触发日本原油短缺休克 (满足率: " + Math.round(rpBlocked.ratio * 100) + "%, 惩罚: " + rpBlocked.penalty.toFixed(2) + "pp)");
+
+  // 7. 时序状态演进与十字路口因果检验
+  ST.chokepoints.hormuz = "open";
+  updateTimelineEmbargo(1983, 12);
+  assert("timelineBeforeTankerWar", ST.chokepoints.hormuz === "open", "1983年油轮战未爆发保持open");
+  updateTimelineEmbargo(1984, 5);
+  assert("timelineTankerWarActive", ST.chokepoints.hormuz === "contested", "1984年油轮战爆发进入contested");
+  updateTimelineEmbargo(1988, 9);
+  assert("timelineTankerWarEnded", ST.chokepoints.hormuz === "open", "1988年停火后海峡恢复open");
+
+  // 十字路口克制分支：若阻止两伊战争，则油轮战不爆发
+  CR.deny.add("iran_iraq_war");
+  ST.chokepoints.hormuz = "open";
+  updateTimelineEmbargo(1984, 5);
+  assert("crossroadPreventsTankerWar", ST.chokepoints.hormuz === "open", "阻止两伊战争后油轮战被抑制不发生");
+  CR.deny.delete("iran_iraq_war");
+
+  // 8. UI 面板渲染与交互控制台断言
+  select("JPN");
+  const tb = $("p-trade-box");
+  assert("jpnPanelTradeRendered", tb && tb.style.display !== "none", "日本贸易面板正常展开");
+  assert("embargoConsoleRendered", tb && tb.innerHTML.indexOf("经济战与航道安全态势") >= 0,
+    "贸易面板内嵌经济战与航道安全态势控制台");
+  assert("cocomItemRendered", tb && tb.innerHTML.indexOf("巴统高技术禁运") >= 0,
+    "控制台正确展示巴统管制条目");
+  assert("hormuzItemRendered", tb && tb.innerHTML.indexOf("霍尔木兹海峡") >= 0,
+    "控制台正确展示霍尔木兹海峡状态");
+
+  select("SUN");
+  assert("sunSmuggleTagRendered", tb && tb.innerHTML.indexOf("特种走私") >= 0,
+    "苏联贸易面板内包含特种走私航线标签");
+
+  // 玩家身份下交互按钮渲染断言
+  ST.player = "USA"; ST.sel = "USA"; select("USA");
+  assert("usaPlayerActionBtns", !!$("p-btn-cocom") && !!$("p-btn-escort"),
+    "美国玩家面板提供升级巴统管制与护航行动按钮");
+
+  ST.player = "SUN"; ST.sel = "SUN"; select("SUN");
+  assert("sunPlayerActionBtns", !!$("p-btn-smuggle"),
+    "苏联玩家面板提供开启/关闭特种技术走私按钮");
+
+  ST.player = origPlayer; ST.sel = null; select(null);
+
+  // 9. 权威持久化往返验证 (Save/Load Round-Trip)
+  ST.cocom.strict = true;
+  ST.chokepoints.hormuz = "blocked";
+  ST.smuggle.tr_deu_sun_tech = false;
+  const saveOk = simSave();
+  assert("saveRoundtripSuccess", saveOk.ok, "simSave 成功持久化经济战状态");
+
+  simReset();
+  assert("resetCleanDefaults", ST.cocom.strict === false && ST.chokepoints.hormuz === "open" &&
+    ST.smuggle.tr_deu_sun_tech === true, "simReset 成功还原经济战基准状态");
+
+  const loadOk = simLoad();
+  assert("loadRoundtripSuccess", loadOk.ok, "simLoad 成功反序列化");
+  assert("cocomStrictRestored", ST.cocom.strict === true, "巴统极限制裁状态成功恢复");
+  assert("hormuzBlockedRestored", ST.chokepoints.hormuz === "blocked", "霍尔木兹封锁状态成功恢复");
+  assert("smuggleStateRestored", ST.smuggle.tr_deu_sun_tech === false, "特种走私开关成功恢复");
+
+  simReset();
+}
+
 
 // R10A：大国战略性格与反应式 AI 决策机全链路探针（?aiprobe=1）

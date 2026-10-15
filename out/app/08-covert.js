@@ -306,109 +306,12 @@ function runIntelProbe() {
   };
 
   try {
-    // 1. 核心数据库与函数存在性
-    assert("intelDbLoaded", !!window.W1980_INTEL && Array.isArray(window.W1980_INTEL.ACTIONS), "W1980_INTEL 数据库应成功载入");
-    assert("agencyDefinitionsExist", !!window.W1980_INTEL.AGENCIES.USA && !!window.W1980_INTEL.AGENCIES.SUN, "美苏情报局定义完备");
-    assert("actionCountFour", window.W1980_INTEL.ACTIONS.length === 4, "隐蔽行动库应包含 4 大行动");
-    assert("proxyInsurgencyDefined", !!window.W1980_INTEL.getActionById("proxy_insurgency"), "代理人游击战赞助已定义");
-    assert("coupAttemptDefined", !!window.W1980_INTEL.getActionById("coup_attempt"), "政变策动行动已定义");
-    assert("counterIntelDefined", !!window.W1980_INTEL.getActionById("counter_intel"), "反间谍防御行动已定义");
-    assert("techSmuggleDefined", !!window.W1980_INTEL.getActionById("tech_smuggle"), "特种技术走私已定义");
 
-    // 2. 核心 API 函数定义
-    assert("initIntelStateExists", typeof initIntelState === "function", "initIntelState 应已定义");
-    assert("sanitizeIntelStateExists", typeof sanitizeIntelState === "function", "sanitizeIntelState 应已定义");
-    assert("updateMonthlyIntelExists", typeof updateMonthlyIntel === "function", "updateMonthlyIntel 应已定义");
-    assert("executeCovertActionExists", typeof executeCovertAction === "function", "executeCovertAction 应已定义");
-    assert("refreshCovertBoxExists", typeof refreshCovertBox === "function", "refreshCovertBox 应已定义");
+  // G（收尾评审）：本探针的阶段正文抽为两个推进器（见下方 runIntelProbePhase*）。
+  const ctx = {};
+  runIntelProbePhase1(r, assert, ctx);
+  runIntelProbePhase2(r, assert, ctx);
 
-    // 3. DOM 容器与布局校验
-    const covertBox = $("p-covert-box");
-    const dipPane = $("p-pane-diplomacy");
-    assert("covertBoxDomExists", !!covertBox, "#p-covert-box 应存在于 DOM 中");
-    assert("diplomacyPaneContainsCovertBox", dipPane && dipPane.contains(covertBox), "#p-pane-diplomacy 包含 #p-covert-box");
-
-    // 4. 国家特情局初始状态校验
-    initIntelState("USA");
-    assert("initialStateUSA", ST.intel && ST.intel.budget === 25.0 && ST.intel.ap === 6 && ST.intel.agency.includes("CIA"), "美国初始 CIA 黑金预算 25 亿与 6 AP");
-
-    initIntelState("SUN");
-    assert("initialStateSUN", ST.intel && ST.intel.budget === 22.0 && ST.intel.agency.includes("KGB"), "苏联初始 KGB 黑金预算 22 亿与 70% 防御");
-
-    initIntelState("CHN");
-    assert("initialStateCHN", ST.intel && ST.intel.budget === 15.0 && ST.intel.agency.includes("MSS"), "中国初始特情局黑金预算 15 亿");
-
-    // 5. 月度演进：AP 自然恢复与预算增长
-    ST.intel.ap = 3;
-    const prevBudget = ST.intel.budget;
-    updateMonthlyIntel(1980, 2, true);
-    assert("apRecoversMonthly", ST.intel.ap === 4, "月度演进特工行动力恢复 +1 AP");
-    assert("budgetReplenishesMonthly", ST.intel.budget > prevBudget, "月度黑金预算正常拨付增长");
-
-    // 6. 执行反间谍防御行动
-    const prevCounter = ST.intel.counterLevel;
-    const resCounter = executeCovertAction("counter_intel");
-    assert("counterIntelSuccess", resCounter.ok === true && ST.intel.counterLevel === prevCounter + 15, "反间谍防御行动提升防御等级 +15%");
-
-    // 7. 执行代理人游击队赞助行动 (消耗预算与 AP，记入历史)
-    const prevAp = ST.intel.ap;
-    const prevB = ST.intel.budget;
-    const resProxy = executeCovertAction("proxy_insurgency");
-    assert("proxyActionExecuted", resProxy.ok === true, "代理人赞助行动顺利执行");
-    assert("actionConsumesApAndBudget", ST.intel.ap === prevAp - 2 && Math.abs(ST.intel.budget - (prevB - 3.0)) < 0.1, "正确扣除 2 AP 与 3 亿黑金");
-    assert("historyRecorded", ST.intel.history.length >= 2, "行动历史成功记入战报档案");
-
-    // 8. 苏联技术走私缓解轻工短缺
-    ST.player = "SUN";
-    initIntelState("SUN");
-    if (ST.domestic && ST.domestic.sun) {
-      ST.domestic.sun.shortage = 50;
-      executeCovertAction("tech_smuggle", null, true, false);
-      assert("techSmuggleReducesSunShortage", ST.domestic.sun.shortage <= 44, "苏联技术走私成功缓解消费品短缺");
-    }
-
-    // 9. 丑闻曝光与国会反噬
-    ST.player = "USA";
-    initIntelState("USA");
-    executeCovertAction("coup_attempt", "NIC", false, true);
-    assert("blowbackTriggersScandalAndFreezesBudget", ST.intel.scandalCooldown === 6, "丑闻败露启动 6 个月调查冻结期");
-    const blockedRes = executeCovertAction("proxy_insurgency");
-    assert("scandalBlocksActions", blockedRes.ok === false && blockedRes.error === "SCANDAL_FREEZE", "调查冻结期间禁止发起隐蔽行动");
-
-    // 10. 界面渲染校验
-    ST.player = "USA";
-    refreshCovertBox("USA");
-    assert("uiRendersCiaForUSA", covertBox.innerHTML.includes("CIA") && covertBox.innerHTML.includes("黑金预算池"), "成功渲染美国 CIA 控制台");
-
-    refreshCovertBox("SUN");
-    assert("uiRendersKgbForSUN", covertBox.innerHTML.includes("KGB"), "成功渲染苏联 KGB 控制台");
-
-    refreshCovertBox("CHN");
-    assert("uiRendersMssForCHN", covertBox.innerHTML.includes("MSS"), "成功渲染中国 MSS 控制台");
-
-    // 11. 旁观模式零漂移铁律
-    ST.player = null;
-    applyPlayerDecisions();
-    const pmodsCount = Object.keys((SIM.S && SIM.S.P && SIM.S.P.pmods) || {}).length;
-    assert("spectatorZeroPmods", pmodsCount === 0, "旁观模式下特情系统绝对 0 pmods 注入 (0 漂移)");
-
-    // 12. simSave() / simLoad() 全量往返序列化
-    ST.player = "USA";
-    initIntelState("USA");
-    ST.intel.budget = 19.8;
-    ST.intel.ap = 7;
-    simSave();
-    ST.intel = null;
-    assert("stateCleanedBeforeLoad", ST.intel === null, "读档前清空状态生效");
-    simLoad();
-    assert("simSaveLoadRoundTrip", ST.intel && Math.abs(ST.intel.budget - 19.8) < 0.1 && ST.intel.ap === 7, "simSave/simLoad 100% 往返恢复特情局状态");
-
-    // 恢复纯净环境
-    ST.player = null;
-    ST.mil = 0;
-    ST.intel = null;
-    applyPlayerDecisions();
-    refreshCovertBox(ST.sel);
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -419,6 +322,117 @@ function runIntelProbe() {
   document.body.appendChild(d);
   return r;
 }
+
+// G（收尾评审）：runIntelProbe 的阶段一（原样搬运，无逻辑改动）
+function runIntelProbePhase1(r, assert, ctx) {
+  // 1. 核心数据库与函数存在性
+  assert("intelDbLoaded", !!window.W1980_INTEL && Array.isArray(window.W1980_INTEL.ACTIONS), "W1980_INTEL 数据库应成功载入");
+  assert("agencyDefinitionsExist", !!window.W1980_INTEL.AGENCIES.USA && !!window.W1980_INTEL.AGENCIES.SUN, "美苏情报局定义完备");
+  assert("actionCountFour", window.W1980_INTEL.ACTIONS.length === 4, "隐蔽行动库应包含 4 大行动");
+  assert("proxyInsurgencyDefined", !!window.W1980_INTEL.getActionById("proxy_insurgency"), "代理人游击战赞助已定义");
+  assert("coupAttemptDefined", !!window.W1980_INTEL.getActionById("coup_attempt"), "政变策动行动已定义");
+  assert("counterIntelDefined", !!window.W1980_INTEL.getActionById("counter_intel"), "反间谍防御行动已定义");
+  assert("techSmuggleDefined", !!window.W1980_INTEL.getActionById("tech_smuggle"), "特种技术走私已定义");
+
+  // 2. 核心 API 函数定义
+  assert("initIntelStateExists", typeof initIntelState === "function", "initIntelState 应已定义");
+  assert("sanitizeIntelStateExists", typeof sanitizeIntelState === "function", "sanitizeIntelState 应已定义");
+  assert("updateMonthlyIntelExists", typeof updateMonthlyIntel === "function", "updateMonthlyIntel 应已定义");
+  assert("executeCovertActionExists", typeof executeCovertAction === "function", "executeCovertAction 应已定义");
+  assert("refreshCovertBoxExists", typeof refreshCovertBox === "function", "refreshCovertBox 应已定义");
+}
+
+// G（收尾评审）：runIntelProbe 的阶段二（原样搬运，无逻辑改动）
+function runIntelProbePhase2(r, assert, ctx) {
+  // 3. DOM 容器与布局校验
+  const covertBox = $("p-covert-box");
+  const dipPane = $("p-pane-diplomacy");
+  assert("covertBoxDomExists", !!covertBox, "#p-covert-box 应存在于 DOM 中");
+  assert("diplomacyPaneContainsCovertBox", dipPane && dipPane.contains(covertBox), "#p-pane-diplomacy 包含 #p-covert-box");
+
+  // 4. 国家特情局初始状态校验
+  initIntelState("USA");
+  assert("initialStateUSA", ST.intel && ST.intel.budget === 25.0 && ST.intel.ap === 6 && ST.intel.agency.includes("CIA"), "美国初始 CIA 黑金预算 25 亿与 6 AP");
+
+  initIntelState("SUN");
+  assert("initialStateSUN", ST.intel && ST.intel.budget === 22.0 && ST.intel.agency.includes("KGB"), "苏联初始 KGB 黑金预算 22 亿与 70% 防御");
+
+  initIntelState("CHN");
+  assert("initialStateCHN", ST.intel && ST.intel.budget === 15.0 && ST.intel.agency.includes("MSS"), "中国初始特情局黑金预算 15 亿");
+
+  // 5. 月度演进：AP 自然恢复与预算增长
+  ST.intel.ap = 3;
+  const prevBudget = ST.intel.budget;
+  updateMonthlyIntel(1980, 2, true);
+  assert("apRecoversMonthly", ST.intel.ap === 4, "月度演进特工行动力恢复 +1 AP");
+  assert("budgetReplenishesMonthly", ST.intel.budget > prevBudget, "月度黑金预算正常拨付增长");
+
+  // 6. 执行反间谍防御行动
+  const prevCounter = ST.intel.counterLevel;
+  const resCounter = executeCovertAction("counter_intel");
+  assert("counterIntelSuccess", resCounter.ok === true && ST.intel.counterLevel === prevCounter + 15, "反间谍防御行动提升防御等级 +15%");
+
+  // 7. 执行代理人游击队赞助行动 (消耗预算与 AP，记入历史)
+  const prevAp = ST.intel.ap;
+  const prevB = ST.intel.budget;
+  const resProxy = executeCovertAction("proxy_insurgency");
+  assert("proxyActionExecuted", resProxy.ok === true, "代理人赞助行动顺利执行");
+  assert("actionConsumesApAndBudget", ST.intel.ap === prevAp - 2 && Math.abs(ST.intel.budget - (prevB - 3.0)) < 0.1, "正确扣除 2 AP 与 3 亿黑金");
+  assert("historyRecorded", ST.intel.history.length >= 2, "行动历史成功记入战报档案");
+
+  // 8. 苏联技术走私缓解轻工短缺
+  ST.player = "SUN";
+  initIntelState("SUN");
+  if (ST.domestic && ST.domestic.sun) {
+    ST.domestic.sun.shortage = 50;
+    executeCovertAction("tech_smuggle", null, true, false);
+    assert("techSmuggleReducesSunShortage", ST.domestic.sun.shortage <= 44, "苏联技术走私成功缓解消费品短缺");
+  }
+
+  // 9. 丑闻曝光与国会反噬
+  ST.player = "USA";
+  initIntelState("USA");
+  executeCovertAction("coup_attempt", "NIC", false, true);
+  assert("blowbackTriggersScandalAndFreezesBudget", ST.intel.scandalCooldown === 6, "丑闻败露启动 6 个月调查冻结期");
+  const blockedRes = executeCovertAction("proxy_insurgency");
+  assert("scandalBlocksActions", blockedRes.ok === false && blockedRes.error === "SCANDAL_FREEZE", "调查冻结期间禁止发起隐蔽行动");
+
+  // 10. 界面渲染校验
+  ST.player = "USA";
+  refreshCovertBox("USA");
+  assert("uiRendersCiaForUSA", covertBox.innerHTML.includes("CIA") && covertBox.innerHTML.includes("黑金预算池"), "成功渲染美国 CIA 控制台");
+
+  refreshCovertBox("SUN");
+  assert("uiRendersKgbForSUN", covertBox.innerHTML.includes("KGB"), "成功渲染苏联 KGB 控制台");
+
+  refreshCovertBox("CHN");
+  assert("uiRendersMssForCHN", covertBox.innerHTML.includes("MSS"), "成功渲染中国 MSS 控制台");
+
+  // 11. 旁观模式零漂移铁律
+  ST.player = null;
+  applyPlayerDecisions();
+  const pmodsCount = Object.keys((SIM.S && SIM.S.P && SIM.S.P.pmods) || {}).length;
+  assert("spectatorZeroPmods", pmodsCount === 0, "旁观模式下特情系统绝对 0 pmods 注入 (0 漂移)");
+
+  // 12. simSave() / simLoad() 全量往返序列化
+  ST.player = "USA";
+  initIntelState("USA");
+  ST.intel.budget = 19.8;
+  ST.intel.ap = 7;
+  simSave();
+  ST.intel = null;
+  assert("stateCleanedBeforeLoad", ST.intel === null, "读档前清空状态生效");
+  simLoad();
+  assert("simSaveLoadRoundTrip", ST.intel && Math.abs(ST.intel.budget - 19.8) < 0.1 && ST.intel.ap === 7, "simSave/simLoad 100% 往返恢复特情局状态");
+
+  // 恢复纯净环境
+  ST.player = null;
+  ST.mil = 0;
+  ST.intel = null;
+  applyPlayerDecisions();
+  refreshCovertBox(ST.sel);
+}
+
 
 // ---- R13B: 阿富汗战争泥潭与帝国消耗槽状态机 ----
 function initAfghanState() {
