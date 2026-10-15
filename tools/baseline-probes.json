@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 48,
-    "pop": 44,
-    "ind": 49,
-    "province": 50,
-    "delta": 52,
-    "resource": 57
+    "bloc": 54,
+    "pop": 49,
+    "ind": 53,
+    "province": 57,
+    "delta": 59,
+    "resource": 58
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1383
+   "totalMs": 1550
   },
   "failed": false
  },
@@ -844,7 +844,18 @@
     "epilogueSpecialTitle": "PASS",
     "observerZeroPmods": "PASS",
     "stateCleanedBeforeLoad": "PASS",
-    "stateRestoredAfterLoad": "PASS"
+    "stateRestoredAfterLoad": "PASS",
+    "chnAgendaTree": "PASS",
+    "deuAgendaTree": "PASS",
+    "chnMarketBlockedByPrereq": "PASS",
+    "chnMarketBlockedByDomestic": "PASS",
+    "chnMarketAllowedAfterTree": "PASS",
+    "deuMarketBlockedByPrereq": "PASS",
+    "deuOstBlockedByDomestic": "PASS",
+    "deuOstAllowedAfterDetente": "PASS",
+    "deuMarketAllowedAfterTree": "PASS",
+    "chnSezCompletionFeedsDomestic": "PASS",
+    "deuOstCompletionFeedsDomestic": "PASS"
    }
   },
   "failed": false

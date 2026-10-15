@@ -56,6 +56,26 @@
           stabilityBonus: 12,
           desc: "坚持独立自主和平外交，彻底免疫阵营脱钩震荡惩罚，社会安定度 +12"
         }
+      },
+      {
+        // H（玩法深度）：CHN 三步议程树的第三步 —— 特区 → 裁军 → 市场化。
+        // 门控挂在「内政天平」上：只有特区/市场派压过计划/国营派，价格闯关才推得动。
+        id: "chn_market",
+        title: "价格闯关与市场化并轨",
+        category: "改革开放",
+        icon: "💰",
+        desc: "在裁军释放的财政空间上推进价格并轨与国企承包制，双轨价差收窄，市场派彻底主导改革议程。",
+        yearMin: 1988,
+        monthMin: 1,
+        duration: 15,
+        requires: "chn_disarm",
+        condition: "domestic_reform_lead",
+        conditionDesc: "需完成百万大裁军，且特区/市场派权重高于计划/国营派",
+        effects: {
+          gdpBonus: 0.45,
+          domesticShortage: -10,
+          desc: "价格并轨打通全国统一市场，资源配置效率跃升 (+0.45pp/年，商品短缺 -10)"
+        }
       }
     ],
 
@@ -113,7 +133,27 @@
     ],
 
     // ---------------------------------------------------- 西德 / 欧洲 (DEU, FRA, GBR)
+    // ---------------------------------------------------- 西德 (DEU)
+    // H（玩法深度）：DEU 三步议程树 —— 新东方政策 → 单一市场 → 防务支柱。
+    // 第一步门控挂在「内政天平」上（缓和深度 ≥ 55），后两步为前置链。
     DEU: [
+      {
+        id: "deu_ostpolitik",
+        title: "新东方政策与莫斯科条约",
+        category: "东方外交",
+        icon: "🤝",
+        desc: "延续勃兰特的东方政策路线，与莫斯科、华沙签署互不侵犯条约，以经贸与人员往来松动铁幕，换取缓和红利。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 15,
+        condition: "domestic_detente",
+        conditionDesc: "1980 年起可推进，且东西欧缓和深度 ≥ 55（内政天平偏向缓和派）",
+        effects: {
+          gdpBonus: 0.25,
+          reserveMonthly: 1.5,
+          desc: "东方贸易与信贷渠道打开，出口订单与侨汇稳步增加 (+0.25pp/年，外汇流 +1.5亿 USD/月)"
+        }
+      },
       {
         id: "eur_single_market_deu",
         title: "单一欧洲法案与欧共体大市场",
@@ -123,7 +163,8 @@
         yearMin: 1986,
         monthMin: 1,
         duration: 15,
-        conditionDesc: "1986 年起欧共体成型",
+        requires: "deu_ostpolitik",
+        conditionDesc: "需先达成新东方政策，1986 年起欧共体成型",
         effects: {
           gdpBonus: 0.30,
           stabilityBonus: 8,
@@ -136,10 +177,11 @@
         category: "防务一体化",
         icon: "🛡️",
         desc: "深化法德战略协调与防务联合，筹建法德混合旅与欧洲军团，构建欧洲防务第二支柱以降低对美依附。",
-        yearMin: 1984,
+        yearMin: 1988,
         monthMin: 1,
         duration: 12,
-        conditionDesc: "1984 年起即可协调",
+        requires: "eur_single_market_deu",
+        conditionDesc: "需先达成欧洲单一市场，1988 年起协调建军",
         effects: {
           gdpBonus: 0.15,
           stabilityBonus: 10,

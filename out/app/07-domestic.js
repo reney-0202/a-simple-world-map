@@ -963,6 +963,21 @@ function checkAgendaCondition(cKey, ag) {
     if (ag.condition === "mil_ge_5" && curMil < 5.0) {
       return { ok: false, reason: "天基尖端军备研发要求军费 ≥ 5.0%（当前 " + curMil.toFixed(1) + "%）" };
     }
+    // H（玩法深度）：议程树门控挂在「内政天平」上 —— 改革/缓和派压过对手才推得动下一步
+    if (ag.condition === "domestic_reform_lead") {
+      const chn = (ST.domestic && ST.domestic.chn) ? ST.domestic.chn : null;
+      if (!chn) return { ok: false, reason: "内政天平尚未初始化" };
+      if (!(chn.reformist > chn.planned)) {
+        return { ok: false, reason: "特区/市场派权重必须高于计划/国营派（当前 " + chn.reformist.toFixed(0) + " vs " + chn.planned.toFixed(0) + "）" };
+      }
+    }
+    if (ag.condition === "domestic_detente") {
+      const deu = (ST.domestic && ST.domestic.deu) ? ST.domestic.deu : null;
+      if (!deu) return { ok: false, reason: "内政天平尚未初始化" };
+      if (deu.detenteDepth < 55) {
+        return { ok: false, reason: "东西欧缓和深度必须 ≥ 55（当前 " + deu.detenteDepth.toFixed(1) + "）" };
+      }
+    }
   }
 
   return { ok: true, reason: "" };
@@ -1037,9 +1052,29 @@ function updateMonthlyAgendas(y, m, silent) {
             ST.domestic.sun.unrest = clamp(ST.domestic.sun.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
           } else if (cKey === "USA" && ST.domestic.usa) {
             ST.domestic.usa.unrest = clamp(ST.domestic.usa.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (cKey === "CHN" && ST.domestic.chn) {
+            ST.domestic.chn.unrest = clamp(ST.domestic.chn.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (cKey === "DEU" && ST.domestic.deu) {
+            ST.domestic.deu.unrest = clamp(ST.domestic.deu.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
           } else if (ST.domestic.generals && ST.domestic.generals[cKey]) {
             ST.domestic.generals[cKey].stability = clamp(ST.domestic.generals[cKey].stability + ag.effects.stabilityBonus, 0, 100);
           }
+        }
+        // H（玩法深度）：CHN/DEU 议程树与内政天平双向联动 —— 完成节点即时回馈内政变量，
+        // 使「内政门控 → 推进议程 → 内政改善 → 解锁下一步」形成闭环。
+        if (cKey === "CHN" && ST.domestic && ST.domestic.chn) {
+          if (ag.id === "chn_sez") ST.domestic.chn.sezMomentum = clamp(ST.domestic.chn.sezMomentum + 10, 0, 100);
+          else if (ag.id === "chn_disarm") ST.domestic.chn.dualTrackPrice = clamp(ST.domestic.chn.dualTrackPrice - 8, 0, 100);
+          else if (ag.id === "chn_market") {
+            ST.domestic.chn.sezMomentum = clamp(ST.domestic.chn.sezMomentum + 14, 0, 100);
+            ST.domestic.chn.reformist = clamp(ST.domestic.chn.reformist + 6, 0, 100);
+            ST.domestic.chn.planned = clamp(ST.domestic.chn.planned - 6, 0, 100);
+          }
+        }
+        if (cKey === "DEU" && ST.domestic && ST.domestic.deu) {
+          if (ag.id === "deu_ostpolitik") ST.domestic.deu.detenteDepth = clamp(ST.domestic.deu.detenteDepth + 8, 0, 100);
+          else if (ag.id === "eur_single_market_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden - 5, 0, 100);
+          else if (ag.id === "eur_defense_pillar_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden + 10, 0, 100);
         }
         if (typeof ag.effects.congressBonus === "number" && cKey === "USA" && ST.domestic && ST.domestic.usa) {
           ST.domestic.usa.congressApproval = clamp(ST.domestic.usa.congressApproval + ag.effects.congressBonus, 0, 100);
@@ -1187,6 +1222,7 @@ function runAgendaProbe() {
     agendaProbeLifecycle(r, assert, ctx);
     agendaProbeGuardsAndUi(r, assert, ctx);
     agendaProbeEndgameAndState(r, assert, ctx);
+    agendaProbeChnDeuTrees(r, assert, ctx);
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -1361,6 +1397,87 @@ function agendaProbeEndgameAndState(r, assert, ctx) {
   ST.mil = 0;
   ST.blocOverride = {};
   ST.blocSince = null;
+  initAgendaState();
+  applyPlayerDecisions();
+  refreshAgendaBox(ST.sel);
+}
+
+// H（玩法深度）：CHN/DEU 专属议程树与内政天平联动探针
+function agendaProbeChnDeuTrees(r, assert, ctx) {
+  const chnAgendas = window.W1980_AGENDAS.getAgendasForCountry("CHN");
+  const deuAgendas = window.W1980_AGENDAS.getAgendasForCountry("DEU");
+
+  // 23. 树形结构：三步前置链
+  const chnDisarm = chnAgendas.find((a) => a.id === "chn_disarm");
+  const chnMarket = chnAgendas.find((a) => a.id === "chn_market");
+  assert("chnAgendaTree",
+    !!chnMarket && !!chnDisarm && chnDisarm.requires === "chn_sez" && chnMarket.requires === "chn_disarm",
+    "中国议程树为「特区 → 裁军 → 市场化」三步前置链");
+  const deuOst = deuAgendas.find((a) => a.id === "deu_ostpolitik");
+  const deuMkt = deuAgendas.find((a) => a.id === "eur_single_market_deu");
+  const deuPil = deuAgendas.find((a) => a.id === "eur_defense_pillar_deu");
+  assert("deuAgendaTree",
+    !!deuOst && !!deuMkt && !!deuPil &&
+    deuMkt.requires === "deu_ostpolitik" && deuPil.requires === "eur_single_market_deu",
+    "西德议程树为「新东方政策 → 单一市场 → 防务支柱」三步前置链");
+
+  // 24. 前置链 + 内政门控：两层条件都必须满足才解锁
+  const oldYear = SIM.S ? SIM.S.year : 1980;
+  const oldMonth = SIM.S ? SIM.S.month : 1;
+  if (SIM.S) { SIM.S.year = 1990; SIM.S.month = 1; }
+  initAgendaState();
+  ST.player = "CHN";
+  ST.mil = 2.0;
+  assert("chnMarketBlockedByPrereq", checkAgendaCondition("CHN", chnMarket).ok === false,
+    "未完成裁军时价格闯关被前置议程拦下");
+  ST.agendas.CHN.completed = ["chn_sez", "chn_disarm"];
+  ST.domestic.chn.reformist = 40;
+  ST.domestic.chn.planned = 60;
+  assert("chnMarketBlockedByDomestic", checkAgendaCondition("CHN", chnMarket).ok === false,
+    "内政天平偏向计划派时价格闯关被内政条件拦下");
+  ST.domestic.chn.reformist = 62;
+  ST.domestic.chn.planned = 38;
+  assert("chnMarketAllowedAfterTree", checkAgendaCondition("CHN", chnMarket).ok === true,
+    "裁军完成且市场派占优后价格闯关解锁");
+
+  initAgendaState();
+  ST.player = "DEU";
+  assert("deuMarketBlockedByPrereq", checkAgendaCondition("DEU", deuMkt).ok === false,
+    "未达成新东方政策时单一市场被前置议程拦下");
+  ST.domestic.deu.detenteDepth = 40;
+  assert("deuOstBlockedByDomestic", checkAgendaCondition("DEU", deuOst).ok === false,
+    "缓和深度不足时新东方政策被内政条件拦下");
+  ST.domestic.deu.detenteDepth = 66;
+  assert("deuOstAllowedAfterDetente", checkAgendaCondition("DEU", deuOst).ok === true,
+    "缓和深度达标后新东方政策解锁");
+  ST.agendas.DEU.completed = ["deu_ostpolitik"];
+  assert("deuMarketAllowedAfterTree", checkAgendaCondition("DEU", deuMkt).ok === true,
+    "达成新东方政策后单一市场解锁");
+
+  // 25. 内政回馈闭环：完成节点即时改善内政变量
+  initAgendaState();
+  ST.player = "CHN";
+  ST.domestic.chn.sezMomentum = 40;
+  startAgenda("CHN", "chn_sez");
+  for (let i = 0; i < 24; i++) updateMonthlyAgendas(1990, 1 + (i % 12), true);
+  assert("chnSezCompletionFeedsDomestic",
+    ST.agendas.CHN.completed.includes("chn_sez") && ST.domestic.chn.sezMomentum > 40,
+    "完成特区议程即时回馈内政天平（特区动能上升）");
+
+  initAgendaState();
+  ST.player = "DEU";
+  ST.domestic.deu.detenteDepth = 60;
+  startAgenda("DEU", "deu_ostpolitik");
+  for (let i = 0; i < 20; i++) updateMonthlyAgendas(1990, 1 + (i % 12), true);
+  assert("deuOstCompletionFeedsDomestic",
+    ST.agendas.DEU.completed.includes("deu_ostpolitik") && ST.domestic.deu.detenteDepth > 60,
+    "完成新东方政策即时回馈内政天平（缓和深度上升）");
+
+  // 复原状态
+  if (SIM.S) { SIM.S.year = oldYear; SIM.S.month = oldMonth; }
+  ST.player = null;
+  ST.mil = 0;
+  initDomesticState();
   initAgendaState();
   applyPlayerDecisions();
   refreshAgendaBox(ST.sel);
