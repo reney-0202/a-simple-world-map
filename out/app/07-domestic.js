@@ -142,6 +142,29 @@ function initDomesticState() {
     },
     generals: {}              // 通用国家缓存
   };
+
+  // K（玩法深度）：JPN/FRA/GBR 专属内政 —— 复制 CHN/DEU 已验证的
+  // 「外部压力 → 内政天平 → 议程门控 → 完成回馈」模板。
+  ST.domestic.jpn = {
+    domesticist: 45,        // 内需开放派权重 (0~100)
+    exportist: 55,          // 出口产业派权重 (0~100)
+    tradeFriction: 35,      // 对美贸易摩擦压力 (0~100，出口通道受阻累积)
+    unrest: 2               // 社会动荡度 (0~100)
+  };
+  ST.domestic.fra = {
+    dirigiste: 55,          // 国家干预派权重 (0~100)
+    rigueur: 45,            // 紧缩坚挺派权重 (0~100)
+    francStrength: 45,      // 法郎平价与外部竞争力 (0~100)
+    externalPressure: 30,   // 外部环境压力 (0~100，资本外逃/油气/巴统)
+    unrest: 3               // 社会动荡度 (0~100)
+  };
+  ST.domestic.gbr = {
+    monetarist: 50,         // 货币主义派权重 (0~100)
+    welfarist: 50,          // 福利共识派权重 (0~100)
+    cityStrength: 48,       // 金融城与服务业竞争力 (0~100)
+    inflation: 55,          // 通胀压力 (0~100)
+    unrest: 4               // 社会动荡度 (0~100)
+  };
 }
 
 function getGeneralDomestic(k) {
@@ -165,6 +188,10 @@ function sanitizeDomesticState(d) {
     // E：CHN/DEU 专属内政（与 initDomesticState 同构）
     chn: { reformist: 52, planned: 48, dualTrackPrice: 35, unrest: 3, sezMomentum: 40, externalStress: 20 },
     deu: { spdApproval: 55, cduApproval: 45, detenteDepth: 60, natoBurden: 50, pipelineDependency: 30, energyPressure: 24, unrest: 2 },
+    // K（玩法深度）：JPN/FRA/GBR 专属内政（与 initDomesticState 同构）
+    jpn: { domesticist: 45, exportist: 55, tradeFriction: 35, unrest: 2 },
+    fra: { dirigiste: 55, rigueur: 45, francStrength: 45, externalPressure: 30, unrest: 3 },
+    gbr: { monetarist: 50, welfarist: 50, cityStrength: 48, inflation: 55, unrest: 4 },
     generals: {}
   };
   if (!d || typeof d !== "object") return fresh;
@@ -201,6 +228,27 @@ function sanitizeDomesticState(d) {
     fresh.deu.energyPressure = clamp(typeof d.deu.energyPressure === "number" ? d.deu.energyPressure : 24, 0, 100);
     fresh.deu.unrest = clamp(typeof d.deu.unrest === "number" ? d.deu.unrest : 2, 0, 100);
   }
+  // K（玩法深度）：JPN/FRA/GBR 专属内政字段清洗
+  if (d.jpn && typeof d.jpn === "object") {
+    fresh.jpn.domesticist = clamp(typeof d.jpn.domesticist === "number" ? d.jpn.domesticist : 45, 0, 100);
+    fresh.jpn.exportist = clamp(typeof d.jpn.exportist === "number" ? d.jpn.exportist : 55, 0, 100);
+    fresh.jpn.tradeFriction = clamp(typeof d.jpn.tradeFriction === "number" ? d.jpn.tradeFriction : 35, 0, 100);
+    fresh.jpn.unrest = clamp(typeof d.jpn.unrest === "number" ? d.jpn.unrest : 2, 0, 100);
+  }
+  if (d.fra && typeof d.fra === "object") {
+    fresh.fra.dirigiste = clamp(typeof d.fra.dirigiste === "number" ? d.fra.dirigiste : 55, 0, 100);
+    fresh.fra.rigueur = clamp(typeof d.fra.rigueur === "number" ? d.fra.rigueur : 45, 0, 100);
+    fresh.fra.francStrength = clamp(typeof d.fra.francStrength === "number" ? d.fra.francStrength : 45, 0, 100);
+    fresh.fra.externalPressure = clamp(typeof d.fra.externalPressure === "number" ? d.fra.externalPressure : 30, 0, 100);
+    fresh.fra.unrest = clamp(typeof d.fra.unrest === "number" ? d.fra.unrest : 3, 0, 100);
+  }
+  if (d.gbr && typeof d.gbr === "object") {
+    fresh.gbr.monetarist = clamp(typeof d.gbr.monetarist === "number" ? d.gbr.monetarist : 50, 0, 100);
+    fresh.gbr.welfarist = clamp(typeof d.gbr.welfarist === "number" ? d.gbr.welfarist : 50, 0, 100);
+    fresh.gbr.cityStrength = clamp(typeof d.gbr.cityStrength === "number" ? d.gbr.cityStrength : 48, 0, 100);
+    fresh.gbr.inflation = clamp(typeof d.gbr.inflation === "number" ? d.gbr.inflation : 55, 0, 100);
+    fresh.gbr.unrest = clamp(typeof d.gbr.unrest === "number" ? d.gbr.unrest : 4, 0, 100);
+  }
   if (d.generals && typeof d.generals === "object") {
     for (const k in d.generals) {
       const g = d.generals[k];
@@ -226,6 +274,10 @@ function updateDomesticPolitics(y, m, silent) {
   if (dom.usa) updateDomesticUsa(dom, y, m, silent);
   if (dom.chn) updateDomesticChn(dom, y, m, silent);
   if (dom.deu) updateDomesticDeu(dom, y, m, silent);
+  // K（玩法深度）：JPN/FRA/GBR 专属推进器（模板同 CHN/DEU）
+  if (dom.jpn) updateDomesticJpn(dom, y, m, silent);
+  if (dom.fra) updateDomesticFra(dom, y, m, silent);
+  if (dom.gbr) updateDomesticGbr(dom, y, m, silent);
   if (dom.generals) updateDomesticGenerals(dom, y, m, silent);
 }
 
@@ -461,6 +513,167 @@ function updateDomesticDeu(dom, y, m, silent) {
     }
 }
 
+// ---- K（玩法深度）：JPN/FRA/GBR 外部环境压力评估 -------------------------------
+// 复制 H2/H3 已验证的模板：外部条件（通道通行度 / 巴统封锁 / 单边制裁）→ 单一标量压力，
+// 再由各国推进器把压力转成内政天平与议程门控。
+//   日本：对美高技术出口通道受阻 + 原油矿产进口受阻 + 巴统 → 贸易摩擦压力。
+//   法国：地中海/海湾原油输入受阻 + 巴统 + 制裁 + 能源缺口 → 外部环境压力（法郎承压）。
+//   英国：北海自给故能源通道影响弱，压力来自巴统封锁、制裁与全球金融风险溢价（美苏张力）。
+function jpnTradeFrictionStress() {
+  let s = 0;
+  const routes = (ST.tradeRoutes && ST.tradeRoutes.length) ? ST.tradeRoutes : [];
+  // 日本 → 美国高技术出口通道受阻（半导体/汽车摩擦的贸易载体）
+  for (let i = 0; i < routes.length; i++) {
+    const r = routes[i];
+    if (r.from !== "JPN" || r.res !== "tech") continue;
+    const st = getRouteStatus(r);
+    if (st && st.status !== "ok" && st.status !== "smuggled") s += 0.40;
+  }
+  // 原油与矿产进口通道受阻 → 产业成本抬升，出口竞争力受压
+  for (let i = 0; i < routes.length; i++) {
+    const r = routes[i];
+    if (r.to !== "JPN" || r.res === "agr") continue;
+    const st = getRouteStatus(r);
+    const f = (st && typeof st.factor === "number") ? st.factor : 1;
+    s += (1 - f) * 0.30;
+  }
+  if (ST.cocom && ST.cocom.active) s += (ST.cocom.strict ? 0.30 : 0.15);
+  if (ST.sanctions && ST.sanctions.some((x) => x.t === "JPN")) s += 0.55;
+  return clamp(s, 0, 1);
+}
+
+function fraExternalStress() {
+  let s = 0;
+  const routes = (ST.tradeRoutes && ST.tradeRoutes.length) ? ST.tradeRoutes : [];
+  for (let i = 0; i < routes.length; i++) {
+    const r = routes[i];
+    if (r.to !== "FRA" || r.res !== "oil") continue;
+    const st = getRouteStatus(r);
+    const f = (st && typeof st.factor === "number") ? st.factor : 1;
+    s += (1 - f) * 0.45;
+  }
+  if (ST.cocom && ST.cocom.active) s += (ST.cocom.strict ? 0.35 : 0.20);
+  if (ST.sanctions && ST.sanctions.some((x) => x.t === "FRA")) s += 0.50;
+  if (typeof calcResourcePenalty === "function") {
+    const rp = calcResourcePenalty("FRA");
+    if (rp && typeof rp.ratio === "number" && rp.ratio < 1) s += Math.min(0.30, (1 - rp.ratio) * 1.2);
+  }
+  return clamp(s, 0, 1);
+}
+
+function gbrExternalStress() {
+  let s = 0;
+  if (ST.cocom && ST.cocom.active) s += (ST.cocom.strict ? 0.40 : 0.25);
+  if (ST.sanctions && ST.sanctions.some((x) => x.t === "GBR")) s += 0.50;
+  // 全球金融风险溢价：美苏张力抬升离岸金融中心的融资与避险成本
+  const tn = (ST.ai && ST.ai.tensions && typeof ST.ai.tensions["USA:SUN"] === "number") ? ST.ai.tensions["USA:SUN"] : 0;
+  s += clamp(tn / 100, 0, 1) * 0.35;
+  return clamp(s, 0, 1);
+}
+
+// K（玩法深度）：日本 —— 出口产业派 vs 内需开放派，贸易摩擦压力决定天平与动荡。
+function updateDomesticJpn(dom, y, m, silent) {
+    const jpn = dom.jpn;
+    let milJPN = 1.0;
+    if (ST.player === "JPN") milJPN = ST.mil;
+    else if (ST.ai && ST.ai.decisions && ST.ai.decisions.JPN && typeof ST.ai.decisions.JPN.mil === "number") milJPN = ST.ai.decisions.JPN.mil;
+    // 突破 1% 红线 → 重工/军工出口导向抬头，出口产业派得势
+    if (milJPN >= 2.0) {
+      jpn.exportist = clamp(jpn.exportist + 0.22, 8, 92);
+      jpn.domesticist = clamp(jpn.domesticist - 0.22, 8, 92);
+      jpn.tradeFriction = clamp(jpn.tradeFriction + 0.20, 0, 100);
+    } else if (milJPN <= 1.0) {
+      // 恪守 1% 红线 → 财政资源转向内需与民生
+      jpn.domesticist = clamp(jpn.domesticist + 0.18, 8, 92);
+      jpn.exportist = clamp(jpn.exportist - 0.18, 8, 92);
+    }
+    // 贸易摩擦压力向目标值平滑收敛（外部条件不变时不会无限累积）
+    const jf = jpnTradeFrictionStress();
+    const jfTarget = clamp(10 + jf * 80, 0, 100);
+    jpn.tradeFriction = clamp(jpn.tradeFriction + (jfTarget - jpn.tradeFriction) * 0.12, 0, 100);
+    if (jpn.tradeFriction >= 60) {
+      // 摩擦高压 → 民意转向内需开放派，但产业调整期动荡上升
+      jpn.domesticist = clamp(jpn.domesticist + 0.20, 8, 92);
+      jpn.exportist = clamp(jpn.exportist - 0.20, 8, 92);
+      jpn.unrest = clamp(jpn.unrest + 0.18, 0, 100);
+    } else if (jpn.tradeFriction <= 30) {
+      jpn.unrest = clamp(jpn.unrest - 0.10, 0, 100);
+    }
+}
+
+// K（玩法深度）：法国 —— 国家干预派 vs 紧缩坚挺派，外部约束决定法郎平价与路线转向。
+function updateDomesticFra(dom, y, m, silent) {
+    const fra = dom.fra;
+    let milFRA = 3.5;
+    if (ST.player === "FRA") milFRA = ST.mil;
+    else if (ST.ai && ST.ai.decisions && ST.ai.decisions.FRA && typeof ST.ai.decisions.FRA.mil === "number") milFRA = ST.ai.decisions.FRA.mil;
+    // 高军费 → 国家干预派抬头（军工与国家冠军），但赤字侵蚀法郎平价
+    if (milFRA >= 4.5) {
+      fra.dirigiste = clamp(fra.dirigiste + 0.22, 8, 92);
+      fra.rigueur = clamp(fra.rigueur - 0.22, 8, 92);
+      fra.francStrength = clamp(fra.francStrength - 0.25, 0, 100);
+    } else if (milFRA <= 2.5) {
+      fra.rigueur = clamp(fra.rigueur + 0.18, 8, 92);
+      fra.dirigiste = clamp(fra.dirigiste - 0.18, 8, 92);
+      fra.francStrength = clamp(fra.francStrength + 0.20, 0, 100);
+    }
+    const ff = fraExternalStress();
+    const ffTarget = clamp(10 + ff * 75, 0, 100);
+    fra.externalPressure = clamp(fra.externalPressure + (ffTarget - fra.externalPressure) * 0.12, 0, 100);
+    // 外部约束越强，越被迫转向紧缩坚挺（1983 年转向的历史逻辑）
+    if (fra.externalPressure >= 45) {
+      fra.rigueur = clamp(fra.rigueur + 0.25, 8, 92);
+      fra.dirigiste = clamp(fra.dirigiste - 0.25, 8, 92);
+      fra.unrest = clamp(fra.unrest + 0.15, 0, 100);
+      // 尚未完成紧缩转向时，资本外逃持续侵蚀法郎平价（转向完成后由坚挺政策托住）
+      if (!(fra.rigueur > fra.dirigiste)) fra.francStrength = clamp(fra.francStrength - 0.25, 0, 100);
+    } else if (fra.externalPressure <= 25) {
+      fra.dirigiste = clamp(fra.dirigiste + 0.15, 8, 92);
+      fra.rigueur = clamp(fra.rigueur - 0.15, 8, 92);
+      fra.francStrength = clamp(fra.francStrength + 0.12, 0, 100);
+      fra.unrest = clamp(fra.unrest - 0.10, 0, 100);
+    }
+    // 紧缩坚挺派执政 → 法郎平价走强（正反馈）；法郎走强又反过来压低外部压力
+    if (fra.rigueur > fra.dirigiste) fra.francStrength = clamp(fra.francStrength + 0.30, 0, 100);
+    if (fra.francStrength >= 65) fra.externalPressure = clamp(fra.externalPressure - 0.20, 0, 100);
+}
+
+// K（玩法深度）：英国 —— 货币主义派 vs 福利共识派，通胀压力决定路线与金融城竞争力。
+function updateDomesticGbr(dom, y, m, silent) {
+    const gbr = dom.gbr;
+    let milGBR = 3.5;
+    if (ST.player === "GBR") milGBR = ST.mil;
+    else if (ST.ai && ST.ai.decisions && ST.ai.decisions.GBR && typeof ST.ai.decisions.GBR.mil === "number") milGBR = ST.ai.decisions.GBR.mil;
+    // 高军费 → 财政紧缩优先，货币主义派得势；压缩军费 → 福利共识回潮
+    if (milGBR >= 4.5) {
+      gbr.monetarist = clamp(gbr.monetarist + 0.22, 8, 92);
+      gbr.welfarist = clamp(gbr.welfarist - 0.22, 8, 92);
+      gbr.inflation = clamp(gbr.inflation - 0.20, 0, 100);
+    } else if (milGBR <= 2.5) {
+      gbr.welfarist = clamp(gbr.welfarist + 0.18, 8, 92);
+      gbr.monetarist = clamp(gbr.monetarist - 0.18, 8, 92);
+      gbr.inflation = clamp(gbr.inflation + 0.18, 0, 100);
+    }
+    // 外部冲击（巴统封锁 / 制裁 / 全球金融风险溢价）→ 输入型通胀压力
+    const gf = gbrExternalStress();
+    const gfTarget = clamp(15 + gf * 70, 0, 100);
+    gbr.inflation = clamp(gbr.inflation + (gfTarget - gbr.inflation) * 0.10, 0, 100);
+    if (gbr.inflation >= 65) {
+      // 恶性通胀 → 民意转向货币主义，同时社会张力上升
+      gbr.monetarist = clamp(gbr.monetarist + 0.20, 8, 92);
+      gbr.welfarist = clamp(gbr.welfarist - 0.20, 8, 92);
+      gbr.unrest = clamp(gbr.unrest + 0.20, 0, 100);
+    } else if (gbr.inflation <= 40) {
+      gbr.welfarist = clamp(gbr.welfarist + 0.12, 8, 92);
+      gbr.monetarist = clamp(gbr.monetarist - 0.12, 8, 92);
+      gbr.unrest = clamp(gbr.unrest - 0.12, 0, 100);
+    }
+    // 货币主义派执政 → 通胀预期被锚定（正反馈）；通胀回落又抬升金融城竞争力
+    if (gbr.monetarist > gbr.welfarist) gbr.inflation = clamp(gbr.inflation - 0.35, 0, 100);
+    if (gbr.inflation <= 45) gbr.cityStrength = clamp(gbr.cityStrength + 0.25, 0, 100);
+    else if (gbr.inflation >= 70) gbr.cityStrength = clamp(gbr.cityStrength - 0.25, 0, 100);
+}
+
 // G（收尾评审）：updateDomesticPolitics 的「通用实体：社会安定度与制裁抗议」块抽为独立推进器（原样搬运，无逻辑改动）
 function updateDomesticGenerals(dom, y, m, silent) {
     for (const k in dom.generals) {
@@ -542,6 +755,53 @@ function applyDomesticPlayerAction(actType) {
       deu.spdApproval = clamp(deu.spdApproval - 3, 0, 100);
       toast({ zh: "【北约防务承诺】", note: "联邦议院通过追加防务预算，重申北约前沿义务，缓和派民意受挫。" });
     }
+  } else if (ST.player === "JPN") {
+    // K（玩法深度）：日本专属动作 —— 外需/内需路线之争
+    const jpn = ST.domestic.jpn;
+    if (actType === "jpn_domestic_demand") {
+      jpn.domesticist = clamp(jpn.domesticist + 7, 0, 100);
+      jpn.exportist = clamp(jpn.exportist - 7, 0, 100);
+      jpn.tradeFriction = clamp(jpn.tradeFriction - 4, 0, 100);
+      jpn.unrest = clamp(jpn.unrest - 2, 0, 100);
+      toast({ zh: "【前川报告路线】", note: "内阁决定扩大住宅与公共投资、开放国内市场，主动收窄顺差以缓解对美摩擦。" });
+    } else if (actType === "jpn_export_push") {
+      jpn.exportist = clamp(jpn.exportist + 7, 0, 100);
+      jpn.domesticist = clamp(jpn.domesticist - 7, 0, 100);
+      jpn.tradeFriction = clamp(jpn.tradeFriction + 6, 0, 100);
+      toast({ zh: "【出口立国路线】", note: "通产省加码半导体与精密制造出口补贴，外需引擎全开，但贸易摩擦随之升温。" });
+    }
+  } else if (ST.player === "FRA") {
+    // K（玩法深度）：法国专属动作 —— 国家干预与紧缩转向
+    const fra = ST.domestic.fra;
+    if (actType === "fra_industrial_policy") {
+      fra.dirigiste = clamp(fra.dirigiste + 7, 0, 100);
+      fra.rigueur = clamp(fra.rigueur - 7, 0, 100);
+      fra.francStrength = clamp(fra.francStrength - 4, 0, 100);
+      fra.unrest = clamp(fra.unrest - 2, 0, 100);
+      toast({ zh: "【产业国有化扩权】", note: "政府扩大国有化范围并加码国家冠军产业投资，短期稳住就业，但法郎平价承压。" });
+    } else if (actType === "fra_hard_franc") {
+      fra.rigueur = clamp(fra.rigueur + 8, 0, 100);
+      fra.dirigiste = clamp(fra.dirigiste - 8, 0, 100);
+      fra.francStrength = clamp(fra.francStrength + 6, 0, 100);
+      fra.unrest = clamp(fra.unrest + 4, 0, 100);
+      toast({ zh: "【紧缩坚挺守汇】", note: "冻结工资与物价、削减公共开支以守住法郎平价，通胀预期回落但民怨上升。" });
+    }
+  } else if (ST.player === "GBR") {
+    // K（玩法深度）：英国专属动作 —— 货币主义与福利共识
+    const gbr = ST.domestic.gbr;
+    if (actType === "gbr_tight_money") {
+      gbr.monetarist = clamp(gbr.monetarist + 7, 0, 100);
+      gbr.welfarist = clamp(gbr.welfarist - 7, 0, 100);
+      gbr.inflation = clamp(gbr.inflation - 6, 0, 100);
+      gbr.unrest = clamp(gbr.unrest + 4, 0, 100);
+      toast({ zh: "【货币主义紧缩】", note: "大幅加息并严控货币供应量，通胀预期被强行锚定，工会与制造业反弹加剧。" });
+    } else if (actType === "gbr_welfare_compromise") {
+      gbr.welfarist = clamp(gbr.welfarist + 7, 0, 100);
+      gbr.monetarist = clamp(gbr.monetarist - 7, 0, 100);
+      gbr.inflation = clamp(gbr.inflation + 5, 0, 100);
+      gbr.unrest = clamp(gbr.unrest - 3, 0, 100);
+      toast({ zh: "【福利共识妥协】", note: "扩大公共开支与社会保障以安抚工会，社会张力缓解，但通胀压力重新抬头。" });
+    }
   }
   refreshDomesticBox(ST.sel);
   applyPlayerDecisions();
@@ -563,6 +823,9 @@ function refreshDomesticBox(selKey) {
   else if (actualKey === "USA") h = domesticUsaHtml(isMine);
   else if (actualKey === "CHN") h = domesticChnHtml(isMine);
   else if (actualKey === "DEU") h = domesticDeuHtml(isMine);
+  else if (actualKey === "JPN") h = domesticJpnHtml(isMine);
+  else if (actualKey === "FRA") h = domesticFraHtml(isMine);
+  else if (actualKey === "GBR") h = domesticGbrHtml(isMine);
   else h = domesticGenericHtml(actualKey, isMine);
 
   box.innerHTML = h;
@@ -789,6 +1052,145 @@ function domesticDeuHtml(isMine) {
   return h;
 }
 
+// K（玩法深度）：日本 (JPN) 技术立国与内需转型专属面板
+function domesticJpnHtml(isMine) {
+  let h = "";
+  const jpn = ST.domestic.jpn;
+  const dPct = Math.round((jpn.domesticist / (jpn.domesticist + jpn.exportist)) * 100);
+  const ePct = 100 - dPct;
+  const fricClass = jpn.tradeFriction >= 60 ? "danger" : jpn.tradeFriction >= 40 ? "warn" : "good";
+  const unrestClass = jpn.unrest >= 30 ? "danger" : jpn.unrest >= 15 ? "warn" : "good";
+
+  h += '<div class="pdb-title"><span>🏛️ 技术立国 · 外需与内需之争</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '大国体制') + '</span></div>';
+  h += '<div class="pdb-desc">出口产业派主张以半导体与精密制造继续扩张外需，内需开放派主张主动收窄顺差、扩大内需以化解贸易摩擦。摩擦压力越高，民意越偏向内需转型，但产业调整期社会张力上升。</div>';
+
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🚢 出口产业派 ' + jpn.exportist.toFixed(0) + ' (' + ePct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">🏙️ 内需开放派 ' + jpn.domesticist.toFixed(0) + ' (' + dPct + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + ePct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + dPct + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🌐 对美贸易摩擦压力</span><span class="pdb-meter-val" style="color:' + (fricClass === 'danger' ? '#f87171' : fricClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + jpn.tradeFriction.toFixed(1) + (jpn.tradeFriction >= 60 ? ' · 出口通道受阻' : jpn.tradeFriction >= 40 ? ' · 摩擦升温' : ' · 摩擦可控') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + fricClass + '" style="width:' + jpn.tradeFriction + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + jpn.unrest.toFixed(1) + (jpn.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + jpn.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="jpn_domestic_demand">🏙️ 扩大内需开放（推高内需派/压摩擦）</button>';
+    h += '  <button class="pdb-act-btn" data-act="jpn_export_push">🚢 坚持出口立国（推高出口派/摩擦升温）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// K（玩法深度）：法国 (FRA) 国家干预与紧缩转向专属面板
+function domesticFraHtml(isMine) {
+  let h = "";
+  const fra = ST.domestic.fra;
+  const dPct = Math.round((fra.dirigiste / (fra.dirigiste + fra.rigueur)) * 100);
+  const rPct = 100 - dPct;
+  const francClass = fra.francStrength >= 60 ? "good" : fra.francStrength >= 40 ? "warn" : "danger";
+  const extClass = fra.externalPressure >= 50 ? "danger" : fra.externalPressure >= 35 ? "warn" : "good";
+  const unrestClass = fra.unrest >= 30 ? "danger" : fra.unrest >= 15 ? "warn" : "good";
+
+  h += '<div class="pdb-title"><span>🏛️ 国家干预 · 法郎平价之争</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
+  h += '<div class="pdb-desc">国家干预派以国有化与产业政策打造「国家冠军」，紧缩坚挺派主张冻结工资物价、削减赤字以守住法郎平价。外部约束（资本外逃、油气受阻、巴统封锁）越强，越被迫转向紧缩；法郎走强又反过来缓解外部压力。</div>';
+
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🏭 国家干预派 ' + fra.dirigiste.toFixed(0) + ' (' + dPct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">💱 紧缩坚挺派 ' + fra.rigueur.toFixed(0) + ' (' + rPct + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + dPct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + rPct + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">💱 法郎平价与外部竞争力</span><span class="pdb-meter-val" style="color:' + (francClass === 'danger' ? '#f87171' : francClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + fra.francStrength.toFixed(1) + (fra.francStrength >= 60 ? ' · 坚挺' : fra.francStrength >= 40 ? ' · 承压' : ' · 资本外逃') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + francClass + '" style="width:' + fra.francStrength + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🌐 外部环境压力</span><span class="pdb-meter-val" style="color:' + (extClass === 'danger' ? '#f87171' : extClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + fra.externalPressure.toFixed(1) + (fra.externalPressure >= 50 ? ' · 被迫转向紧缩' : fra.externalPressure >= 35 ? ' · 外部约束趋紧' : ' · 外部环境可控') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + extClass + '" style="width:' + fra.externalPressure + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + fra.unrest.toFixed(1) + (fra.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + fra.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="fra_industrial_policy">🏭 扩大国有化与产业政策（推高干预派）</button>';
+    h += '  <button class="pdb-act-btn" data-act="fra_hard_franc">💱 紧缩坚挺守住法郎（推高紧缩派/冒民怨）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
+// K（玩法深度）：英国 (GBR) 撒切尔主义与福利共识专属面板
+function domesticGbrHtml(isMine) {
+  let h = "";
+  const gbr = ST.domestic.gbr;
+  const mPct = Math.round((gbr.monetarist / (gbr.monetarist + gbr.welfarist)) * 100);
+  const wPct = 100 - mPct;
+  const inflClass = gbr.inflation >= 65 ? "danger" : gbr.inflation >= 45 ? "warn" : "good";
+  const cityClass = gbr.cityStrength >= 60 ? "good" : gbr.cityStrength >= 40 ? "warn" : "danger";
+  const unrestClass = gbr.unrest >= 30 ? "danger" : gbr.unrest >= 15 ? "warn" : "good";
+
+  h += '<div class="pdb-title"><span>🏛️ 撒切尔主义 · 通胀与共识之争</span><span class="pdb-tag ' + (isMine ? 'highlight' : '') + '">' + (isMine ? '★ 直辖执政' : '宪政体制') + '</span></div>';
+  h += '<div class="pdb-desc">货币主义派以严控货币供应量压平通胀预期，宁付失业代价也要重建财政纪律；福利共识派主张维持战后需求管理与社会保障。通胀压力决定民意归属，货币主义执政又反过来锚定通胀、抬升金融城竞争力。</div>';
+
+  h += '<div class="pdb-balance-wrap">';
+  h += '  <div class="pdb-balance-labels">';
+  h += '    <span class="pdb-lbl-left">🤝 福利共识派 ' + gbr.welfarist.toFixed(0) + ' (' + wPct + '%)</span>';
+  h += '    <span class="pdb-lbl-right">📉 货币主义派 ' + gbr.monetarist.toFixed(0) + ' (' + mPct + '%)</span>';
+  h += '  </div>';
+  h += '  <div class="pdb-balance-bar">';
+  h += '    <div class="pdb-bar-seg-left" style="width:' + wPct + '%"></div>';
+  h += '    <div class="pdb-bar-seg-right" style="width:' + mPct + '%"></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  h += '<div class="pdb-meters">';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">📈 通胀压力</span><span class="pdb-meter-val" style="color:' + (inflClass === 'danger' ? '#f87171' : inflClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + gbr.inflation.toFixed(1) + (gbr.inflation >= 65 ? ' · 恶性通胀' : gbr.inflation >= 45 ? ' · 通胀偏高' : ' · 通胀受控') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + inflClass + '" style="width:' + gbr.inflation + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🏛️ 金融城与服务业竞争力</span><span class="pdb-meter-val" style="color:' + (cityClass === 'danger' ? '#f87171' : cityClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + gbr.cityStrength.toFixed(1) + ' · 离岸金融与服务业深度</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + cityClass + '" style="width:' + gbr.cityStrength + '%"></div></div>';
+  h += '  </div>';
+  h += '  <div class="pdb-meter">';
+  h += '    <div class="pdb-meter-row"><span class="pdb-meter-lbl">🔥 社会动荡指数</span><span class="pdb-meter-val" style="color:' + (unrestClass === 'danger' ? '#f87171' : unrestClass === 'warn' ? '#fbbf24' : '#4ade80') + '">' + gbr.unrest.toFixed(1) + (gbr.unrest >= 30 ? '（引发生产脱节拖累）' : '（安定）') + '</span></div>';
+  h += '    <div class="pdb-meter-track"><div class="pdb-meter-fill ' + unrestClass + '" style="width:' + gbr.unrest + '%"></div></div>';
+  h += '  </div>';
+  h += '</div>';
+
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="gbr_tight_money">📉 坚持货币主义紧缩（推高货币派/压通胀）</button>';
+    h += '  <button class="pdb-act-btn" data-act="gbr_welfare_compromise">🤝 回归福利共识妥协（推高共识派/通胀抬头）</button>';
+    h += '</div>';
+  }
+  return h;
+}
+
 // G（收尾评审）：refreshDomesticBox 的「通用」分支抽为独立构建器（原样搬运，无逻辑改动）
 function domesticGenericHtml(actualKey, isMine) {
   let h = "";
@@ -982,6 +1384,33 @@ function checkAgendaCondition(cKey, ag) {
         return { ok: false, reason: "东西欧缓和深度必须 ≥ 55（当前 " + deu.detenteDepth.toFixed(1) + "）" };
       }
     }
+    // K（玩法深度）：内政门控统一由数据侧声明（ag.faction），引擎只按声明求值，
+    // 复制 CHN/DEU 的模板到 JPN/FRA/GBR 时无需再改引擎分支。
+    //   派系型：{ key, lead, over }        —— lead 权重必须严格高于 over
+    //   指标型：{ key, field, min }        —— field 必须 ≥ min
+    if (ag.condition === "domestic_faction") {
+      const f = ag.faction;
+      if (!f || !f.key) return { ok: false, reason: "内政门控声明缺失" };
+      const st = (ST.domestic && ST.domestic[f.key]) ? ST.domestic[f.key] : null;
+      if (!st) return { ok: false, reason: "内政天平尚未初始化" };
+      if (f.lead) {
+        const a = st[f.lead], b = st[f.over];
+        if (typeof a !== "number" || typeof b !== "number") return { ok: false, reason: "内政天平字段缺失" };
+        if (!(a > b)) {
+          return {
+            ok: false,
+            reason: (f.leadLabel || f.lead) + "权重必须高于" + (f.overLabel || f.over) + "（当前 " + a.toFixed(0) + " vs " + b.toFixed(0) + "）"
+          };
+        }
+      }
+      if (f.field) {
+        const v = st[f.field];
+        if (typeof v !== "number") return { ok: false, reason: "内政字段缺失" };
+        if (v < f.min) {
+          return { ok: false, reason: (f.fieldLabel || f.field) + "必须 ≥ " + f.min + "（当前 " + v.toFixed(1) + "）" };
+        }
+      }
+    }
   }
 
   return { ok: true, reason: "" };
@@ -1060,6 +1489,12 @@ function updateMonthlyAgendas(y, m, silent) {
             ST.domestic.chn.unrest = clamp(ST.domestic.chn.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
           } else if (cKey === "DEU" && ST.domestic.deu) {
             ST.domestic.deu.unrest = clamp(ST.domestic.deu.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (cKey === "JPN" && ST.domestic.jpn) {
+            ST.domestic.jpn.unrest = clamp(ST.domestic.jpn.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (cKey === "FRA" && ST.domestic.fra) {
+            ST.domestic.fra.unrest = clamp(ST.domestic.fra.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (cKey === "GBR" && ST.domestic.gbr) {
+            ST.domestic.gbr.unrest = clamp(ST.domestic.gbr.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
           } else if (ST.domestic.generals && ST.domestic.generals[cKey]) {
             ST.domestic.generals[cKey].stability = clamp(ST.domestic.generals[cKey].stability + ag.effects.stabilityBonus, 0, 100);
           }
@@ -1079,6 +1514,57 @@ function updateMonthlyAgendas(y, m, silent) {
           if (ag.id === "deu_ostpolitik") ST.domestic.deu.detenteDepth = clamp(ST.domestic.deu.detenteDepth + 8, 0, 100);
           else if (ag.id === "eur_single_market_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden - 5, 0, 100);
           else if (ag.id === "eur_defense_pillar_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden + 10, 0, 100);
+        }
+        // K（玩法深度）：JPN/FRA/GBR 议程树与内政天平双向联动（模板同 CHN/DEU）。
+        if (cKey === "JPN" && ST.domestic && ST.domestic.jpn) {
+          const jpn = ST.domestic.jpn;
+          if (ag.id === "jpn_black_current") {
+            jpn.tradeFriction = clamp(jpn.tradeFriction - 6, 0, 100);
+            jpn.exportist = clamp(jpn.exportist + 4, 0, 100);
+            jpn.domesticist = clamp(jpn.domesticist - 4, 0, 100);
+          } else if (ag.id === "jpn_maekawa") {
+            jpn.tradeFriction = clamp(jpn.tradeFriction - 14, 0, 100);
+            jpn.domesticist = clamp(jpn.domesticist + 8, 0, 100);
+            jpn.exportist = clamp(jpn.exportist - 8, 0, 100);
+            jpn.unrest = clamp(jpn.unrest - 2, 0, 100);
+          }
+        }
+        if (cKey === "FRA" && ST.domestic && ST.domestic.fra) {
+          const fra = ST.domestic.fra;
+          if (ag.id === "fra_nationalization") {
+            // 国有化 → 赤字与资本外逃：干预派得势但法郎承压、外部约束加剧
+            fra.dirigiste = clamp(fra.dirigiste + 6, 0, 100);
+            fra.rigueur = clamp(fra.rigueur - 6, 0, 100);
+            fra.francStrength = clamp(fra.francStrength - 12, 0, 100);
+            fra.externalPressure = clamp(fra.externalPressure + 10, 0, 100);
+          } else if (ag.id === "fra_rigueur") {
+            // 紧缩转向 → 法郎平价回升、外部压力回落，但紧缩初期民怨上升
+            fra.rigueur = clamp(fra.rigueur + 8, 0, 100);
+            fra.dirigiste = clamp(fra.dirigiste - 8, 0, 100);
+            fra.francStrength = clamp(fra.francStrength + 15, 0, 100);
+            fra.externalPressure = clamp(fra.externalPressure - 8, 0, 100);
+            fra.unrest = clamp(fra.unrest + 2, 0, 100);
+          } else if (ag.id === "fra_reconversion") {
+            fra.francStrength = clamp(fra.francStrength + 10, 0, 100);
+            fra.unrest = clamp(fra.unrest - 3, 0, 100);
+          }
+        }
+        if (cKey === "GBR" && ST.domestic && ST.domestic.gbr) {
+          const gbr = ST.domestic.gbr;
+          if (ag.id === "gbr_monetarist_turn") {
+            gbr.inflation = clamp(gbr.inflation - 14, 0, 100);
+            gbr.cityStrength = clamp(gbr.cityStrength + 6, 0, 100);
+            gbr.monetarist = clamp(gbr.monetarist + 6, 0, 100);
+            gbr.welfarist = clamp(gbr.welfarist - 6, 0, 100);
+            gbr.unrest = clamp(gbr.unrest + 3, 0, 100);
+          } else if (ag.id === "gbr_union_reform") {
+            gbr.inflation = clamp(gbr.inflation - 6, 0, 100);
+            gbr.cityStrength = clamp(gbr.cityStrength + 4, 0, 100);
+            gbr.unrest = clamp(gbr.unrest + 4, 0, 100);
+          } else if (ag.id === "gbr_wider_shareholding") {
+            gbr.cityStrength = clamp(gbr.cityStrength + 8, 0, 100);
+            gbr.unrest = clamp(gbr.unrest - 4, 0, 100);
+          }
         }
         if (typeof ag.effects.congressBonus === "number" && cKey === "USA" && ST.domestic && ST.domestic.usa) {
           ST.domestic.usa.congressApproval = clamp(ST.domestic.usa.congressApproval + ag.effects.congressBonus, 0, 100);
@@ -1227,6 +1713,7 @@ function runAgendaProbe() {
     agendaProbeGuardsAndUi(r, assert, ctx);
     agendaProbeEndgameAndState(r, assert, ctx);
     agendaProbeChnDeuTrees(r, assert, ctx);
+    agendaProbeJpnFraGbrTrees(r, assert, ctx);
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -1487,9 +1974,144 @@ function agendaProbeChnDeuTrees(r, assert, ctx) {
   refreshAgendaBox(ST.sel);
 }
 
+// K（玩法深度）：JPN/FRA/GBR 三步议程树探针（模板同 agendaProbeChnDeuTrees）
+function agendaProbeJpnFraGbrTrees(r, assert, ctx) {
+  const jpnAgendas = window.W1980_AGENDAS.getAgendasForCountry("JPN");
+  const fraAgendas = window.W1980_AGENDAS.getAgendasForCountry("FRA");
+  const gbrAgendas = window.W1980_AGENDAS.getAgendasForCountry("GBR");
+
+  // 26. 树形结构：三步前置链
+  const jpnBlack = jpnAgendas.find((a) => a.id === "jpn_black_current");
+  const jpnMaekawa = jpnAgendas.find((a) => a.id === "jpn_maekawa");
+  assert("jpnAgendaTree",
+    !!jpnBlack && !!jpnMaekawa && jpnBlack.requires === "jpn_semiconductor" && jpnMaekawa.requires === "jpn_black_current",
+    "日本议程树为「半导体 → 黑潮出海 → 前川报告」三步前置链");
+  const fraNat = fraAgendas.find((a) => a.id === "fra_nationalization");
+  const fraRig = fraAgendas.find((a) => a.id === "fra_rigueur");
+  const fraRec = fraAgendas.find((a) => a.id === "fra_reconversion");
+  assert("fraAgendaTree",
+    !!fraNat && !!fraRig && !!fraRec && fraRig.requires === "fra_nationalization" && fraRec.requires === "fra_rigueur",
+    "法国议程树为「国有化 → 紧缩转向 → 工业重组」三步前置链");
+  const gbrMon = gbrAgendas.find((a) => a.id === "gbr_monetarist_turn");
+  const gbrUni = gbrAgendas.find((a) => a.id === "gbr_union_reform");
+  const gbrWide = gbrAgendas.find((a) => a.id === "gbr_wider_shareholding");
+  assert("gbrAgendaTree",
+    !!gbrMon && !!gbrUni && !!gbrWide && gbrUni.requires === "gbr_monetarist_turn" && gbrWide.requires === "gbr_union_reform",
+    "英国议程树为「货币主义转向 → 工会法制改革 → 大众持股」三步前置链");
+
+  // 27. 前置链 + 内政门控：两层条件都必须满足才解锁
+  const oldYear = SIM.S ? SIM.S.year : 1980;
+  const oldMonth = SIM.S ? SIM.S.month : 1;
+  if (SIM.S) { SIM.S.year = 1990; SIM.S.month = 1; }
+
+  // 日本
+  initAgendaState();
+  ST.player = "JPN";
+  ST.mil = 1.0;
+  getAgendaState("JPN");
+  assert("jpnMaekawaBlockedByPrereq", checkAgendaCondition("JPN", jpnMaekawa).ok === false,
+    "未完成黑潮计划时前川报告被前置议程拦下");
+  ST.agendas.JPN.completed = ["jpn_semiconductor", "jpn_black_current"];
+  ST.domestic.jpn.domesticist = 40;
+  ST.domestic.jpn.exportist = 60;
+  assert("jpnMaekawaBlockedByDomestic", checkAgendaCondition("JPN", jpnMaekawa).ok === false,
+    "内需开放派未占优时前川报告被内政条件拦下");
+  ST.domestic.jpn.domesticist = 62;
+  ST.domestic.jpn.exportist = 38;
+  assert("jpnMaekawaAllowedAfterTree", checkAgendaCondition("JPN", jpnMaekawa).ok === true,
+    "完成黑潮计划且内需开放派占优后前川报告解锁");
+
+  // 法国
+  initAgendaState();
+  ST.player = "FRA";
+  getAgendaState("FRA");
+  assert("fraRigueurBlockedByPrereq", checkAgendaCondition("FRA", fraRig).ok === false,
+    "未完成国有化时紧缩转向被前置议程拦下");
+  ST.agendas.FRA.completed = ["fra_nationalization"];
+  ST.domestic.fra.dirigiste = 60;
+  ST.domestic.fra.rigueur = 40;
+  assert("fraRigueurBlockedByDomestic", checkAgendaCondition("FRA", fraRig).ok === false,
+    "国家干预派仍占优时紧缩转向被内政条件拦下");
+  ST.domestic.fra.dirigiste = 38;
+  ST.domestic.fra.rigueur = 62;
+  assert("fraRigueurAllowedAfterTurn", checkAgendaCondition("FRA", fraRig).ok === true,
+    "干预派失势、紧缩派占优后紧缩转向解锁");
+  ST.agendas.FRA.completed = ["fra_nationalization", "fra_rigueur"];
+  ST.domestic.fra.francStrength = 40;
+  assert("fraReconversionBlockedByFranc", checkAgendaCondition("FRA", fraRec).ok === false,
+    "法郎平价失守时工业重组被内政条件拦下");
+  ST.domestic.fra.francStrength = 60;
+  assert("fraReconversionAllowedAfterFranc", checkAgendaCondition("FRA", fraRec).ok === true,
+    "法郎与外部竞争力达标后工业重组解锁");
+
+  // 英国
+  initAgendaState();
+  ST.player = "GBR";
+  getAgendaState("GBR");
+  assert("gbrMonetaristBlockedByFaction", checkAgendaCondition("GBR", gbrMon).ok === false,
+    "货币主义派未占优（初始 50:50）时货币主义转向被内政条件拦下");
+  ST.domestic.gbr.monetarist = 58;
+  ST.domestic.gbr.welfarist = 42;
+  assert("gbrMonetaristAllowedAfterFaction", checkAgendaCondition("GBR", gbrMon).ok === true,
+    "货币主义派占优后货币主义转向解锁");
+  ST.agendas.GBR.completed = ["gbr_monetarist_turn"];
+  assert("gbrUnionAllowedAfterPrereq", checkAgendaCondition("GBR", gbrUni).ok === true,
+    "达成货币主义转向后工会法制改革解锁");
+  ST.agendas.GBR.completed = ["gbr_monetarist_turn", "gbr_union_reform"];
+  ST.domestic.gbr.cityStrength = 40;
+  assert("gbrShareholdingBlockedByCity", checkAgendaCondition("GBR", gbrWide).ok === false,
+    "金融城竞争力不足时大众持股被内政条件拦下");
+  ST.domestic.gbr.cityStrength = 60;
+  assert("gbrShareholdingAllowedAfterCity", checkAgendaCondition("GBR", gbrWide).ok === true,
+    "金融城与服务业竞争力达标后大众持股解锁");
+
+  // 28. 内政回馈闭环：完成节点即时回馈内政变量
+  initAgendaState();
+  ST.player = "JPN";
+  ST.domestic.jpn.domesticist = 62;
+  ST.domestic.jpn.exportist = 38;
+  ST.domestic.jpn.tradeFriction = 50;
+  getAgendaState("JPN").completed = ["jpn_semiconductor", "jpn_black_current"];
+  startAgenda("JPN", "jpn_maekawa");
+  for (let i = 0; i < 20; i++) updateMonthlyAgendas(1990, 1 + (i % 12), true);
+  assert("jpnMaekawaCompletionFeedsDomestic",
+    ST.agendas.JPN.completed.includes("jpn_maekawa") && ST.domestic.jpn.tradeFriction < 50,
+    "完成前川报告即时回馈内政（贸易摩擦压力回落）");
+
+  initAgendaState();
+  ST.player = "FRA";
+  ST.domestic.fra.dirigiste = 55;
+  ST.domestic.fra.rigueur = 45;
+  ST.domestic.fra.francStrength = 45;
+  startAgenda("FRA", "fra_nationalization");
+  for (let i = 0; i < 20; i++) updateMonthlyAgendas(1990, 1 + (i % 12), true);
+  assert("fraNationalizationCompletionFeedsDomestic",
+    ST.agendas.FRA.completed.includes("fra_nationalization") && ST.domestic.fra.francStrength < 45,
+    "完成国有化即时回馈内政（法郎平价承压）");
+
+  initAgendaState();
+  ST.player = "GBR";
+  ST.domestic.gbr.monetarist = 58;
+  ST.domestic.gbr.welfarist = 42;
+  ST.domestic.gbr.inflation = 70;
+  startAgenda("GBR", "gbr_monetarist_turn");
+  for (let i = 0; i < 20; i++) updateMonthlyAgendas(1990, 1 + (i % 12), true);
+  assert("gbrMonetaristCompletionFeedsDomestic",
+    ST.agendas.GBR.completed.includes("gbr_monetarist_turn") && ST.domestic.gbr.inflation < 70,
+    "完成货币主义转向即时回馈内政（通胀压力回落）");
+
+  // 复原状态
+  if (SIM.S) { SIM.S.year = oldYear; SIM.S.month = oldMonth; }
+  ST.player = null;
+  ST.mil = 0;
+  initDomesticState();
+  initAgendaState();
+  applyPlayerDecisions();
+  refreshAgendaBox(ST.sel);
+}
+
 // ---- R12C: 中局突发危机抉择卡与升级阶梯系统 ----
 let crisisResumePlay = false;
-
 function initCrisisState() {
   ST.crises = {
     history: [],

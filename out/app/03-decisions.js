@@ -53,6 +53,9 @@ if (ST.domestic) {
   else if (ST.player === "USA" && ST.domestic.usa) unrestVal = ST.domestic.usa.unrest || 0;
   else if (ST.player === "CHN" && ST.domestic.chn) unrestVal = ST.domestic.chn.unrest || 0;
   else if (ST.player === "DEU" && ST.domestic.deu) unrestVal = ST.domestic.deu.unrest || 0;
+  else if (ST.player === "JPN" && ST.domestic.jpn) unrestVal = ST.domestic.jpn.unrest || 0;
+  else if (ST.player === "FRA" && ST.domestic.fra) unrestVal = ST.domestic.fra.unrest || 0;
+  else if (ST.player === "GBR" && ST.domestic.gbr) unrestVal = ST.domestic.gbr.unrest || 0;
   else if (ST.domestic.generals && ST.domestic.generals[ST.player]) unrestVal = ST.domestic.generals[ST.player].unrest || 0;
   if (unrestVal > 30) {
     const drag = -Math.min(0.35, ((unrestVal - 30) / 70) * 0.35);
@@ -67,6 +70,26 @@ if (ST.domestic) {
   if (ST.player === "DEU" && ST.domestic.deu) {
     const ep = ST.domestic.deu.energyPressure || 0;
     if (ep > 30) selfPP -= Math.min(0.30, ((ep - 30) / 70) * 0.30);
+  }
+  // K（玩法深度）：JPN/FRA/GBR 专属变量 → 结构性增速（阈值型，默认值下恒为 0，不改变旧行为）。
+  //   日本：对美贸易摩擦压力高企 → 出口通道受阻拖累外需。
+  if (ST.player === "JPN" && ST.domestic.jpn) {
+    const tf = ST.domestic.jpn.tradeFriction || 0;
+    if (tf > 50) selfPP -= Math.min(0.25, ((tf - 50) / 50) * 0.25);
+  }
+  //   法国：外部约束过强（资本外逃）或法郎平价失守 → 融资成本与投资信心拖累。
+  if (ST.player === "FRA" && ST.domestic.fra) {
+    const ep2 = ST.domestic.fra.externalPressure || 0;
+    if (ep2 > 50) selfPP -= Math.min(0.25, ((ep2 - 50) / 50) * 0.25);
+    const fs = ST.domestic.fra.francStrength || 0;
+    if (fs < 40) selfPP -= Math.min(0.20, ((40 - fs) / 40) * 0.20);
+  }
+  //   英国：恶性通胀或金融城竞争力流失 → 服务业与投资拖累。
+  if (ST.player === "GBR" && ST.domestic.gbr) {
+    const inf = ST.domestic.gbr.inflation || 0;
+    if (inf > 60) selfPP -= Math.min(0.25, ((inf - 60) / 40) * 0.25);
+    const cs = ST.domestic.gbr.cityStrength || 0;
+    if (cs < 40) selfPP -= Math.min(0.20, ((40 - cs) / 40) * 0.20);
   }
   if (ST.player === "USA" && ST.domestic.usa && ST.domestic.usa.budgetCapActive) {
     if (ST.mil > 6.0) {

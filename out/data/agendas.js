@@ -69,7 +69,9 @@
         monthMin: 1,
         duration: 15,
         requires: "chn_disarm",
-        condition: "domestic_reform_lead",
+        // K（玩法深度）：门控统一由数据侧声明（faction），引擎只按声明求值，见 07-domestic.js checkAgendaCondition。
+        condition: "domestic_faction",
+        faction: { key: "chn", lead: "reformist", over: "planned", leadLabel: "特区/市场派", overLabel: "计划/国营派" },
         conditionDesc: "需完成百万大裁军，且特区/市场派权重高于计划/国营派",
         effects: {
           gdpBonus: 0.45,
@@ -129,6 +131,29 @@
           reserveMonthly: 2.0,
           desc: "东亚雁阵分工成型，海外资产投资利润持续反哺本土母公司 (+0.25pp/年，外汇流 +2.0亿 USD/月)"
         }
+      },
+      {
+        // K（玩法深度）：JPN 三步议程树的末步 —— 半导体 → 黑潮出海 → 前川报告。
+        // 门控挂在「内政天平」上：只有内需开放派压过出口产业派（即海外摩擦产业已转移出去），
+        // 主动收窄顺差、扩内需的路线才推得动。完成黑潮计划会压低外部摩擦压力，
+        // 而摩擦压力回落又反哺内需开放派，形成「门控 → 议程 → 内政 → 解锁」闭环。
+        id: "jpn_maekawa",
+        title: "前川报告与内需主导转型",
+        category: "结构转型",
+        icon: "🏙️",
+        desc: "落实前川报告路线：主动压缩经常收支顺差、开放国内市场、扩大住宅与公共投资，把增长动力从外需转向内需，从根上化解对美贸易摩擦。",
+        yearMin: 1986,
+        monthMin: 4,
+        duration: 15,
+        requires: "jpn_black_current",
+        condition: "domestic_faction",
+        faction: { key: "jpn", lead: "domesticist", over: "exportist", leadLabel: "内需开放派", overLabel: "出口产业派" },
+        conditionDesc: "需完成黑潮计划，且内需开放派权重高于出口产业派",
+        effects: {
+          gdpBonus: 0.30,
+          stabilityBonus: 10,
+          desc: "贸易摩擦从根上缓和，增长动力切换至内需 (+0.30pp/年，安定度 +10)"
+        }
       }
     ],
 
@@ -146,7 +171,9 @@
         yearMin: 1980,
         monthMin: 1,
         duration: 15,
-        condition: "domestic_detente",
+        // K（玩法深度）：门控统一由数据侧声明（faction），与 CHN 同构。
+        condition: "domestic_faction",
+        faction: { key: "deu", field: "detenteDepth", min: 55, fieldLabel: "东西欧缓和深度" },
         conditionDesc: "1980 年起可推进，且东西欧缓和深度 ≥ 55（内政天平偏向缓和派）",
         effects: {
           gdpBonus: 0.25,
@@ -222,6 +249,65 @@
           stabilityBonus: 8,
           desc: "高卢战略自主定力确立，军工技术独立出口顺差增加 (+0.20pp/年，安定度 +8)"
         }
+      },
+      {
+        // K（玩法深度）：FRA 三步议程树 —— 国有化 → 紧缩转向 → 工业重组。
+        // 第一步门控在「国家干预派」占优时开放；完成国有化会即时恶化法郎与外部压力，
+        // 把内政天平推向紧缩坚挺派，从而解锁第二步；第二步执政后法郎回升，
+        // 又解锁第三步的高竞争力门控。三者互为因果，与 CHN/DEU 同构。
+        id: "fra_nationalization",
+        title: "国有化浪潮与产业重整",
+        category: "国家干预",
+        icon: "🏭",
+        desc: "对五大工业集团与三十余家银行实施国有化，以国家资本主导产业重整与就业保护，构筑「国家冠军」工业体系。",
+        yearMin: 1981,
+        monthMin: 6,
+        duration: 15,
+        condition: "domestic_faction",
+        faction: { key: "fra", lead: "dirigiste", over: "rigueur", leadLabel: "国家干预派", overLabel: "紧缩坚挺派" },
+        conditionDesc: "需由国家干预派掌舵（干预派权重高于紧缩派）",
+        effects: {
+          gdpBonus: 0.20,
+          desc: "国家冠军工业体系成型，重化与军工产能扩张 (+0.20pp/年)"
+        }
+      },
+      {
+        id: "fra_rigueur",
+        title: "紧缩转向与法郎坚挺",
+        category: "货币纪律",
+        icon: "💱",
+        desc: "在赤字与通胀压力下强行掉头：冻结工资与物价、削减公共开支、坚持法郎在欧洲货币体系内的坚挺平价，压平通胀预期并止住资本外逃。",
+        yearMin: 1983,
+        monthMin: 3,
+        duration: 15,
+        requires: "fra_nationalization",
+        condition: "domestic_faction",
+        faction: { key: "fra", lead: "rigueur", over: "dirigiste", leadLabel: "紧缩坚挺派", overLabel: "国家干预派" },
+        conditionDesc: "需完成国有化，且紧缩坚挺派权重高于国家干预派",
+        effects: {
+          gdpBonus: 0.25,
+          stabilityBonus: -4,
+          desc: "通胀与资本外逃受控，法郎平价稳住 (+0.25pp/年，紧缩初期民怨上升 −4 安定)"
+        }
+      },
+      {
+        id: "fra_reconversion",
+        title: "工业重组与私有化起步",
+        category: "结构转型",
+        icon: "⚙️",
+        desc: "在市场纪律下推进亏损国企重组与首次私有化，裁撤过剩产能，把资源转向高附加值的航天、核能与高速铁路产业。",
+        yearMin: 1986,
+        monthMin: 6,
+        duration: 15,
+        requires: "fra_rigueur",
+        condition: "domestic_faction",
+        faction: { key: "fra", field: "francStrength", min: 55, fieldLabel: "法郎与外部竞争力" },
+        conditionDesc: "需先完成紧缩转向，且法郎与外部竞争力 ≥ 55",
+        effects: {
+          gdpBonus: 0.30,
+          stabilityBonus: 8,
+          desc: "高附加值产业接棒，出口竞争力回升 (+0.30pp/年，安定度 +8)"
+        }
       }
     ],
 
@@ -256,6 +342,63 @@
           gdpBonus: 0.25,
           stabilityBonus: -5,
           desc: "国有资本包袱出清，工业生产效率反弹回升 (+0.25pp/年，初期伴随适度工潮)"
+        }
+      },
+      {
+        // K（玩法深度）：GBR 三步议程树 —— 货币主义转向 → 工会法制改革 → 大众持股。
+        // 第一步门控在货币主义派占优时开放；完成转向会压低通胀、抬升金融城竞争力，
+        // 为第三步的竞争力门控铺路；高动荡则反噬执政派，形成「激进改革 ↔ 社会代价」张力。
+        id: "gbr_monetarist_turn",
+        title: "货币主义转向与通胀压制",
+        category: "撒切尔主义",
+        icon: "📉",
+        desc: "以严控货币供应量与高利率取代战后需求管理共识，宁可容忍失业上升也要压平通胀预期，重建财政纪律。",
+        yearMin: 1980,
+        monthMin: 5,
+        duration: 15,
+        condition: "domestic_faction",
+        faction: { key: "gbr", lead: "monetarist", over: "welfarist", leadLabel: "货币主义派", overLabel: "福利共识派" },
+        conditionDesc: "需由货币主义派掌舵（货币主义派权重高于福利共识派）",
+        effects: {
+          gdpBonus: -0.15,
+          stabilityBonus: -8,
+          desc: "通胀预期被强行锚定，但产出与就业短期付代价 (−0.15pp/年，初期动荡上升 −8 安定)"
+        }
+      },
+      {
+        id: "gbr_union_reform",
+        title: "工会法制改革与矿工对峙",
+        category: "劳动市场",
+        icon: "⚒️",
+        desc: "以《工会法》限制次级纠察与政治性罢工，在煤炭、印刷等行业与工会正面对峙，解除劳动市场的制度性僵化。",
+        yearMin: 1984,
+        monthMin: 3,
+        duration: 15,
+        requires: "gbr_monetarist_turn",
+        conditionDesc: "需先完成货币主义转向，1984 年矿工罢工期启动",
+        effects: {
+          gdpBonus: 0.20,
+          stabilityBonus: -6,
+          desc: "罢工冲击被压制，劳动市场弹性回升 (+0.20pp/年，社会张力短期上升 −6 安定)"
+        }
+      },
+      {
+        id: "gbr_wider_shareholding",
+        title: "大众持股与住房私有化",
+        category: "社会结构",
+        icon: "🏘️",
+        desc: "扩大公房「购买权」与国企职工持股，把数百万家庭转化为有产者，以财产权重构投票基础并提振消费。",
+        yearMin: 1986,
+        monthMin: 6,
+        duration: 15,
+        requires: "gbr_union_reform",
+        condition: "domestic_faction",
+        faction: { key: "gbr", field: "cityStrength", min: 55, fieldLabel: "金融城与服务业竞争力" },
+        conditionDesc: "需先完成工会法制改革，且金融城与服务业竞争力 ≥ 55",
+        effects: {
+          gdpBonus: 0.30,
+          stabilityBonus: 10,
+          desc: "有产者阶层扩张带动消费与金融深化 (+0.30pp/年，安定度 +10)"
         }
       }
     ],

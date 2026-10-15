@@ -21,6 +21,7 @@ function runDomesticProbe() {
   runDomesticProbePhase2(r, assert, ctx);
   runDomesticProbePhase3(r, assert, ctx);
   runDomesticProbePhase4(r, assert, ctx);
+  runDomesticProbePhase5(r, assert, ctx);
 
   } catch (e) {
     r.pass = false;
@@ -129,8 +130,8 @@ function runDomesticProbePhase2(r, assert, ctx) {
   refreshDomesticBox("USA");
   assert("usaDomRendered", domBox.innerHTML.includes("国会两党") && domBox.querySelector(".pdb-badge-row") !== null, "美国内政面板成功渲染国会与大选宪政卡片");
 
-  // 渲染通用实体面板
-  refreshDomesticBox("GBR");
+  // 渲染通用实体面板（K：GBR 已有专属面板，改用仍走通用模板的国家）
+  refreshDomesticBox("ITA");
   assert("generalDomRendered", domBox.innerHTML.includes("内政稳定与执政合法性"), "通用实体成功渲染安定度与合法性仪表");
 
   // 14. 旁观模式零漂移验证
@@ -310,6 +311,181 @@ function runDomesticProbePhase4(r, assert, ctx) {
   EFF.resetViolations();
   assert("effectVocabResetClean", EFF.violations.length === 0 && EFF.isClean(),
     "resetViolations 清空登记表并恢复 isClean()");
+}
+
+// K（玩法深度）：JPN/FRA/GBR 内政 ↔ 经济耦合与议程门控探针（模板同 Phase3）
+function runDomesticProbePhase5(r, assert, ctx) {
+  // 27. 新增专属内政字段与压力评估函数完备
+  initDomesticState();
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
+  assert("jpnFraGbrDomFields",
+    !!ST.domestic.jpn && !!ST.domestic.fra && !!ST.domestic.gbr &&
+    typeof ST.domestic.jpn.tradeFriction === "number" &&
+    typeof ST.domestic.fra.francStrength === "number" &&
+    typeof ST.domestic.gbr.inflation === "number",
+    "JPN/FRA/GBR 内政状态包含贸易摩擦 / 法郎平价 / 通胀压力字段");
+  assert("jpnFraGbrStressHelpers",
+    typeof jpnTradeFrictionStress === "function" && typeof fraExternalStress === "function" && typeof gbrExternalStress === "function",
+    "jpnTradeFrictionStress / fraExternalStress / gbrExternalStress 外部环境评估函数存在");
+
+  const cocomBefore = (ST.cocom && ST.cocom.active) ? { active: ST.cocom.active, strict: ST.cocom.strict } : null;
+  const tensionsBefore = (ST.ai && ST.ai.tensions) ? ST.ai.tensions["USA:SUN"] : undefined;
+
+  // 28. 日本：制裁 + 巴统封锁 → 贸易摩擦压力越 60 阈值 → 内需派抬头、动荡上升
+  initDomesticState();
+  ST.player = "USA";
+  ST.mil = 0;
+  ST.sanctions = [{ t: "JPN", l: 2 }];
+  if (ST.cocom) { ST.cocom.active = true; ST.cocom.strict = true; }
+  const jpnBaseD = ST.domestic.jpn.domesticist;
+  const jpnBaseU = ST.domestic.jpn.unrest;
+  for (let i = 0; i < 80; i++) updateDomesticPolitics(1986, 1 + (i % 12), true);
+  r.details.__jpnFriction = +ST.domestic.jpn.tradeFriction.toFixed(4);
+  assert("jpnFrictionCrossesThreshold", ST.domestic.jpn.tradeFriction >= 60,
+    "制裁叠加巴统封锁令对美贸易摩擦压力越过 60 阈值（实测 " + ST.domestic.jpn.tradeFriction.toFixed(1) + "）");
+  assert("jpnFrictionShiftsFaction",
+    ST.domestic.jpn.domesticist > jpnBaseD && ST.domestic.jpn.unrest > jpnBaseU,
+    "高摩擦压力推高内需开放派并累积社会动荡");
+  ST.sanctions = [];
+
+  // 29. 法国：制裁 → 外部环境压力越 45 阈值 → 紧缩坚挺派抬头、法郎平价承压
+  initDomesticState();
+  ST.player = "USA";
+  ST.mil = 0;
+  ST.sanctions = [{ t: "FRA", l: 2 }];
+  const fraBaseR = ST.domestic.fra.rigueur;
+  const fraBaseF = ST.domestic.fra.francStrength;
+  let fraMinFranc = fraBaseF;
+  for (let i = 0; i < 80; i++) {
+    updateDomesticPolitics(1986, 1 + (i % 12), true);
+    if (ST.domestic.fra.francStrength < fraMinFranc) fraMinFranc = ST.domestic.fra.francStrength;
+  }
+  r.details.__fraPressure = +ST.domestic.fra.externalPressure.toFixed(4);
+  r.details.__fraMinFranc = +fraMinFranc.toFixed(4);
+  assert("fraExternalPressureCrossesThreshold", ST.domestic.fra.externalPressure >= 45,
+    "制裁令外部环境压力越过 45 阈值（实测 " + ST.domestic.fra.externalPressure.toFixed(1) + "）");
+  assert("fraPressureShiftsFaction", ST.domestic.fra.rigueur > fraBaseR,
+    "外部约束迫使路线转向紧缩坚挺派（干预派受压、紧缩派抬头）");
+  assert("fraPressureErodesFrancBeforeTurn", fraMinFranc < fraBaseF,
+    "紧缩转向完成前资本外逃持续侵蚀法郎平价（最低 " + fraMinFranc.toFixed(1) + "）");
+  ST.sanctions = [];
+
+  // 30. 英国：制裁 + 巴统 + 美苏高张力 → 通胀压力与金融城竞争力联动
+  initDomesticState();
+  ST.player = "USA";
+  ST.mil = 0;
+  ST.sanctions = [{ t: "GBR", l: 2 }];
+  if (ST.ai && ST.ai.tensions) ST.ai.tensions["USA:SUN"] = 90;
+  for (let i = 0; i < 80; i++) updateDomesticPolitics(1986, 1 + (i % 12), true);
+  r.details.__gbrInflation = +ST.domestic.gbr.inflation.toFixed(4);
+  assert("gbrExternalStressRaisesInflation", ST.domestic.gbr.inflation >= 60,
+    "制裁叠加全球金融风险溢价令通胀压力越过 60 阈值（实测 " + ST.domestic.gbr.inflation.toFixed(1) + "）");
+  assert("gbrInflationShiftsFaction", ST.domestic.gbr.monetarist > ST.domestic.gbr.welfarist,
+    "恶性通胀令民意转向货币主义派");
+  ST.sanctions = [];
+
+  // 31. 三国专属面板渲染（替代此前的通用面板）
+  const domBox = $("p-domestic-box");
+  refreshDomesticBox("JPN");
+  assert("jpnDomRendered", domBox.innerHTML.includes("对美贸易摩擦压力"), "日本内政面板渲染贸易摩擦仪表");
+  refreshDomesticBox("FRA");
+  assert("fraDomRendered", domBox.innerHTML.includes("法郎平价与外部竞争力"), "法国内政面板渲染法郎平价仪表");
+  refreshDomesticBox("GBR");
+  assert("gbrDomRendered", domBox.innerHTML.includes("金融城与服务业竞争力"), "英国内政面板渲染金融城竞争力仪表");
+
+  // 32. 三国玩家治理动作生效
+  ST.player = "JPN";
+  const jpnActBefore = ST.domestic.jpn.domesticist;
+  applyDomesticPlayerAction("jpn_domestic_demand");
+  assert("jpnActionDomesticDemand", ST.domestic.jpn.domesticist > jpnActBefore, "日本「扩大内需开放」动作推高内需开放派");
+  ST.player = "FRA";
+  const fraActBefore = ST.domestic.fra.rigueur;
+  applyDomesticPlayerAction("fra_hard_franc");
+  assert("fraActionHardFranc", ST.domestic.fra.rigueur > fraActBefore, "法国「紧缩坚挺」动作推高紧缩坚挺派");
+  ST.player = "GBR";
+  const gbrActBefore = ST.domestic.gbr.monetarist;
+  applyDomesticPlayerAction("gbr_tight_money");
+  assert("gbrActionTightMoney", ST.domestic.gbr.monetarist > gbrActBefore, "英国「货币主义紧缩」动作推高货币主义派");
+
+  // 33. 三国专属变量 → 结构性增速注入 P.pmods（阈值型，默认值下中性）
+  initDomesticState();
+  ST.player = "JPN";
+  ST.mil = 1.0;
+  ST.domestic.jpn.tradeFriction = 0;
+  ST.domestic.jpn.unrest = 0;
+  applyPlayerDecisions();
+  const pmodJpnNeutral = SIM.S.P.pmods[entKeys("JPN")[0]] || 0;
+  ST.domestic.jpn.tradeFriction = 100;
+  applyPlayerDecisions();
+  const pmodJpnFriction = SIM.S.P.pmods[entKeys("JPN")[0]] || 0;
+  r.details.__pmodJpnNeutral = +pmodJpnNeutral.toFixed(4);
+  r.details.__pmodJpnFriction = +pmodJpnFriction.toFixed(4);
+  assert("jpnTradeFrictionDragsGdp", pmodJpnFriction < pmodJpnNeutral,
+    "对美贸易摩擦压力转化为日本出口拖累（高压 < 低压）");
+
+  initDomesticState();
+  ST.player = "FRA";
+  ST.mil = 3.5;
+  ST.domestic.fra.externalPressure = 0;
+  ST.domestic.fra.francStrength = 60;
+  ST.domestic.fra.unrest = 0;
+  applyPlayerDecisions();
+  const pmodFraLow = SIM.S.P.pmods[entKeys("FRA")[0]] || 0;
+  ST.domestic.fra.externalPressure = 100;
+  ST.domestic.fra.francStrength = 10;
+  applyPlayerDecisions();
+  const pmodFraHigh = SIM.S.P.pmods[entKeys("FRA")[0]] || 0;
+  r.details.__pmodFraLow = +pmodFraLow.toFixed(4);
+  r.details.__pmodFraHigh = +pmodFraHigh.toFixed(4);
+  assert("fraExternalPressureDragsGdp", pmodFraHigh < pmodFraLow,
+    "外部约束与法郎失守转化为法国融资拖累（高压 < 低压）");
+
+  initDomesticState();
+  ST.player = "GBR";
+  ST.mil = 3.5;
+  ST.domestic.gbr.inflation = 0;
+  ST.domestic.gbr.cityStrength = 60;
+  ST.domestic.gbr.unrest = 0;
+  applyPlayerDecisions();
+  const pmodGbrLow = SIM.S.P.pmods[entKeys("GBR")[0]] || 0;
+  ST.domestic.gbr.inflation = 100;
+  ST.domestic.gbr.cityStrength = 10;
+  applyPlayerDecisions();
+  const pmodGbrHigh = SIM.S.P.pmods[entKeys("GBR")[0]] || 0;
+  r.details.__pmodGbrLow = +pmodGbrLow.toFixed(4);
+  r.details.__pmodGbrHigh = +pmodGbrHigh.toFixed(4);
+  assert("gbrInflationDragsGdp", pmodGbrHigh < pmodGbrLow,
+    "恶性通胀与金融城失守转化为英国服务业拖累（高压 < 低压）");
+
+  // 34. 序列化往返：三国专属字段随存档还原
+  initDomesticState();
+  ST.player = "JPN";
+  ST.domestic.jpn.tradeFriction = 63.5;
+  ST.domestic.fra.francStrength = 41.25;
+  ST.domestic.gbr.inflation = 71.75;
+  simSave();
+  initDomesticState();
+  simLoad();
+  assert("jpnFraGbrFieldsRestored",
+    Math.abs(ST.domestic.jpn.tradeFriction - 63.5) < 0.1 &&
+    Math.abs(ST.domestic.fra.francStrength - 41.25) < 0.1 &&
+    Math.abs(ST.domestic.gbr.inflation - 71.75) < 0.1,
+    "JPN/FRA/GBR 专属内政字段随 simSave/simLoad 完整往返");
+
+  // 复原：外部条件与玩家状态清干净，探针自身不留痕迹
+  if (ST.cocom) {
+    if (cocomBefore) { ST.cocom.active = cocomBefore.active; ST.cocom.strict = cocomBefore.strict; }
+    else { ST.cocom.active = false; }
+  }
+  if (ST.ai && ST.ai.tensions && typeof tensionsBefore === "number") ST.ai.tensions["USA:SUN"] = tensionsBefore;
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
+  applyPlayerDecisions();
+  initDomesticState();
+  refreshDomesticBox(ST.sel);
 }
 
 
