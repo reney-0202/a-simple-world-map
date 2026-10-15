@@ -59,3 +59,23 @@ python tools/probe_runner.py run out tools/probe-results.json simprobe saveprobe
 ```bash
 python tools/probe_runner.py run out tools/baseline-probes.json
 ```
+
+## 部署与 PWA
+
+`out/` 是纯静态目录，无构建步骤，可直接托管。
+
+- **GitHub Pages**：`.github/workflows/pages.yml` 在 `main` 分支推送时把 `out/` 发布到
+  Pages（需在仓库设置里把 Pages 的 Source 设为「GitHub Actions」）。站点地址形如
+  `https://<owner>.github.io/<repo>/`。
+- **离线（PWA）**：`out/manifest.webmanifest` 声明应用元信息，`out/sw.js` 在安装时
+  预缓存全部应用文件（87 项），之后以 cache-first 提供，断网也能启动。
+  这两个文件由 `out/` 的文件清单生成，**新增/删除文件后需重新生成 `sw.js`**
+  （或改动 `CACHE_VERSION`），否则离线缓存会缺失新文件。
+
+### PWA 注册的开关条件
+
+Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强制启用）。
+原因：CI 的无头探针使用 `--dump-dom` + `--virtual-time-budget` 运行，而 Service Worker
+的安装/缓存生命周期会与虚拟时钟交互、使探针时序不确定；探针一律带查询参数，
+因此这条规则从根上保证探针走纯网络路径。带参数的深链（如 `?player=SUN`）不启用离线，
+功能不受影响。

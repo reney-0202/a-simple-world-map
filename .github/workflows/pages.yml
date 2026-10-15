@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+# Publishes the static game in out/ to GitHub Pages.
+# The app is fully static (no build step), so the artifact is simply out/.
+# Requires Pages to be enabled with "Source: GitHub Actions" in repo settings.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Package out/
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Fail fast if the static entry point is missing
+        run: |
+          set -euo pipefail
+          test -f out/index.html || { echo "::error::out/index.html not found"; exit 1; }
+          test -f out/manifest.webmanifest || { echo "::error::out/manifest.webmanifest not found"; exit 1; }
+          test -f out/sw.js || { echo "::error::out/sw.js not found"; exit 1; }
+          test -f out/assets/pwa/icon-512.png || { echo "::error::PWA icon not found"; exit 1; }
+          echo "static payload OK ($(du -sh out | cut -f1))"
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: out
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

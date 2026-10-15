@@ -1,0 +1,34 @@
+{
+  "name": "world1980 · 1980 冷战大战略模拟地图",
+  "short_name": "world1980",
+  "description": "1980–1991 冷战大战略推演：54 个可玩实体 / 133 个成员的等面积世界地图，含经济、军控、内政、谍战与终局结算。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101822",
+  "theme_color": "#1b1f23",
+  "categories": ["games", "strategy", "education"],
+  "icons": [
+    {
+      "src": "assets/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/pwa/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
