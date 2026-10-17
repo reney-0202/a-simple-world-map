@@ -13,11 +13,11 @@
 产物体积已定为「不再优化」的回归护栏（磁盘 `out/` ≤ 3.2 MiB）。
 
 **因此本轮评审不再找"要加什么功能"，而是找"哪些结构债会在下一次加功能时反噬"。**
-8 条发现全部来自实测（函数边界、探针注册表、生成物清单、函数归属），分为四类：
+9 条发现全部来自实测（函数边界、探针注册表、生成物清单、函数归属），分为四类：
 
 - **结构债**（2 条）：纯搬运即可消除，验收标准是 `cmp` 仍 identical；
 - **流程债**（2 条）：不同步就静默失效，靠自动门消除；
-- **契约债**（2 条）：真正改代码路径，必须逐位核对；
+- **契约债**（3 条）：真正改代码路径或已成死代码，必须逐位核对；
 - **生成物与平台债**（2 条）：手写维护的生成物 + PWA 深链取舍。
 
 ---
@@ -75,14 +75,15 @@
 | # | 发现 | 实测证据 | 对策 |
 | --- | --- | --- | --- |
 | **S-5** | **议程完成回馈是逐国 if-else**（加一国就要改引擎），且 `effects.js` 的 target 注释已与实现不同步（`stabilityBonus` 仍写 `generals[*].stability`，但七大国已走专属分支） | `updateMonthlyAgendas` 中 `stabilityBonus` 分派为 SUN/USA/CHN/DEU/JPN/FRA/GBR/generals **八路** | **M1** 改为数据声明式 `ag.onComplete` |
-| **S-8** | **备份仓 pipeline 与主仓 `out/` 双写**，靠 `robocopy /MIR` 手工同步 | Phase K 需在两侧各改一次 `has_capital`；镜像后 `git status` 出现 8 个待提交文件 | **M2** 二选一：pipeline 为唯一事实源 / 备份仓 CI 加 diff 门 |
+| **S-6** | 引擎里 `domestic_reform_lead` / `domestic_detente` 两个 handler 在数据侧**零引用**（Phase K 已把 CHN/DEU 改写成 `domestic_faction`），已成死代码；而「数据用了未注册 condition」目前不会让 CI 失败 | 数据侧 condition 全集 = `{mil_le_1, mil_le_3, mil_ge_5, domestic_faction}` | **L3** 删两个 handler + 「未知 condition 判 CI 失败」 |
+| **S-7** | **备份仓 pipeline 与主仓 `out/` 双写**，靠 `robocopy /MIR` 手工同步 | Phase K 需在两侧各改一次 `has_capital`；镜像后 `git status` 出现 8 个待提交文件 | **M2** 二选一：pipeline 为唯一事实源 / 备份仓 CI 加 diff 门 |
 
 ### D. 生成物与平台债
 
 | # | 发现 | 实测证据 | 对策 |
 | --- | --- | --- | --- |
-| **S-6** | `sw.js` 的 `PRECACHE` **87 项手写**维护；而 README 已声称「这两个文件由 `out/` 的文件清单生成」——**实际上仓库里没有任何生成器** | `Select-String` 全仓（排除 `out/`）搜 `PRECACHE`/`precache`/`sw.js` → **0 命中**，即无生成脚本 | **N2** `tools/sw_manifest.js` 自动生成 + CI diff 校验（顺带修正 README 的表述） |
-| **S-7** | PWA 在带参深链下**静默失效**（`?player=SUN` 丢掉离线能力，且无提示） | `14-pwa.js`：`bare = q === "" \|\| q === "?"`，带任何参数即不注册 | **N1** 改用 `PROBE_PARAMS` 反向匹配 |
+| **S-8** | `sw.js` 的 `PRECACHE` **87 项手写**维护；而 README 已声称「这两个文件由 `out/` 的文件清单生成」——**实际上仓库里没有任何生成器** | `Select-String` 全仓（排除 `out/`）搜 `PRECACHE`/`precache`/`sw.js` → **0 命中**，即无生成脚本 | **N2** `tools/sw_manifest.js` 自动生成 + CI diff 校验（顺带修正 README 的表述） |
+| **S-9** | PWA 在带参深链下**静默失效**（`?player=SUN` 丢掉离线能力，且无提示） | `14-pwa.js`：`bare = q === "" \|\| q === "?"`，带任何参数即不注册 | **N1** 改用 `PROBE_PARAMS` 反向匹配 |
 
 ---
 
@@ -91,6 +92,7 @@
 ### Phase L — 卫生与闸门（低风险，0.5–1 天）
 
 > 全部**不改变任何仿真数值**，是后续所有改动的干净地基。
+> 对应发现：L1→S-1/S-2 · L2→S-3 · L3→S-6 · L4→S-4
 
 | 项 | 内容 | 验收标准 |
 | --- | --- | --- |
@@ -101,12 +103,16 @@
 
 ### Phase M — 契约一致性（中风险，1 天）
 
+> 对应发现：M1→S-5 · M2→S-7
+
 | 项 | 内容 | 验收标准 |
 | --- | --- | --- |
 | **M1** | 议程完成回馈数据声明式：`ag.onComplete` 描述内政变量增量，引擎统一求值，删除 8 路 if-else；同步修正 `effects.js` 的 target 注释 | 五条 `*CompletionFeedsDomestic` 断言全绿；基线差异只落在预期字段 |
 | **M2** | 备份仓 pipeline 双写收敛：pipeline 为唯一事实源（主仓 `out/` 由它组装）**或** 备份仓 CI 加「pipeline 输出 == out/」diff 门 | 重跑 pipeline 后 `git status` 干净 |
 
 ### Phase N — 平台与生成物（低风险，0.5 天）
+
+> 对应发现：N1→S-9 · N2→S-8
 
 | 项 | 内容 | 验收标准 |
 | --- | --- | --- |
