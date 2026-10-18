@@ -945,6 +945,8 @@ function simReset() {
   initTradeState();                                                                           // R9B：重置清空贸易航线与外汇池至 1980 基准
   ST.ai = { enabled: true, decisions: {}, tensions: {}, cables: [], treaties: [], unsc: { passed: [], history: [] } }; // R10A/B/C：重置清空反应式 AI、军控条约与安理会决议
   initDomesticState();                                                                        // R12A：重置内政生态与派系权力天平至 1980 基准
+  initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
+  initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initAgendaState();                                                                          // R12B：重置专属国家战略议程至 1980 基准
   initCrisisState(); hideCrisisModal();                                                       // R12C：重置突发危机状态并收起弹窗
   initIntelState();                                                                           // R13A：重置全球谍战与隐蔽行动至 1980 基准

@@ -260,6 +260,8 @@ function simSave(slot) {
     smuggle: ST.smuggle,                              // R9C：特种走私转口开关
     ai: ST.ai,                                        // R10A：反应式 AI 决策机状态
     domestic: ST.domestic,                            // R12A：内政生态与派系权力天平状态
+    politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
+    posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     agendas: ST.agendas,                              // R12B：专属国家战略议程状态
     crises: ST.crises ? JSON.parse(JSON.stringify(ST.crises)) : null, // R12C：突发危机状态
     intel: ST.intel ? JSON.parse(JSON.stringify(ST.intel)) : null,   // R13A：全球谍战与隐蔽行动状态
@@ -416,6 +418,10 @@ function loadSocietyStates(d) {
   } else {
     initDomesticState();
   }
+  // L：还原玩家施政预算（旧档缺该项 → 按初始值补齐，无需升版）
+  ST.politicalCapital = sanitizePoliticalCapital(d.politicalCapital);
+  // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
+  ST.posture = sanitizePosture(d.posture);
   // R12B：还原专属国家战略议程状态
   if (d.agendas && typeof d.agendas === "object") {
     ST.agendas = sanitizeAgendaState(d.agendas);

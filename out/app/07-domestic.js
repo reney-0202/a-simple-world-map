@@ -265,6 +265,226 @@ function sanitizeDomesticState(d) {
   return fresh;
 }
 
+// ---- L（参与感/战略灵活性）：政治资本 —— 玩家施政的稀缺行动预算 ----------------
+// 评审发现的缺口：K 之后七大国各有 2 个内政动作，但
+//   ① 动作零代价、可无限点击 —— 连点同一按钮即可把派系天平拉满，「选择」形同虚设；
+//   ② 47/54 个实体（所有非大国）内政面板里一个可点的按钮都没有。
+// 这里引入一个玩家专属的行动预算来同时解决两者：
+//   · 每月按「执政合法性 / 社会动荡」结算（稳则多、乱则少），上限 100；
+//   · 每个施政动作消耗固定点数，不足则动作被**拒绝且不产生任何副作用**；
+//   · 通用实体获得 3 个施政动作，使「能做的事」从 7 国扩展到全部 54 个可玩实体。
+// 资本只约束玩家动作，不参与任何经济计算（不写 P.pmods），因此对既有仿真数值零影响。
+const PC_CAP = 100;
+const PC_START = 55;
+const PC_BASE_ACCRUAL = 3.0;
+const DOMESTIC_ACTION_COST = {
+  // 通用实体施政
+  gen_austerity: 12, gen_welfare: 14, gen_crackdown: 16,
+  // 大国施政：路线级动作更贵，使「两条路线都走」在预算上不可持续
+  rebalance_consumer: 16, placate_vpk: 14, compromise_budget: 15,
+  chn_expand_sez: 18, chn_price_reform: 20,
+  deu_ostpolitik: 18, deu_nato_pledge: 16,
+  jpn_domestic_demand: 18, jpn_export_push: 18,
+  fra_industrial_policy: 18, fra_hard_franc: 20,
+  gbr_tight_money: 20, gbr_welfare_compromise: 16
+};
+const DOMESTIC_ACTION_DEFAULT_COST = 14;
+
+// ---- L（战略灵活性）：施政方针 —— 玩家自选治理路线 -------------------------------
+// 政治资本解决了「能做的事有限」，但还没解决「为什么这样选」。这里给玩家一个
+// 显式的治理路线开关，让同一份预算在不同路线下产生不同的机会成本：
+//   · 强硬路线：压制动荡、行政效率高（部分动作更便宜），但消耗合法性（预算结算变慢）
+//   · 改革路线：民意授权更多（预算结算更快），但改革阵痛抬升动荡（部分动作更便宜）
+//   · 均衡施政：默认，零漂移零折扣 —— 保证既有行为逐位不变
+// 路线只影响玩家自己的国家，且默认值完全中性，因此对 AI 与史实路径零影响。
+const POSTURE_SWITCH_COST = 15;
+const POSTURES = {
+  balanced: {
+    zh: "均衡施政", icon: "⚖️",
+    desc: "不偏不倚地推进各项议程：无额外漂移，也无成本折扣。",
+    unrestDrift: 0, capitalMod: 0, costMod: {}
+  },
+  hardline: {
+    zh: "强硬路线", icon: "🛡️",
+    desc: "以行政与治安力量压制动荡，并降低强硬类动作的成本；代价是民意授权流失，政治资本结算变慢。",
+    unrestDrift: -0.15, capitalMod: -0.8,
+    costMod: {
+      gen_crackdown: 0.7, gen_austerity: 0.8,
+      gbr_tight_money: 0.8, fra_hard_franc: 0.8,
+      deu_nato_pledge: 0.8, placate_vpk: 0.8
+    }
+  },
+  reformist: {
+    zh: "改革路线", icon: "🌱",
+    desc: "以开放与让利换取民意授权，改革类动作成本更低、政治资本结算更快；代价是改革阵痛抬升社会动荡。",
+    unrestDrift: 0.10, capitalMod: 1.0,
+    costMod: {
+      gen_welfare: 0.8,
+      chn_expand_sez: 0.8, chn_price_reform: 0.85,
+      jpn_domestic_demand: 0.8, fra_industrial_policy: 0.8,
+      gbr_welfare_compromise: 0.8, deu_ostpolitik: 0.85,
+      rebalance_consumer: 0.8
+    }
+  }
+};
+
+function initPosture(force) {
+  if (force || typeof ST.posture !== "string" || !POSTURES[ST.posture]) {
+    ST.posture = "balanced";
+  }
+  return ST.posture;
+}
+
+function sanitizePosture(p) {
+  return (typeof p === "string" && POSTURES[p]) ? p : "balanced";
+}
+
+function currentPosture() {
+  const k = initPosture(false);
+  return POSTURES[k] || POSTURES.balanced;
+}
+
+function postureCostMultiplier(actType) {
+  const mods = currentPosture().costMod || {};
+  const m = mods[actType];
+  return typeof m === "number" ? m : 1;
+}
+
+function setPosture(key) {
+  if (!POSTURES[key]) return false;
+  if (initPosture(false) === key) return false;
+  if (!spendPoliticalCapital(POSTURE_SWITCH_COST)) {
+    const pc = initPoliticalCapital();
+    toast({
+      zh: "【方针调整受阻】",
+      note: "调整施政方针需 " + POSTURE_SWITCH_COST + " 点政治资本，当前仅 " + pc.value.toFixed(1) + " 点。"
+    });
+    return false;
+  }
+  ST.posture = key;
+  toast({ zh: "【施政方针确立】" + POSTURES[key].icon + " " + POSTURES[key].zh, note: POSTURES[key].desc });
+  refreshDomesticBox(ST.sel);
+  return true;
+}
+
+// 施政方针的月度漂移：只动玩家自己国家的社会动荡（各国都有的通用字段）
+function adjustPlayerUnrest(delta) {
+  const p = ST.player;
+  const dom = ST.domestic || {};
+  if (!p || !delta) return;
+  let obj = null;
+  if (p === "SUN") obj = dom.sun;
+  else if (p === "USA") obj = dom.usa;
+  else if (p === "CHN") obj = dom.chn;
+  else if (p === "DEU") obj = dom.deu;
+  else if (p === "JPN") obj = dom.jpn;
+  else if (p === "FRA") obj = dom.fra;
+  else if (p === "GBR") obj = dom.gbr;
+  else if (dom.generals && dom.generals[p]) obj = dom.generals[p];
+  if (obj && typeof obj.unrest === "number") {
+    obj.unrest = clamp(obj.unrest + delta, 0, 100);
+  }
+}
+
+function updatePostureDrift() {
+  if (!ST.player) return;
+  const drift = currentPosture().unrestDrift || 0;
+  if (drift) adjustPlayerUnrest(drift);
+}
+
+function initPoliticalCapital(force) {
+  if (force || !ST.politicalCapital || typeof ST.politicalCapital.value !== "number") {
+    ST.politicalCapital = { value: PC_START, cap: PC_CAP };
+  }
+  return ST.politicalCapital;
+}
+
+function sanitizePoliticalCapital(d) {
+  const fresh = { value: PC_START, cap: PC_CAP };
+  if (d && typeof d === "object") {
+    if (typeof d.value === "number" && isFinite(d.value)) fresh.value = clamp(d.value, 0, PC_CAP);
+    if (typeof d.cap === "number" && isFinite(d.cap)) fresh.cap = clamp(d.cap, 10, PC_CAP);
+  }
+  return fresh;
+}
+
+function domesticActionCost(actType) {
+  const c = DOMESTIC_ACTION_COST[actType];
+  const base = typeof c === "number" ? c : DOMESTIC_ACTION_DEFAULT_COST;
+  // L：施政方针给出机会成本折扣（均衡路线 = 1.0，即完全中性）
+  const m = postureCostMultiplier(actType);
+  return m === 1 ? base : Math.round(base * m);
+}
+
+// 执政合法性：各国用自己最能代表「施政授权」的指标，统一折算到 0~100
+function politicalLegitimacy() {
+  const p = ST.player;
+  const dom = ST.domestic || {};
+  if (p === "SUN" && dom.sun) {
+    const sun = dom.sun;
+    // 天平越撕裂、短缺越重，政治局越难达成新的施政共识
+    return 70 - Math.abs(sun.conservative - sun.reformist) * 0.4 - sun.shortage * 0.25;
+  }
+  if (p === "USA" && dom.usa) return dom.usa.congressApproval;
+  if (p === "CHN" && dom.chn) {
+    const chn = dom.chn;
+    return 55 + (chn.reformist - chn.planned) * 0.3 - chn.dualTrackPrice * 0.2;
+  }
+  if (p === "DEU" && dom.deu) {
+    return 50 + dom.deu.detenteDepth * 0.25 - dom.deu.energyPressure * 0.2;
+  }
+  if (p === "JPN" && dom.jpn) return 65 - dom.jpn.tradeFriction * 0.3;
+  if (p === "FRA" && dom.fra) {
+    return 45 + dom.fra.francStrength * 0.3 - dom.fra.externalPressure * 0.2;
+  }
+  if (p === "GBR" && dom.gbr) {
+    return 60 + dom.gbr.cityStrength * 0.2 - dom.gbr.inflation * 0.3;
+  }
+  if (dom.generals && dom.generals[p]) return dom.generals[p].legitimacy;
+  return 60;
+}
+
+function politicalUnrest() {
+  const p = ST.player;
+  const dom = ST.domestic || {};
+  if (p === "SUN" && dom.sun) return dom.sun.unrest;
+  if (p === "USA" && dom.usa) return dom.usa.unrest;
+  if (p === "CHN" && dom.chn) return dom.chn.unrest;
+  if (p === "DEU" && dom.deu) return dom.deu.unrest;
+  if (p === "JPN" && dom.jpn) return dom.jpn.unrest;
+  if (p === "FRA" && dom.fra) return dom.fra.unrest;
+  if (p === "GBR" && dom.gbr) return dom.gbr.unrest;
+  if (dom.generals && dom.generals[p]) return dom.generals[p].unrest;
+  return 0;
+}
+
+// 月度结算：基准 3.0；合法性高于 60 线性加、低于 40 线性减；社会动荡直接扣减。
+// 上下限 [-1.5, +6.0] —— 乱世里施政预算会缩水，但不会彻底归零（保留最低操作空间）。
+function politicalCapitalAccrual() {
+  if (!ST.player) return 0;
+  const leg = clamp(politicalLegitimacy(), 0, 100);
+  const unrest = clamp(politicalUnrest(), 0, 100);
+  // L：施政方针直接影响民意授权（强硬路线结算更慢、改革路线更快）
+  const postureMod = currentPosture().capitalMod || 0;
+  const g = PC_BASE_ACCRUAL + postureMod + ((leg - 60) / 40) * 2.5 - (unrest / 100) * 3.0;
+  return clamp(g, -1.5, 6.0);
+}
+
+function updatePoliticalCapital() {
+  const pc = initPoliticalCapital();
+  const gain = politicalCapitalAccrual();
+  if (gain === 0) return;
+  pc.value = clamp(pc.value + gain, 0, pc.cap);
+}
+
+// 扣费：不足则**不做任何扣减**并返回 false，调用方必须在此之前不产生副作用
+function spendPoliticalCapital(n) {
+  const pc = initPoliticalCapital();
+  if (pc.value < n) return false;
+  pc.value = clamp(pc.value - n, 0, pc.cap);
+  return true;
+}
+
 function updateDomesticPolitics(y, m, silent) {
   if (!ST.domestic) initDomesticState();
   const dom = ST.domestic;
@@ -279,6 +499,9 @@ function updateDomesticPolitics(y, m, silent) {
   if (dom.fra) updateDomesticFra(dom, y, m, silent);
   if (dom.gbr) updateDomesticGbr(dom, y, m, silent);
   if (dom.generals) updateDomesticGenerals(dom, y, m, silent);
+  // L（战略灵活性）：施政方针的月度漂移 + 施政预算结算
+  updatePostureDrift();
+  updatePoliticalCapital();
 }
 
 // G（收尾评审）：updateDomesticPolitics 的「苏联：政治局权力天平与短缺经济演进」块抽为独立推进器（原样搬运，无逻辑改动）
@@ -694,6 +917,20 @@ function updateDomesticGenerals(dom, y, m, silent) {
 
 function applyDomesticPlayerAction(actType) {
   if (!ST.domestic) initDomesticState();
+  if (!actType) return false;
+  // L（参与感/战略灵活性）：施政预算门 —— 必须在任何状态改动之前判定，
+  // 保证「被拒绝的动作」不产生任何副作用（探针据此断言）。
+  const cost = domesticActionCost(actType);
+  if (!spendPoliticalCapital(cost)) {
+    const pc = initPoliticalCapital();
+    toast({
+      zh: "【施政受阻】",
+      note: "政治资本不足：该动作需 " + cost + " 点，当前仅 " + pc.value.toFixed(1) +
+        " 点。先稳住国内局势（降低动荡、提高执政合法性）才能腾出施政空间。"
+    });
+    refreshDomesticBox(ST.sel);
+    return false;
+  }
   if (ST.player === "SUN") {
     const sun = ST.domestic.sun;
     if (actType === "rebalance_consumer") {
@@ -802,9 +1039,31 @@ function applyDomesticPlayerAction(actType) {
       gbr.unrest = clamp(gbr.unrest - 3, 0, 100);
       toast({ zh: "【福利共识妥协】", note: "扩大公共开支与社会保障以安抚工会，社会张力缓解，但通胀压力重新抬头。" });
     }
+  } else {
+    // L（参与感）：通用实体施政 —— 47 个此前没有任何可点按钮的国家现在也能执政。
+    // 三条路线互斥地消耗同一份政治资本：紧缩换合法性、福利换安定、治安压动荡，
+    // 每条都有明确代价，因此「选哪条」是真实取舍而非无脑连点。
+    const g = getGeneralDomestic(ST.player);
+    if (actType === "gen_austerity") {
+      g.legitimacy = clamp(g.legitimacy + 6, 0, 100);
+      g.stability = clamp(g.stability - 3, 0, 100);
+      g.unrest = clamp(g.unrest + 3, 0, 100);
+      toast({ zh: "【财政紧缩法案】", note: "削减补贴与公共开支以平衡财政，国际信用与执政合法性上升，但民生与基层承压。" });
+    } else if (actType === "gen_welfare") {
+      g.stability = clamp(g.stability + 5, 0, 100);
+      g.unrest = clamp(g.unrest - 4, 0, 100);
+      g.legitimacy = clamp(g.legitimacy - 3, 0, 100);
+      toast({ zh: "【社会福利扩张】", note: "扩大社会保障与食品补贴，社会安定度回升，但财政赤字侵蚀执政合法性。" });
+    } else if (actType === "gen_crackdown") {
+      g.unrest = clamp(g.unrest - 7, 0, 100);
+      g.stability = clamp(g.stability + 2, 0, 100);
+      g.legitimacy = clamp(g.legitimacy - 6, 0, 100);
+      toast({ zh: "【强化治安管制】", note: "扩大治安与戒严力量，街头动荡被强行压下，但执政合法性明显受损。" });
+    }
   }
   refreshDomesticBox(ST.sel);
   applyPlayerDecisions();
+  return true;
 }
 
 function refreshDomesticBox(selKey) {
@@ -828,15 +1087,64 @@ function refreshDomesticBox(selKey) {
   else if (actualKey === "GBR") h = domesticGbrHtml(isMine);
   else h = domesticGenericHtml(actualKey, isMine);
 
+  // L（参与感）：执政国面板顶部统一插入「政治资本」预算条 —— 只加一次，
+  // 无需改动 8 个分支构建器；非执政国不显示（资本只属于玩家）。
+  if (isMine) h = domesticCapitalHtml() + h;
+
   box.innerHTML = h;
 
-  // 绑定动作按钮事件
+  // 绑定动作按钮事件：标出成本、预算不足时禁用（禁用态不绑 click，杜绝绕过）
+  const pc = initPoliticalCapital();
   box.querySelectorAll(".pdb-act-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const act = btn.dataset.act;
-      if (act) applyDomesticPlayerAction(act);
-    });
+    const act = btn.dataset.act;
+    if (!act) return;
+    const cost = domesticActionCost(act);
+    btn.insertAdjacentHTML("beforeend", ' <span class="pdb-cost">-' + cost + '</span>');
+    if (pc.value < cost) {
+      btn.disabled = true;
+      btn.title = "政治资本不足：需 " + cost + " 点，当前 " + pc.value.toFixed(1) + " 点";
+      return;
+    }
+    btn.title = "消耗政治资本 " + cost + " 点（当前 " + pc.value.toFixed(1) + "）";
+    btn.addEventListener("click", () => applyDomesticPlayerAction(act));
   });
+
+  // L（战略灵活性）：施政方针切换按钮
+  box.querySelectorAll(".pdb-posture-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setPosture(btn.dataset.posture));
+  });
+}
+
+// L（参与感）：政治资本预算条 —— 让「还能做几件事」成为随时可见的约束
+function domesticCapitalHtml() {
+  const pc = initPoliticalCapital();
+  const pct = Math.round((pc.value / pc.cap) * 100);
+  const cls = pc.value >= 60 ? "good" : pc.value >= 30 ? "warn" : "danger";
+  const color = pc.value >= 60 ? "#4ade80" : pc.value >= 30 ? "#fbbf24" : "#f87171";
+  const gain = politicalCapitalAccrual();
+  const gainTxt = (gain >= 0 ? "+" : "") + gain.toFixed(1);
+  let h = '<div class="pdb-capital">';
+  h += '<div class="pdb-meter-row"><span class="pdb-meter-lbl">🏛️ 政治资本（施政预算）</span>' +
+    '<span class="pdb-meter-val" style="color:' + color + '">' + pc.value.toFixed(1) + ' / ' + pc.cap +
+    ' · 月结算 ' + gainTxt + '</span></div>';
+  h += '<div class="pdb-meter-track"><div class="pdb-meter-fill ' + cls + '" style="width:' + pct + '%"></div></div>';
+  if (pc.value < DOMESTIC_ACTION_DEFAULT_COST) {
+    h += '<div class="pdb-alert">⚠️ 政治资本已低于最低动作成本，需等待局势回稳才能继续施政。</div>';
+  }
+  // L（战略灵活性）：施政方针切换 —— 同一份预算，不同路线的机会成本不同
+  const cur = initPosture(false);
+  h += '<div class="pdb-postures">';
+  for (const key in POSTURES) {
+    const p = POSTURES[key];
+    const on = key === cur;
+    h += '<button class="pdb-posture-btn' + (on ? ' active' : '') + '" data-posture="' + key + '"' +
+      (on ? ' disabled' : '') + ' title="' + p.desc + '">' + p.icon + ' ' + p.zh + '</button>';
+  }
+  h += '</div>';
+  h += '<div class="pdb-posture-desc">' + POSTURES[cur].icon + ' <b>' + POSTURES[cur].zh + '</b>：' +
+    POSTURES[cur].desc + (cur === "balanced" ? "" : '（切换消耗 ' + POSTURE_SWITCH_COST + ' 点政治资本）') + '</div>';
+  h += '</div>';
+  return h;
 }
 
 // G（收尾评审）：refreshDomesticBox 的「苏联」分支抽为独立构建器（原样搬运，无逻辑改动）
@@ -1220,6 +1528,14 @@ function domesticGenericHtml(actualKey, isMine) {
   const isSan = ST.sanctions.some((s) => s.t === actualKey);
   if (isSan) {
     h += '<div class="pdb-alert">⚠️ 该国正遭受外部单边经济制裁，民生与储备承压消耗中。</div>';
+  }
+  // L（参与感）：通用实体也能施政 —— 三条路线共用同一份政治资本，各有明确代价
+  if (isMine) {
+    h += '<div class="pdb-actions">';
+    h += '  <button class="pdb-act-btn" data-act="gen_austerity">💼 财政紧缩（合法性↑ / 民生↓）</button>';
+    h += '  <button class="pdb-act-btn" data-act="gen_welfare">🛒 扩大社会福利（安定↑ / 合法性↓）</button>';
+    h += '  <button class="pdb-act-btn" data-act="gen_crackdown">🚨 强化治安管制（压动荡 / 合法性↓↓）</button>';
+    h += '</div>';
   }
   return h;
 }

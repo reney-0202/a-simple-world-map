@@ -28,6 +28,8 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   openNewsModal: openNewsModal, closeNewsModal: closeNewsModal, runNewsProbe: runNewsProbe,
   generateEpilogue: generateEpilogue, generateChronicle: generateChronicle, exportMemoirs: exportMemoirs, copyMemoirs: copyMemoirs, setEndTab: setEndTab, runChronicleProbe: runChronicleProbe,
   initDomesticState: initDomesticState, updateDomesticPolitics: updateDomesticPolitics, refreshDomesticBox: refreshDomesticBox, applyDomesticPlayerAction: applyDomesticPlayerAction, runDomesticProbe: runDomesticProbe,
+  initPoliticalCapital: initPoliticalCapital, politicalCapitalAccrual: politicalCapitalAccrual, spendPoliticalCapital: spendPoliticalCapital, domesticActionCost: domesticActionCost,
+  initPosture: initPosture, setPosture: setPosture, currentPosture: currentPosture, POSTURES: POSTURES,
   initAgendaState: initAgendaState, getAgendaState: getAgendaState, startAgenda: startAgenda, updateMonthlyAgendas: updateMonthlyAgendas, refreshAgendaBox: refreshAgendaBox, runAgendaProbe: runAgendaProbe,
   initCrisisState: initCrisisState, sanitizeCrisisState: sanitizeCrisisState, openCrisisModal: openCrisisModal, hideCrisisModal: hideCrisisModal, closeCrisisModal: closeCrisisModal, resolveCrisis: resolveCrisis, updateMonthlyCrises: updateMonthlyCrises, runCrisisProbe: runCrisisProbe,
   initIntelState: initIntelState, sanitizeIntelState: sanitizeIntelState, updateMonthlyIntel: updateMonthlyIntel, executeCovertAction: executeCovertAction, refreshCovertBox: refreshCovertBox, runIntelProbe: runIntelProbe,

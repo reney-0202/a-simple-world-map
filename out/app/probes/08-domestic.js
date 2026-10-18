@@ -22,6 +22,8 @@ function runDomesticProbe() {
   runDomesticProbePhase3(r, assert, ctx);
   runDomesticProbePhase4(r, assert, ctx);
   runDomesticProbePhase5(r, assert, ctx);
+  runDomesticProbePhase6(r, assert, ctx);
+  runDomesticProbePhase7(r, assert, ctx);
 
   } catch (e) {
     r.pass = false;
@@ -107,6 +109,10 @@ function runDomesticProbePhase2(r, assert, ctx) {
 
   // 11. 治理微调操作动作测试
   ST.player = "SUN";
+  // L：施政动作现在消耗政治资本 —— 断言动作效果前先把预算充满（动作本身的
+  // 扣费与拒绝路径由 Phase6 单独覆盖，此处只验证效果传导）
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = PC_CAP;
   const beforeShortage = ST.domestic.sun.shortage;
   applyDomesticPlayerAction("rebalance_consumer");
   assert("sunActionRebalanceSuccess", ST.domestic.sun.shortage < beforeShortage, "推进轻工转型动作使短缺指数下降");
@@ -396,15 +402,19 @@ function runDomesticProbePhase5(r, assert, ctx) {
   assert("gbrDomRendered", domBox.innerHTML.includes("金融城与服务业竞争力"), "英国内政面板渲染金融城竞争力仪表");
 
   // 32. 三国玩家治理动作生效
+  // L：每个动作消耗政治资本，逐条充满预算以只验证效果传导
   ST.player = "JPN";
+  initPoliticalCapital(true); ST.politicalCapital.value = PC_CAP;
   const jpnActBefore = ST.domestic.jpn.domesticist;
   applyDomesticPlayerAction("jpn_domestic_demand");
   assert("jpnActionDomesticDemand", ST.domestic.jpn.domesticist > jpnActBefore, "日本「扩大内需开放」动作推高内需开放派");
   ST.player = "FRA";
+  initPoliticalCapital(true); ST.politicalCapital.value = PC_CAP;
   const fraActBefore = ST.domestic.fra.rigueur;
   applyDomesticPlayerAction("fra_hard_franc");
   assert("fraActionHardFranc", ST.domestic.fra.rigueur > fraActBefore, "法国「紧缩坚挺」动作推高紧缩坚挺派");
   ST.player = "GBR";
+  initPoliticalCapital(true); ST.politicalCapital.value = PC_CAP;
   const gbrActBefore = ST.domestic.gbr.monetarist;
   applyDomesticPlayerAction("gbr_tight_money");
   assert("gbrActionTightMoney", ST.domestic.gbr.monetarist > gbrActBefore, "英国「货币主义紧缩」动作推高货币主义派");
@@ -485,6 +495,289 @@ function runDomesticProbePhase5(r, assert, ctx) {
   ST.sanctions = [];
   applyPlayerDecisions();
   initDomesticState();
+  refreshDomesticBox(ST.sel);
+}
+
+// L（参与感/战略灵活性）：政治资本（施政预算）与通用实体施政探针
+function runDomesticProbePhase6(r, assert, ctx) {
+  // 35. 预算结构完备且落在合法区间
+  initDomesticState();
+  initPoliticalCapital(true);
+  ST.player = "SUN";
+  ST.mil = 4.0;
+  const pc0 = ST.politicalCapital;
+  r.details.__pcStart = +pc0.value.toFixed(2);
+  assert("politicalCapitalInitialized",
+    !!pc0 && typeof pc0.value === "number" && typeof pc0.cap === "number" &&
+    pc0.cap === PC_CAP && pc0.value > 0 && pc0.value <= pc0.cap,
+    "政治资本以初始值建立（" + pc0.value + " / " + pc0.cap + "）");
+
+  // 36. 月度结算方向正确：安定高 → 增益大；动荡高 → 增益小（甚至为负）
+  ST.domestic.sun.unrest = 0;
+  ST.domestic.sun.shortage = 10;
+  ST.domestic.sun.conservative = 55; ST.domestic.sun.reformist = 45;
+  const gainCalm = politicalCapitalAccrual();
+  ST.domestic.sun.unrest = 80;
+  ST.domestic.sun.shortage = 85;
+  const gainChaos = politicalCapitalAccrual();
+  r.details.__pcGainCalm = +gainCalm.toFixed(3);
+  r.details.__pcGainChaos = +gainChaos.toFixed(3);
+  assert("politicalCapitalAccrualRespondsToUnrest", gainCalm > gainChaos,
+    "局势安定时的月度结算高于动荡时（" + gainCalm.toFixed(2) + " vs " + gainChaos.toFixed(2) + "）");
+  assert("politicalCapitalAccrualClamped",
+    gainCalm <= 6.0 && gainChaos >= -1.5,
+    "月度结算被夹在 [-1.5, +6.0] 区间（不会无限滚雪球）");
+
+  // 37. 月度推进器真的把预算加上去，且不越过上限
+  initDomesticState();
+  ST.player = "SUN";
+  ST.mil = 4.0;
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 40;
+  const pcBefore = ST.politicalCapital.value;
+  updateDomesticPolitics(1985, 6, true);
+  r.details.__pcAfterMonth = +ST.politicalCapital.value.toFixed(3);
+  assert("politicalCapitalAccruesMonthly", ST.politicalCapital.value > pcBefore,
+    "updateDomesticPolitics 按月结算政治资本（" + pcBefore + " → " + ST.politicalCapital.value.toFixed(1) + "）");
+  ST.politicalCapital.value = PC_CAP - 0.1;
+  updateDomesticPolitics(1985, 7, true);
+  assert("politicalCapitalCapped", ST.politicalCapital.value <= PC_CAP,
+    "政治资本不会越过上限 " + PC_CAP);
+
+  // 38. 扣费语义：足额则精确扣减，不足则**不扣任何点数**
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 50;
+  assert("spendPoliticalCapitalSucceeds", spendPoliticalCapital(18) === true && Math.abs(ST.politicalCapital.value - 32) < 1e-9,
+    "足额时精确扣减（50 - 18 = 32）");
+  assert("spendPoliticalCapitalRefused", spendPoliticalCapital(999) === false && Math.abs(ST.politicalCapital.value - 32) < 1e-9,
+    "不足时拒绝且不产生任何扣减（仍为 32）");
+
+  // 39. 预算为零时施政动作被拒绝，且**内政状态零变化**（拒绝路径无副作用）
+  initDomesticState();
+  ST.player = "SUN";
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 0;
+  ST.domestic.sun.shortage = 40;
+  const sunSnap = { shortage: ST.domestic.sun.shortage, reformist: ST.domestic.sun.reformist, conservative: ST.domestic.sun.conservative };
+  const refused = applyDomesticPlayerAction("rebalance_consumer");
+  assert("domesticActionBlockedWithoutCapital",
+    refused === false &&
+    ST.domestic.sun.shortage === sunSnap.shortage &&
+    ST.domestic.sun.reformist === sunSnap.reformist &&
+    ST.domestic.sun.conservative === sunSnap.conservative,
+    "政治资本为零时动作被拒绝，内政状态逐位不变");
+
+  // 40. 预算充足时动作按价目表扣费（不是固定值）
+  ST.politicalCapital.value = PC_CAP;
+  const cheapCost = domesticActionCost("rebalance_consumer");
+  applyDomesticPlayerAction("rebalance_consumer");
+  r.details.__pcAfterAction = +ST.politicalCapital.value.toFixed(3);
+  assert("domesticActionChargesItsCost",
+    Math.abs(ST.politicalCapital.value - (PC_CAP - cheapCost)) < 1e-9,
+    "动作按价目表扣费（" + PC_CAP + " - " + cheapCost + " = " + ST.politicalCapital.value.toFixed(1) + "）");
+  assert("domesticActionCostTableCoversMajors",
+    domesticActionCost("chn_price_reform") > domesticActionCost("rebalance_consumer") &&
+    domesticActionCost("unknown_action") === DOMESTIC_ACTION_DEFAULT_COST,
+    "价目表区分路线级动作与未知动作的缺省成本");
+
+  // 41. 通用实体（此前零按钮）现在有 3 个施政动作，且各自代价方向正确
+  initDomesticState();
+  ST.player = "ITA";
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = PC_CAP;
+  const gen = getGeneralDomestic("ITA");
+  const genBase = { stability: gen.stability, legitimacy: gen.legitimacy, unrest: gen.unrest };
+
+  applyDomesticPlayerAction("gen_austerity");
+  assert("genericAusterityEffect",
+    gen.legitimacy > genBase.legitimacy && gen.stability < genBase.stability && gen.unrest > genBase.unrest,
+    "通用实体「财政紧缩」：合法性↑、民生↓、动荡↑");
+
+  const afterAusterity = { stability: gen.stability, legitimacy: gen.legitimacy, unrest: gen.unrest };
+  ST.politicalCapital.value = PC_CAP;
+  applyDomesticPlayerAction("gen_welfare");
+  assert("genericWelfareEffect",
+    gen.stability > afterAusterity.stability && gen.unrest < afterAusterity.unrest && gen.legitimacy < afterAusterity.legitimacy,
+    "通用实体「扩大福利」：安定↑、动荡↓、合法性↓");
+
+  const afterWelfare = { stability: gen.stability, legitimacy: gen.legitimacy, unrest: gen.unrest };
+  ST.politicalCapital.value = PC_CAP;
+  applyDomesticPlayerAction("gen_crackdown");
+  assert("genericCrackdownEffect",
+    gen.unrest < afterWelfare.unrest && gen.legitimacy < afterWelfare.legitimacy,
+    "通用实体「强化治安」：动荡↓↓、合法性↓↓");
+
+  // 42. 通用面板渲染 3 个动作按钮 + 政治资本条 + 成本角标
+  const domBox = $("p-domestic-box");
+  ST.player = "ITA";
+  ST.politicalCapital.value = PC_CAP;
+  refreshDomesticBox("ITA");
+  const actBtns = domBox.querySelectorAll(".pdb-act-btn");
+  r.details.__genericActionBtns = actBtns.length;
+  assert("genericPanelHasActions", actBtns.length === 3,
+    "通用实体内政面板渲染 3 个施政动作（实测 " + actBtns.length + "）");
+  assert("capitalMeterRendered", domBox.innerHTML.includes("政治资本"),
+    "执政国面板顶部渲染政治资本预算条");
+  assert("actionButtonShowsCost", domBox.querySelector(".pdb-cost") !== null,
+    "动作按钮带政治资本成本角标");
+
+  // 43. 预算不足时按钮被禁用（UI 层同样拦住，不只靠后端拒绝）
+  ST.politicalCapital.value = 0;
+  refreshDomesticBox("ITA");
+  const disabledAll = Array.prototype.every.call(
+    domBox.querySelectorAll(".pdb-act-btn"), (b) => b.disabled === true);
+  assert("actionButtonDisabledWhenShort", disabledAll,
+    "政治资本不足时所有施政按钮被禁用");
+
+  // 44. 存档往返：政治资本随存档还原（旧档缺项按初始值补齐）
+  initDomesticState();
+  ST.player = "ITA";
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 37.5;
+  simSave();
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 99;
+  simLoad();
+  assert("politicalCapitalSaveRoundTrip", Math.abs(ST.politicalCapital.value - 37.5) < 0.1,
+    "政治资本随 simSave/simLoad 完整往返（37.5 → " + ST.politicalCapital.value.toFixed(1) + "）");
+  const legacy = sanitizePoliticalCapital(undefined);
+  assert("politicalCapitalLegacyDefault", legacy.value === PC_START && legacy.cap === PC_CAP,
+    "缺该字段的旧存档按初始值 " + PC_START + " 补齐（无需升版）");
+
+  // 复原
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
+  initDomesticState();
+  initPoliticalCapital(true);
+  initPosture(true);
+  applyPlayerDecisions();
+  refreshDomesticBox(ST.sel);
+}
+
+// L（战略灵活性）：施政方针（均衡/强硬/改革）探针
+function runDomesticProbePhase7(r, assert, ctx) {
+  // 45. 默认方针为均衡，且完全中性（成本倍率 1、无漂移、无结算修正）
+  initDomesticState();
+  initPoliticalCapital(true);
+  initPosture(true);
+  ST.player = "SUN";
+  ST.mil = 4.0;
+  assert("postureDefaultsBalanced", ST.posture === "balanced" && currentPosture().zh === "均衡施政",
+    "施政方针默认是均衡（旧档与 AI 均不受影响）");
+  assert("postureBalancedIsNeutral",
+    postureCostMultiplier("gen_crackdown") === 1 &&
+    domesticActionCost("gen_crackdown") === DOMESTIC_ACTION_COST.gen_crackdown &&
+    currentPosture().unrestDrift === 0 && currentPosture().capitalMod === 0,
+    "均衡方针零折扣、零漂移、零结算修正（既有行为逐位不变）");
+  const accrualBalanced = politicalCapitalAccrual();
+
+  // 46. 切换方针要消耗政治资本；预算不足时拒绝且方针不变
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = PC_CAP;
+  assert("postureSwitchCostsCapital",
+    setPosture("hardline") === true &&
+    ST.posture === "hardline" &&
+    Math.abs(ST.politicalCapital.value - (PC_CAP - POSTURE_SWITCH_COST)) < 1e-9,
+    "切换方针扣 " + POSTURE_SWITCH_COST + " 点政治资本（" + PC_CAP + " → " + ST.politicalCapital.value.toFixed(1) + "）");
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = 0;
+  assert("postureSwitchRefusedWhenShort",
+    setPosture("reformist") === false && ST.posture === "hardline",
+    "政治资本不足时拒绝切换且方针保持不变");
+  assert("postureSwitchSameIsNoop",
+    setPosture("hardline") === false,
+    "重复选择当前方针不扣费也不报错");
+
+  // 47. 强硬路线：强硬类动作更便宜、结算更慢、压制动荡
+  initPosture(true); ST.posture = "hardline";
+  const hardlineAccrual = politicalCapitalAccrual();
+  r.details.__accrualBalanced = +accrualBalanced.toFixed(3);
+  r.details.__accrualHardline = +hardlineAccrual.toFixed(3);
+  assert("postureHardlineDiscountsCoercion",
+    domesticActionCost("gen_crackdown") < DOMESTIC_ACTION_COST.gen_crackdown &&
+    domesticActionCost("gbr_tight_money") < DOMESTIC_ACTION_COST.gbr_tight_money,
+    "强硬路线降低治安/紧缩类动作成本（" + domesticActionCost("gen_crackdown") + " vs " + DOMESTIC_ACTION_COST.gen_crackdown + "）");
+  assert("postureHardlineSlowsAccrual", hardlineAccrual < accrualBalanced,
+    "强硬路线让政治资本结算更慢（" + hardlineAccrual.toFixed(2) + " < " + accrualBalanced.toFixed(2) + "）");
+  // 漂移是「相对于同月均衡方针」的增量，因此用同一初始状态跑一个月做差分比较
+  // （各国自身的月度演进会同时改变动荡，直接比绝对值会被它淹没）
+  function unrestAfterOneMonth(postureKey) {
+    initDomesticState();
+    ST.player = "SUN";
+    ST.mil = 4.0;
+    ST.domestic.sun.unrest = 40;
+    ST.domestic.sun.shortage = 28;
+    ST.domestic.sun.conservative = 55;
+    ST.domestic.sun.reformist = 45;
+    initPosture(true); ST.posture = postureKey;
+    updateDomesticPolitics(1985, 6, true);
+    return ST.domestic.sun.unrest;
+  }
+  const unrestBalanced = unrestAfterOneMonth("balanced");
+  const unrestHardline = unrestAfterOneMonth("hardline");
+  r.details.__unrestBalanced = +unrestBalanced.toFixed(4);
+  r.details.__unrestHardline = +unrestHardline.toFixed(4);
+  assert("postureHardlineSuppressesUnrest", unrestHardline < unrestBalanced,
+    "同等条件下强硬路线的动荡低于均衡方针（" + unrestHardline.toFixed(2) + " < " + unrestBalanced.toFixed(2) + "）");
+
+  // 48. 改革路线：改革类动作更便宜、结算更快、但抬升动荡
+  initDomesticState();
+  ST.player = "SUN";
+  ST.mil = 4.0;
+  initPosture(true); ST.posture = "reformist";
+  const reformAccrual = politicalCapitalAccrual();
+  assert("postureReformDiscountsOpening",
+    domesticActionCost("gen_welfare") < DOMESTIC_ACTION_COST.gen_welfare &&
+    domesticActionCost("chn_expand_sez") < DOMESTIC_ACTION_COST.chn_expand_sez,
+    "改革路线降低开放/福利类动作成本");
+  assert("postureReformSpeedsAccrual", reformAccrual > accrualBalanced,
+    "改革路线让政治资本结算更快（" + reformAccrual.toFixed(2) + " > " + accrualBalanced.toFixed(2) + "）");
+  const unrestReform = unrestAfterOneMonth("reformist");
+  r.details.__unrestReform = +unrestReform.toFixed(4);
+  assert("postureReformRaisesUnrest", unrestReform > unrestBalanced,
+    "同等条件下改革路线的动荡高于均衡方针（" + unrestReform.toFixed(2) + " > " + unrestBalanced.toFixed(2) + "）");
+
+  // 49. 面板渲染：三个方针按钮 + 当前项高亮 + 说明文案
+  initDomesticState();
+  ST.player = "ITA";
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = PC_CAP;
+  initPosture(true);
+  const domBox = $("p-domestic-box");
+  refreshDomesticBox("ITA");
+  const postureBtns = domBox.querySelectorAll(".pdb-posture-btn");
+  r.details.__postureBtns = postureBtns.length;
+  assert("postureButtonsRendered", postureBtns.length === 3,
+    "内政面板渲染 3 个施政方针按钮（实测 " + postureBtns.length + "）");
+  assert("postureActiveHighlighted",
+    domBox.querySelectorAll(".pdb-posture-btn.active").length === 1 &&
+    domBox.querySelector(".pdb-posture-btn.active").dataset.posture === "balanced",
+    "当前方针被高亮且唯一（默认均衡）");
+  assert("postureDescRendered", domBox.innerHTML.includes("均衡施政"),
+    "面板渲染当前方针的说明文案");
+
+  // 50. 方针随存档往返；旧档缺该项按均衡补齐
+  initDomesticState();
+  ST.player = "ITA";
+  initPoliticalCapital(true);
+  ST.posture = "reformist";
+  simSave();
+  initPosture(true);
+  simLoad();
+  assert("postureSaveRoundTrip", ST.posture === "reformist",
+    "施政方针随 simSave/simLoad 完整往返（实测 " + ST.posture + "）");
+  assert("postureLegacyDefault", sanitizePosture(undefined) === "balanced" && sanitizePosture("bogus") === "balanced",
+    "缺该字段或非法值的旧存档按均衡补齐（无需升版）");
+
+  // 复原
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
+  initDomesticState();
+  initPoliticalCapital(true);
+  initPosture(true);
+  applyPlayerDecisions();
   refreshDomesticBox(ST.sel);
 }
 
