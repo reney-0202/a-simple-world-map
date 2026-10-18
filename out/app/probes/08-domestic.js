@@ -24,6 +24,7 @@ function runDomesticProbe() {
   runDomesticProbePhase5(r, assert, ctx);
   runDomesticProbePhase6(r, assert, ctx);
   runDomesticProbePhase7(r, assert, ctx);
+  runDomesticProbePhase8(r, assert, ctx);
 
   } catch (e) {
     r.pass = false;
@@ -777,6 +778,141 @@ function runDomesticProbePhase7(r, assert, ctx) {
   initDomesticState();
   initPoliticalCapital(true);
   initPosture(true);
+  initDirectiveState(true);
+  applyPlayerDecisions();
+  refreshDomesticBox(ST.sel);
+}
+
+// L（参与感）：国家战略指令（长周期目标）探针
+function runDomesticProbePhase8(r, assert, ctx) {
+  const oldYear = SIM.S ? SIM.S.year : 1980;
+  const oldMonth = SIM.S ? SIM.S.month : 1;
+
+  // 51. 指令板初始为空，旧档缺项也按空板补齐
+  initDomesticState();
+  ST.player = "SUN";
+  ST.mil = 4.0;
+  initPoliticalCapital(true);
+  initDirectiveState(true);
+  assert("directiveStateInitClean",
+    ST.directives.active.length === 0 && ST.directives.done.length === 0,
+    "战略指令板初始为空");
+  const legacyDir = sanitizeDirectiveState(undefined);
+  assert("directiveLegacyDefault",
+    legacyDir.active.length === 0 && legacyDir.done.length === 0,
+    "缺该字段的旧存档按空指令板补齐（无需升版）");
+
+  // 52. 采纳指令：扣政治资本、进入 active、记录起始月与基线
+  ST.politicalCapital.value = PC_CAP;
+  const capBefore = ST.politicalCapital.value;
+  assert("directiveAdoptCostsCapital",
+    adoptDirective("dir_calm") === true &&
+    ST.directives.active.length === 1 &&
+    ST.directives.active[0].id === "dir_calm" &&
+    Math.abs(ST.politicalCapital.value - (capBefore - DIRECTIVE_ADOPT_COST)) < 1e-9,
+    "采纳指令扣 " + DIRECTIVE_ADOPT_COST + " 点政治资本并进入 active");
+  assert("directiveDuplicateRefused", adoptDirective("dir_calm") === false,
+    "同一指令不可重复采纳");
+  assert("directiveAdoptSecondOk", adoptDirective("dir_mandate") === true && ST.directives.active.length === 2,
+    "可同时推进第 2 项指令");
+  assert("directiveAdoptLimitEnforced",
+    adoptDirective("dir_retrench") === false && ST.directives.active.length === 2,
+    "同时最多 " + DIRECTIVE_MAX_ACTIVE + " 项，第 3 项被拒绝");
+
+  // 53. 预算不足时拒绝采纳，且不写入指令板
+  initDirectiveState(true);
+  ST.politicalCapital.value = 0;
+  assert("directiveAdoptRefusedWhenShort",
+    adoptDirective("dir_calm") === false && ST.directives.active.length === 0,
+    "政治资本不足时拒绝采纳且指令板不变");
+
+  // 54. 进度计算：未达标在 0~1 之间，达标即 1
+  initDirectiveState(true);
+  // 预算设为 50：采纳后 40，达标返还 20 → 60，不会撞上 100 上限（否则奖励会被夹掉）
+  ST.politicalCapital.value = 50;
+  ST.domestic.sun.unrest = 60;
+  adoptDirective("dir_calm");
+  const calmEntry = ST.directives.active[0];
+  const calmDef = directiveDef("dir_calm");
+  const progLow = directiveProgress(calmEntry, calmDef);
+  ST.domestic.sun.unrest = 5;
+  const progHigh = directiveProgress(calmEntry, calmDef);
+  r.details.__directiveProgLow = +progLow.toFixed(4);
+  r.details.__directiveProgHigh = +progHigh.toFixed(4);
+  assert("directiveProgressComputes",
+    progLow > 0 && progLow < 1 && progHigh === 1,
+    "进度在未达标时介于 0~1、达标即为 1（" + progLow.toFixed(2) + " → " + progHigh + "）");
+
+  // 55. 达标结算：归档 + 返还政治资本
+  const capBeforeReward = ST.politicalCapital.value;
+  updateMonthlyDirectives(1985, 6);
+  assert("directiveCompletionRewards",
+    ST.directives.done.indexOf("dir_calm") >= 0 &&
+    ST.directives.active.length === 0 &&
+    Math.abs(ST.politicalCapital.value - (capBeforeReward + calmDef.reward)) < 1e-9,
+    "达标后归档并返还 +" + calmDef.reward + " 点政治资本（" +
+      capBeforeReward.toFixed(1) + " → " + ST.politicalCapital.value.toFixed(1) + "）");
+  assert("directiveDoneNotReoffered", adoptDirective("dir_calm") === false,
+    "已完成的指令不再可采纳");
+
+  // 56. 逾期结算：移出 active、扣政治资本、抬升动荡
+  initDirectiveState(true);
+  ST.politicalCapital.value = 80;
+  ST.domestic.sun.unrest = 60;
+  adoptDirective("dir_calm");
+  const capBeforePenalty = ST.politicalCapital.value;
+  const unrestBeforePenalty = ST.domestic.sun.unrest;
+  if (SIM.S) { SIM.S.year = 1988; SIM.S.month = 6; }
+  updateMonthlyDirectives(1988, 6);
+  r.details.__capAfterPenalty = +ST.politicalCapital.value.toFixed(3);
+  assert("directiveExpiryPenalizes",
+    ST.directives.active.length === 0 &&
+    ST.directives.done.indexOf("dir_calm") < 0 &&
+    ST.politicalCapital.value < capBeforePenalty &&
+    ST.domestic.sun.unrest > unrestBeforePenalty,
+    "逾期未达标：移出 active、扣政治资本（" + capBeforePenalty.toFixed(1) + " → " +
+      ST.politicalCapital.value.toFixed(1) + "）并抬升动荡（" +
+      unrestBeforePenalty.toFixed(1) + " → " + ST.domestic.sun.unrest.toFixed(1) + "）");
+
+  // 57. 面板渲染：指令区块 + 采纳按钮
+  initDomesticState();
+  ST.player = "ITA";
+  initPoliticalCapital(true);
+  ST.politicalCapital.value = PC_CAP;
+  initDirectiveState(true);
+  const domBox = $("p-domestic-box");
+  refreshDomesticBox("ITA");
+  const dirBtns = domBox.querySelectorAll(".pdb-directive-btn");
+  r.details.__directiveBtns = dirBtns.length;
+  assert("directivePanelRendered", domBox.innerHTML.includes("国家战略指令"),
+    "内政面板渲染国家战略指令区块");
+  assert("directiveAdoptButtonsRendered", dirBtns.length === DIRECTIVES.length,
+    "指令板列出全部 " + DIRECTIVES.length + " 项可采纳指令（实测 " + dirBtns.length + "）");
+  assert("directiveRewardShownInTitle",
+    (domBox.querySelector(".pdb-directive-btn") || { title: "" }).title.includes("政治资本"),
+    "采纳按钮的提示里写明政治资本回报");
+
+  // 58. 存档往返：指令板随存档还原
+  ST.directives = { active: [], done: [] };
+  ST.politicalCapital.value = PC_CAP;
+  adoptDirective("dir_buildup");
+  const beforeSave = ST.directives.active.map((x) => x.id).join(",");
+  simSave();
+  initDirectiveState(true);
+  simLoad();
+  assert("directiveSaveRoundTrip",
+    ST.directives.active.map((x) => x.id).join(",") === beforeSave && beforeSave === "dir_buildup",
+    "战略指令板随 simSave/simLoad 完整往返（" + ST.directives.active.map((x) => x.id).join(",") + "）");
+
+  // 复原
+  if (SIM.S) { SIM.S.year = oldYear; SIM.S.month = oldMonth; }
+  ST.player = null;
+  ST.mil = 0;
+  ST.sanctions = [];
+  initDomesticState();
+  initPoliticalCapital(true);
+  initPosture(true);
+  initDirectiveState(true);
   applyPlayerDecisions();
   refreshDomesticBox(ST.sel);
 }

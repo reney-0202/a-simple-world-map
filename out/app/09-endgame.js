@@ -947,6 +947,7 @@ function simReset() {
   initDomesticState();                                                                        // R12A：重置内政生态与派系权力天平至 1980 基准
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
+  initDirectiveState(true);                                                                   // L：重置国家战略指令板
   initAgendaState();                                                                          // R12B：重置专属国家战略议程至 1980 基准
   initCrisisState(); hideCrisisModal();                                                       // R12C：重置突发危机状态并收起弹窗
   initIntelState();                                                                           // R13A：重置全球谍战与隐蔽行动至 1980 基准

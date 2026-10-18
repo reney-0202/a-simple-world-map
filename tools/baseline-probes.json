@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 45,
-    "pop": 41,
-    "ind": 47,
+    "bloc": 49,
+    "pop": 64,
+    "ind": 54,
     "province": 57,
-    "delta": 53,
-    "resource": 58
+    "delta": 70,
+    "resource": 69
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1303
+   "totalMs": 1446
   },
   "failed": false
  },
@@ -140,7 +140,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 140390,
+   "saveBytes": 140427,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -880,7 +880,26 @@
     "postureActiveHighlighted": "PASS",
     "postureDescRendered": "PASS",
     "postureSaveRoundTrip": "PASS",
-    "postureLegacyDefault": "PASS"
+    "postureLegacyDefault": "PASS",
+    "directiveStateInitClean": "PASS",
+    "directiveLegacyDefault": "PASS",
+    "directiveAdoptCostsCapital": "PASS",
+    "directiveDuplicateRefused": "PASS",
+    "directiveAdoptSecondOk": "PASS",
+    "directiveAdoptLimitEnforced": "PASS",
+    "directiveAdoptRefusedWhenShort": "PASS",
+    "__directiveProgLow": 0.25,
+    "__directiveProgHigh": 1,
+    "directiveProgressComputes": "PASS",
+    "directiveCompletionRewards": "PASS",
+    "directiveDoneNotReoffered": "PASS",
+    "__capAfterPenalty": 60,
+    "directiveExpiryPenalizes": "PASS",
+    "__directiveBtns": 6,
+    "directivePanelRendered": "PASS",
+    "directiveAdoptButtonsRendered": "PASS",
+    "directiveRewardShownInTitle": "PASS",
+    "directiveSaveRoundTrip": "PASS"
    }
   },
   "failed": false

@@ -216,7 +216,11 @@ function toast(e) {
   const box = $("toasts"); if (!box) return;
   const d = document.createElement("div");
   d.className = "toast";
-  d.innerHTML = '<span class="ty">' + e.y + "-" + String(e.m).padStart(2, "0") + "</span>" + e.zh;
+  // L：调用方常常只给 zh/note（内政施政、战略指令等即时反馈），
+  // 此前会渲染出 "undefined-undefined"；这里回落到当前仿真年月。
+  const ty = (typeof e.y === "number") ? e.y : (SIM.S ? SIM.S.year : 1980);
+  const tm = (typeof e.m === "number") ? e.m : (SIM.S ? Math.max(1, SIM.S.month) : 1);
+  d.innerHTML = '<span class="ty">' + ty + "-" + String(tm).padStart(2, "0") + "</span>" + e.zh;
   d.title = e.note || "";
   box.appendChild(d);
   setTimeout(() => { d.classList.add("out"); setTimeout(() => d.remove(), 450); }, 4200);
@@ -262,6 +266,7 @@ function simSave(slot) {
     domestic: ST.domestic,                            // R12A：内政生态与派系权力天平状态
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
+    directives: ST.directives,                        // L：国家战略指令（长周期目标）
     agendas: ST.agendas,                              // R12B：专属国家战略议程状态
     crises: ST.crises ? JSON.parse(JSON.stringify(ST.crises)) : null, // R12C：突发危机状态
     intel: ST.intel ? JSON.parse(JSON.stringify(ST.intel)) : null,   // R13A：全球谍战与隐蔽行动状态
@@ -422,6 +427,8 @@ function loadSocietyStates(d) {
   ST.politicalCapital = sanitizePoliticalCapital(d.politicalCapital);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
+  // L：还原国家战略指令（旧档缺该项 → 空指令板）
+  ST.directives = sanitizeDirectiveState(d.directives);
   // R12B：还原专属国家战略议程状态
   if (d.agendas && typeof d.agendas === "object") {
     ST.agendas = sanitizeAgendaState(d.agendas);

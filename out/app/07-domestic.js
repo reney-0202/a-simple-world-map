@@ -392,6 +392,183 @@ function updatePostureDrift() {
   if (drift) adjustPlayerUnrest(drift);
 }
 
+// ---- L（参与感）：国家战略指令 —— 玩家自选的长周期目标 --------------------------
+// 政治资本解决「每步怎么花」，施政方针解决「用什么路线」，但玩家仍缺一个
+// **跨年度**的目标：所有既有玩法都是当月见效的，没有一个「我要在四年内做到什么」的承诺。
+// 指令板补上这一层：同时最多 2 项，采纳消耗政治资本，达成给回预算，逾期则受罚。
+// 全部指标都读既有状态（动荡/合法性/军费/外汇/议程数），因此不新增任何经济通道。
+const DIRECTIVE_ADOPT_COST = 10;
+const DIRECTIVE_MAX_ACTIVE = 2;
+const DIRECTIVES = [
+  { id: "dir_calm", zh: "社会和解", icon: "🕊️", desc: "把社会动荡压到 15 以下",
+    metric: "unrest", dir: "le", target: 15, months: 24, reward: 20, penalty: { capital: -10, unrest: 4 } },
+  { id: "dir_mandate", zh: "民意授权", icon: "🗳️", desc: "把执政合法性提到 70 以上",
+    metric: "legit", dir: "ge", target: 70, months: 30, reward: 22, penalty: { capital: -10, unrest: 3 } },
+  { id: "dir_reserves", zh: "储备积累", icon: "💰", desc: "外汇储备净增 15 亿美元",
+    metric: "reserves", delta: true, target: 15, months: 36, reward: 18, penalty: { capital: -8 } },
+  { id: "dir_agenda", zh: "战略落地", icon: "🎯", desc: "完成 1 项国家议程",
+    metric: "agendas", delta: true, target: 1, months: 36, reward: 25, penalty: { capital: -12 } },
+  { id: "dir_retrench", zh: "军费收缩", icon: "✂️", desc: "把军费占比压到 3.0% 以下",
+    metric: "mil", dir: "le", target: 3, months: 24, reward: 20, penalty: { capital: -10, unrest: 2 } },
+  { id: "dir_buildup", zh: "军备扩张", icon: "⚔️", desc: "把军费占比提到 6.0% 以上",
+    metric: "mil", dir: "ge", target: 6, months: 24, reward: 20, penalty: { capital: -10, unrest: 5 } }
+];
+
+function initDirectiveState(force) {
+  if (force || !ST.directives || typeof ST.directives !== "object") {
+    ST.directives = { active: [], done: [] };
+  }
+  if (!Array.isArray(ST.directives.active)) ST.directives.active = [];
+  if (!Array.isArray(ST.directives.done)) ST.directives.done = [];
+  return ST.directives;
+}
+
+function sanitizeDirectiveState(d) {
+  const fresh = { active: [], done: [] };
+  if (!d || typeof d !== "object") return fresh;
+  const valid = {};
+  for (let i = 0; i < DIRECTIVES.length; i++) valid[DIRECTIVES[i].id] = true;
+  if (Array.isArray(d.done)) {
+    for (let i = 0; i < d.done.length; i++) {
+      if (valid[d.done[i]] && fresh.done.indexOf(d.done[i]) < 0) fresh.done.push(d.done[i]);
+    }
+  }
+  if (Array.isArray(d.active)) {
+    for (let i = 0; i < d.active.length && fresh.active.length < DIRECTIVE_MAX_ACTIVE; i++) {
+      const a = d.active[i];
+      if (!a || !valid[a.id] || fresh.done.indexOf(a.id) >= 0) continue;
+      if (fresh.active.some((x) => x.id === a.id)) continue;
+      fresh.active.push({
+        id: a.id,
+        start: typeof a.start === "number" ? a.start : 0,
+        base: typeof a.base === "number" ? a.base : 0
+      });
+    }
+  }
+  return fresh;
+}
+
+function directiveDef(id) {
+  for (let i = 0; i < DIRECTIVES.length; i++) if (DIRECTIVES[i].id === id) return DIRECTIVES[i];
+  return null;
+}
+
+function simMonthIndex() {
+  const y = SIM.S ? SIM.S.year : 1980;
+  const m = SIM.S ? Math.max(1, SIM.S.month) : 1;
+  return y * 12 + m;
+}
+
+function directiveMetricValue(metric) {
+  if (metric === "unrest") return clamp(politicalUnrest(), 0, 100);
+  if (metric === "legit") return clamp(politicalLegitimacy(), 0, 100);
+  if (metric === "mil") return ST.mil || 0;
+  if (metric === "reserves") {
+    return (ST.reserves && ST.reserves[ST.player] && typeof ST.reserves[ST.player].usd === "number")
+      ? ST.reserves[ST.player].usd : 0;
+  }
+  if (metric === "agendas") {
+    const st = ST.agendas && ST.agendas[ST.player];
+    return (st && Array.isArray(st.completed)) ? st.completed.length : 0;
+  }
+  return 0;
+}
+
+function directiveSatisfied(entry, def) {
+  const v = directiveMetricValue(def.metric);
+  if (def.delta) return (v - entry.base) >= def.target;
+  if (def.dir === "ge") return v >= def.target;
+  return v <= def.target;
+}
+
+// 0~1 的展示用进度（达标即 1）
+function directiveProgress(entry, def) {
+  if (directiveSatisfied(entry, def)) return 1;
+  const v = directiveMetricValue(def.metric);
+  let p;
+  if (def.delta) p = (v - entry.base) / Math.max(def.target, 0.0001);
+  else if (def.dir === "ge") p = v / Math.max(def.target, 0.0001);
+  else p = def.target / Math.max(v, 0.0001);
+  return clamp(p, 0, 1);
+}
+
+function directiveMonthsLeft(entry, def) {
+  return def.months - (simMonthIndex() - entry.start);
+}
+
+function adoptDirective(id) {
+  if (!ST.player) return false;
+  const def = directiveDef(id);
+  if (!def) return false;
+  const st = initDirectiveState(false);
+  if (st.done.indexOf(id) >= 0) return false;
+  if (st.active.some((x) => x.id === id)) return false;
+  if (st.active.length >= DIRECTIVE_MAX_ACTIVE) {
+    toast({ zh: "【指令受阻】", note: "同时最多推进 " + DIRECTIVE_MAX_ACTIVE + " 项国家战略指令。" });
+    return false;
+  }
+  if (!spendPoliticalCapital(DIRECTIVE_ADOPT_COST)) {
+    const pc = initPoliticalCapital();
+    toast({
+      zh: "【指令受阻】",
+      note: "采纳战略指令需 " + DIRECTIVE_ADOPT_COST + " 点政治资本，当前仅 " + pc.value.toFixed(1) + " 点。"
+    });
+    return false;
+  }
+  st.active.push({ id: id, start: simMonthIndex(), base: directiveMetricValue(def.metric) });
+  toast({ zh: "【战略指令确立】" + def.icon + " " + def.zh, note: def.desc + "（期限 " + def.months + " 个月）" });
+  refreshDomesticBox(ST.sel);
+  return true;
+}
+
+function abandonDirective(id) {
+  const st = initDirectiveState(false);
+  const i = st.active.findIndex((x) => x.id === id);
+  if (i < 0) return false;
+  st.active.splice(i, 1);
+  refreshDomesticBox(ST.sel);
+  return true;
+}
+
+// 月度结算：达标即奖励并归档；逾期未达标则施加惩罚
+function updateMonthlyDirectives(y, m) {
+  if (!ST.player) return;
+  const st = initDirectiveState(false);
+  if (!st.active.length) return;
+  const nowIdx = simMonthIndex();
+  for (let i = st.active.length - 1; i >= 0; i--) {
+    const entry = st.active[i];
+    const def = directiveDef(entry.id);
+    if (!def) { st.active.splice(i, 1); continue; }
+    const met = directiveSatisfied(entry, def);
+    const expired = (nowIdx - entry.start) >= def.months;
+    if (!met && !expired) continue;
+    st.active.splice(i, 1);
+    const pc = initPoliticalCapital();
+    if (met) {
+      if (st.done.indexOf(def.id) < 0) st.done.push(def.id);
+      pc.value = clamp(pc.value + def.reward, 0, pc.cap);
+      toast({ zh: "🎯 战略指令达成：" + def.icon + " " + def.zh, note: def.desc + " —— 政治资本 +" + def.reward + "。" });
+      EV.items.push({
+        y: y, m: m,
+        zh: "🎯 战略指令达成 · " + def.zh,
+        note: "（" + (CM.countries[ST.player] || {}).zh + "）" + def.desc + "，政治资本 +" + def.reward + "。"
+      });
+      EV.unread++;
+      renderInbox();
+    } else {
+      const pen = def.penalty || {};
+      if (typeof pen.capital === "number") pc.value = clamp(pc.value + pen.capital, 0, pc.cap);
+      if (typeof pen.unrest === "number") adjustPlayerUnrest(pen.unrest);
+      toast({
+        zh: "⚠️ 战略指令逾期：" + def.icon + " " + def.zh,
+        note: "未在 " + def.months + " 个月内达成「" + def.desc + "」，政治资本 " +
+          (pen.capital || 0) + "，社会动荡 +" + (pen.unrest || 0) + "。"
+      });
+    }
+  }
+}
+
 function initPoliticalCapital(force) {
   if (force || !ST.politicalCapital || typeof ST.politicalCapital.value !== "number") {
     ST.politicalCapital = { value: PC_START, cap: PC_CAP };
@@ -499,9 +676,10 @@ function updateDomesticPolitics(y, m, silent) {
   if (dom.fra) updateDomesticFra(dom, y, m, silent);
   if (dom.gbr) updateDomesticGbr(dom, y, m, silent);
   if (dom.generals) updateDomesticGenerals(dom, y, m, silent);
-  // L（战略灵活性）：施政方针的月度漂移 + 施政预算结算
+  // L（战略灵活性）：施政方针的月度漂移 + 施政预算结算 + 战略指令结算
   updatePostureDrift();
   updatePoliticalCapital();
+  updateMonthlyDirectives(y, m);
 }
 
 // G（收尾评审）：updateDomesticPolitics 的「苏联：政治局权力天平与短缺经济演进」块抽为独立推进器（原样搬运，无逻辑改动）
@@ -1113,6 +1291,11 @@ function refreshDomesticBox(selKey) {
   box.querySelectorAll(".pdb-posture-btn").forEach((btn) => {
     btn.addEventListener("click", () => setPosture(btn.dataset.posture));
   });
+
+  // L（参与感）：战略指令采纳按钮
+  box.querySelectorAll(".pdb-directive-btn").forEach((btn) => {
+    btn.addEventListener("click", () => adoptDirective(btn.dataset.directive));
+  });
 }
 
 // L（参与感）：政治资本预算条 —— 让「还能做几件事」成为随时可见的约束
@@ -1143,6 +1326,51 @@ function domesticCapitalHtml() {
   h += '</div>';
   h += '<div class="pdb-posture-desc">' + POSTURES[cur].icon + ' <b>' + POSTURES[cur].zh + '</b>：' +
     POSTURES[cur].desc + (cur === "balanced" ? "" : '（切换消耗 ' + POSTURE_SWITCH_COST + ' 点政治资本）') + '</div>';
+  h += domesticDirectivesHtml();
+  h += '</div>';
+  return h;
+}
+
+// L（参与感）：国家战略指令板 —— 同时最多 2 项，达标给回政治资本，逾期受罚
+function domesticDirectivesHtml() {
+  if (!ST.player) return "";
+  const st = initDirectiveState(false);
+  const nowIdx = simMonthIndex();
+  let h = '<div class="pdb-directives">';
+  h += '<div class="pdb-meter-row"><span class="pdb-meter-lbl">🎯 国家战略指令</span>' +
+    '<span class="pdb-meter-val">' + st.active.length + ' / ' + DIRECTIVE_MAX_ACTIVE + '</span></div>';
+
+  if (st.active.length) {
+    for (let i = 0; i < st.active.length; i++) {
+      const entry = st.active[i];
+      const def = directiveDef(entry.id);
+      if (!def) continue;
+      const pct = Math.round(directiveProgress(entry, def) * 100);
+      const left = directiveMonthsLeft(entry, def);
+      const cls = pct >= 100 ? "good" : pct >= 50 ? "warn" : "danger";
+      h += '<div class="pdb-directive">';
+      h += '<div class="pdb-directive-row"><span>' + def.icon + ' <b>' + def.zh + '</b> · ' + def.desc + '</span>' +
+        '<span class="pdb-directive-meta">' + pct + '% · 剩 ' + left + ' 月</span></div>';
+      h += '<div class="pdb-meter-track"><div class="pdb-meter-fill ' + cls + '" style="width:' + pct + '%"></div></div>';
+      h += '</div>';
+    }
+  } else {
+    h += '<div class="pdb-directive-empty">尚未确立战略指令。采纳一项跨年度目标，可把短期施政与长期国策绑定。</div>';
+  }
+
+  const available = DIRECTIVES.filter((d) => st.done.indexOf(d.id) < 0 && !st.active.some((x) => x.id === d.id));
+  if (st.active.length < DIRECTIVE_MAX_ACTIVE && available.length) {
+    const pc = initPoliticalCapital();
+    h += '<div class="pdb-directive-picks">';
+    for (let i = 0; i < available.length; i++) {
+      const d = available[i];
+      const canAfford = pc.value >= DIRECTIVE_ADOPT_COST;
+      h += '<button class="pdb-directive-btn" data-directive="' + d.id + '"' + (canAfford ? "" : " disabled") +
+        ' title="' + d.desc + '（期限 ' + d.months + ' 个月；达成 +' + d.reward + ' 政治资本）">' +
+        d.icon + ' ' + d.zh + '</button>';
+    }
+    h += '</div>';
+  }
   h += '</div>';
   return h;
 }
