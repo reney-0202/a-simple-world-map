@@ -39,4 +39,7 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   refreshSoundBtn: refreshSoundBtn, toggleSoundMute: toggleSoundMute, runSoundProbe: runSoundProbe,
   refreshLeaderCard: refreshLeaderCard, runAssetsProbe: runAssetsProbe,
   decSet: decSet, sanctionSet: sanctionSet, aidSet: aidSet, setPlayer: setPlayer, setMil: setMil, select: select, entKeys: entKeys, applyPlayerDecisions: applyPlayerDecisions,
+  // M2（探针注册收敛）：注册表与分派表的自检入口，供 CDP / 诊断直接验证
+  probeParamTokens: probeParamTokens, hasProbeParam: hasProbeParam,
+  assertProbeDispatchConsistency: assertProbeDispatchConsistency,
   panBy: (dx, dy) => { view.x -= dx / view.s; view.y -= dy / view.s; clampView(); render(); drawOverlay(); drawMini(); } };

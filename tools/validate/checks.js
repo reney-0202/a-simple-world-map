@@ -356,6 +356,55 @@ function checkStrategicObjectives(ctx) {
 // ---- registry ------------------------------------------------------------------
 // Order matters: it defines the note/problem ordering of the human-readable output
 // and therefore what the CI log looks like.
+// ---- 2i. probe registry ------------------------------------------------------
+// M2（探针注册收敛）：data/probes.js 是探针的唯一事实源 —— 浏览器用它判定
+// CR.probeMode 并驱动分派，tools/probe_runner.py 用同一份 entries 启动探针。
+// 这里校验它内部自洽，避免出现「params 里登记了但 entries 没有」这类会让探针
+// 静默不跑的形态。
+function probeParamToken(qs) {
+  return String(qs || '').split('&')[0].split('=')[0];
+}
+
+function checkProbeRegistry(ctx) {
+  const notes = [];
+  const problems = [];
+  const REG = ctx.data.W1980_PROBES;
+  if (!REG) return { problems: ['probes.js: 未定义 W1980_PROBES'], notes };
+  const params = REG.params;
+  const entries = REG.entries;
+  if (!Array.isArray(params) || !params.length) return { problems: ['probes.js: params 必须是非空数组'], notes };
+  if (!entries || typeof entries !== 'object') return { problems: ['probes.js: entries 必须是对象'], notes };
+
+  const dupes = params.filter((p, i) => params.indexOf(p) !== i);
+  if (dupes.length) problems.push(`probes.js: params 有重复项 ${[...new Set(dupes)].join(', ')}`);
+
+  const claimed = {};
+  const markers = {};
+  for (const key of Object.keys(entries)) {
+    const e = entries[key] || {};
+    if (typeof e.qs !== 'string' || !e.qs) { problems.push(`probes.js: entries.${key}.qs 必须是非空字符串`); continue; }
+    if (typeof e.marker !== 'string' || e.marker !== e.marker.toUpperCase()) {
+      problems.push(`probes.js: entries.${key}.marker 必须是大写字符串`);
+    }
+    if (typeof e.budget !== 'number' || !(e.budget > 0)) {
+      problems.push(`probes.js: entries.${key}.budget 必须是正数`);
+    }
+    if (markers[e.marker]) problems.push(`probes.js: marker ${e.marker} 被 ${markers[e.marker]} 与 ${key} 同时使用`);
+    markers[e.marker] = key;
+    const tok = probeParamToken(e.qs);
+    if (claimed[tok]) problems.push(`probes.js: 参数 ${tok} 被 ${claimed[tok]} 与 ${key} 同时占用`);
+    claimed[tok] = key;
+  }
+
+  const onlyParams = params.filter((p) => !claimed[p]);
+  const onlyEntries = Object.keys(claimed).filter((t) => params.indexOf(t) < 0);
+  if (onlyParams.length) problems.push(`probes.js: params 里登记但没有对应 entries：${onlyParams.join(', ')}`);
+  if (onlyEntries.length) problems.push(`probes.js: entries 用了未登记的参数：${onlyEntries.join(', ')}`);
+
+  notes.push(`probe registry: ${Object.keys(entries).length} probes, ${params.length} url params, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { probes: Object.keys(entries).length, params: params.length } };
+}
+
 const CHECKS = [
   { id: 'addressSpaces', label: '双地址空间与联合体别名', run: checkAddressSpaces },
   { id: 'crises', label: '危机抉择卡外键', run: checkCrises },
@@ -368,6 +417,7 @@ const CHECKS = [
   { id: 'borders', label: '边界折线结构与量程', run: checkBorders },
   { id: 'effectVocabulary', label: '效果词表', run: checkEffectVocabulary },
   { id: 'strategicObjectives', label: 'AI 主动战略目标外键', run: checkStrategicObjectives },
+  { id: 'probeRegistry', label: '探针注册表自洽', run: checkProbeRegistry },
 ];
 
 module.exports = {
@@ -385,5 +435,7 @@ module.exports = {
   checkBorders,
   checkEffectVocabulary,
   checkStrategicObjectives,
+  checkProbeRegistry,
+  probeParamToken,
   collectEffectSites,
 };

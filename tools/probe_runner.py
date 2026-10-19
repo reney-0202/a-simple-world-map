@@ -6,6 +6,11 @@ Chromium-family browser using --dump-dom, the same technique the game's own
 _headless.py uses. Each probe renders a hidden <div id="<x>probe">MARKER {json}</div>
 which this runner scrapes and judges.
 
+The probe list is NOT hardcoded here: it is read from out/data/probes.js, the
+same file the page uses to decide `CR.probeMode`. One registry, two consumers,
+so the runner and the browser cannot silently disagree about which URL
+parameter selects which probe.
+
 Usage:
     python tools/probe_runner.py run <out_dir> <results.json> [probe ...]
     python tools/probe_runner.py cmp <baseline.json> <results.json> [--strict]
@@ -65,36 +70,100 @@ def find_browser():
         "no Chromium-family browser found; set W1980_BROWSER to its path")
 
 
-BR = find_browser()
+# ---- probe registry (single source of truth: out/data/probes.js) -------------
+# The browser reads the same file to decide `CR.probeMode`, so the runner and the
+# page can never drift apart. Adding or renaming a probe means editing ONE data
+# file (plus the dispatch line in 13-boot.js), not a Python dict plus two regexes.
+REGISTRY_REL = os.path.join("data", "probes.js")
+REGISTRY_RE = re.compile(r"window\.W1980_PROBES\s*=\s*(\{.*\})\s*;\s*$", re.S)
 
-# probe key -> (query string, marker, virtual-time-budget ms)
-PROBES = {
-    "selftest":    ("selftest=1", "SELFTEST", 30000),
-    "simprobe":    ("simprobe=1", "SIMPROBE", 60000),
-    "saveprobe":   ("saveprobe=1", "SAVEPROBE", 60000),
-    "endprobe":    ("end=1&t=1991-12", "ENDPROBE", 60000),
-    "sanprobe":    ("sanprobe=1&player=SUN&mil=3.5", "SANPROBE", 60000),
-    "decprobe":    ("decprobe=1&player=USA", "DECPROBE", 60000),
-    "blocprobe":   ("bloc=WP&player=DEU", "BLOCPROBE", 60000),
-    "flprobe":     ("flprobe=1", "FLPROBE", 60000),
-    "warprobe":    ("warprobe=1", "WARPROBE", 60000),
-    "resprobe":    ("resprobe=1", "RESPROBE", 30000),
-    "tradeprobe":  ("tradeprobe=1", "TRADEPROBE", 30000),
-    "embargo":     ("embargoprobe=1", "EMBARGOPROBE", 60000),
-    "aiprobe":     ("aiprobe=1", "AIPROBE", 60000),
-    "summitprobe": ("summitprobe=1", "SUMMITPROBE", 60000),
-    "unscprobe":   ("unscprobe=1", "UNSCPROBE", 60000),
-    "panelprobe":  ("panelprobe=1", "PANELPROBE", 30000),
-    "newsprobe":   ("newsprobe=1", "NEWSPROBE", 60000),
-    "chronicle":   ("chronicleprobe=1", "CHRONICLEPROBE", 60000),
-    "domestic":    ("domesticprobe=1", "DOMESTICPROBE", 60000),
-    "agenda":      ("agendaprobe=1", "AGENDAPROBE", 60000),
-    "crisis":      ("crisisprobe=1", "CRISISPROBE", 60000),
-    "intel":       ("intelprobe=1", "INTELPROBE", 60000),
-    "afghan":      ("afghanprobe=1", "AFGHANPROBE", 60000),
-    "soundprobe":  ("soundprobe=1", "SOUNDPROBE", 30000),
-    "assetsprobe": ("assetsprobe=1", "ASSETSPROBE", 30000),
-}
+
+def load_registry(out_dir):
+    """Parse out/data/probes.js -> ({key: (qs, marker, budget)}, problems)."""
+    path = os.path.join(out_dir, REGISTRY_REL)
+    if not os.path.exists(path):
+        return None, ["probe registry not found: %s" % path]
+    raw = open(path, encoding="utf-8").read()
+    m = REGISTRY_RE.search(raw)
+    if not m:
+        return None, ["%s does not define window.W1980_PROBES= {...};" % REGISTRY_REL]
+    try:
+        payload = json.loads(m.group(1))
+    except Exception as e:
+        return None, ["%s is not valid JSON: %s" % (REGISTRY_REL, e)]
+    problems = registry_problems(payload)
+    if problems:
+        return None, problems
+    entries = {k: (v["qs"], v["marker"], int(v["budget"]))
+               for k, v in payload["entries"].items()}
+    return entries, []
+
+
+def probe_token(qs):
+    """The URL parameter a probe is selected by: `end=1&t=...` -> `end`."""
+    return qs.split("&")[0].split("=")[0]
+
+
+def registry_problems(payload):
+    """Self-check: params and entries must describe the same set of probes.
+
+    `params` is what the page uses to set CR.probeMode; `entries` is what the
+    runner launches. A probe present in one but not the other is exactly the
+    silent-failure mode this registry exists to prevent.
+    """
+    if not isinstance(payload, dict):
+        return ["registry payload must be an object"]
+    params = payload.get("params")
+    entries = payload.get("entries")
+    if not isinstance(params, list) or not params:
+        return ["registry.params must be a non-empty list"]
+    if not isinstance(entries, dict) or not entries:
+        return ["registry.entries must be a non-empty object"]
+
+    problems = []
+    if len(set(params)) != len(params):
+        dupes = sorted({p for p in params if params.count(p) > 1})
+        problems.append("registry.params has duplicates: %s" % ", ".join(dupes))
+
+    derived = {}
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            problems.append("registry.entries[%s] is not an object" % key)
+            continue
+        qs = entry.get("qs")
+        marker = entry.get("marker")
+        budget = entry.get("budget")
+        if not isinstance(qs, str) or not qs:
+            problems.append("registry.entries[%s].qs must be a non-empty string" % key)
+            continue
+        if not isinstance(marker, str) or not marker.isupper():
+            problems.append("registry.entries[%s].marker must be an uppercase string" % key)
+        if not isinstance(budget, int) or budget <= 0:
+            problems.append("registry.entries[%s].budget must be a positive integer" % key)
+        derived.setdefault(probe_token(qs), []).append(key)
+
+    for token, keys in derived.items():
+        if len(keys) > 1:
+            problems.append("param %r is claimed by several probes: %s"
+                            % (token, ", ".join(sorted(keys))))
+    if set(derived) != set(params):
+        only_params = sorted(set(params) - set(derived))
+        only_entries = sorted(set(derived) - set(params))
+        if only_params:
+            problems.append("registry.params lists probes with no entry: %s"
+                            % ", ".join(only_params))
+        if only_entries:
+            problems.append("registry.entries has probes missing from params: %s"
+                            % ", ".join(only_entries))
+
+    markers = [v.get("marker") for v in entries.values() if isinstance(v, dict)]
+    if len(set(markers)) != len(markers):
+        dupes = sorted({m for m in markers if markers.count(m) > 1})
+        problems.append("registry markers must be unique: %s" % ", ".join(dupes))
+    return problems
+
+
+BR = find_browser()
 
 MARKER_RE = re.compile(r'>([A-Z]+PROBE|SELFTEST) (\{.*?\})</div>')
 
@@ -253,12 +322,26 @@ def do_count(results_path, as_json=False):
 
 def do_run(out_dir, results_path, wanted):
     out_dir = os.path.abspath(out_dir)
+    entries, problems = load_registry(out_dir)
+    if problems:
+        print("PROBE REGISTRY INVALID (%s):" % REGISTRY_REL)
+        for p in problems:
+            print("  x " + p)
+        return 2
+    probes = entries
+    wanted = wanted or list(probes)
+    unknown = [w for w in wanted if w not in probes]
+    if unknown:
+        print("unknown probe(s): %s" % ", ".join(unknown))
+        print("registered: %s" % ", ".join(sorted(probes)))
+        return 2
+    print("registry: %d probes, %d url params" % (len(probes), len({probe_token(v[0]) for v in probes.values()})))
     port = int(os.environ.get("W1980_PROBE_PORT", "8899"))
     httpd = serve(out_dir, port)
     results = {}
     try:
         for key in wanted:
-            qs, marker, budget = PROBES[key]
+            qs, marker, budget = probes[key]
             url = "http://127.0.0.1:%d/index.html?%s" % (port, qs)
             print("[%s] %s ..." % (key, qs), flush=True)
             try:
@@ -370,12 +453,8 @@ def main():
             print(__doc__)
             return 2
         out_dir, results_path = sys.argv[2], sys.argv[3]
-        wanted = sys.argv[4:] or list(PROBES)
-        unknown = [w for w in wanted if w not in PROBES]
-        if unknown:
-            print("unknown probe(s): %s" % ", ".join(unknown))
-            return 2
-        return do_run(out_dir, results_path, wanted)
+        # the registry lives in the out/ tree, so it is resolved inside do_run
+        return do_run(out_dir, results_path, sys.argv[4:])
     if mode == "cmp":
         if len(sys.argv) < 4:
             print(__doc__)

@@ -81,6 +81,13 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_PROBES: {
+      params: ['demo', 'end'],
+      entries: {
+        demo: { qs: 'demo=1', marker: 'DEMOPROBE', budget: 30000 },
+        endprobe: { qs: 'end=1&t=1991-12', marker: 'ENDPROBE', budget: 60000 },
+      },
+    },
   };
 }
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -392,6 +399,57 @@ test('an unresolvable objective target is caught', () => {
 test('a mil objective without a numeric delta is caught', () => {
   const d = cleanData(); delete d.W1980_AI.STRATEGIC_OBJECTIVES.CCC[0].delta;
   assert.match(checks.checkStrategicObjectives(makeCtx(d)).problems[0], /kind=mil 缺 delta/);
+});
+
+// ---- 8c. probe registry -------------------------------------------------------
+// data/probes.js is the single source of truth for probe URL params: the page
+// uses `params` for CR.probeMode and the runner uses `entries` to launch them.
+// If the two halves disagree, a probe stops running and nothing notices.
+section('checkProbeRegistry');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkProbeRegistry(makeCtx(cleanData())).problems, []);
+});
+test('a param with no entry is caught', () => {
+  const d = cleanData(); d.W1980_PROBES.params.push('ghost');
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /params 里登记但没有对应 entries：ghost/);
+});
+test('an entry missing from params is caught', () => {
+  const d = cleanData();
+  d.W1980_PROBES.entries.extra = { qs: 'extra=1', marker: 'EXTRAPROBE', budget: 1000 };
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /entries 用了未登记的参数：extra/);
+});
+test('duplicate params are caught', () => {
+  const d = cleanData(); d.W1980_PROBES.params.push('demo');
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /params 有重复项 demo/);
+});
+test('two probes claiming the same url param is caught', () => {
+  const d = cleanData();
+  d.W1980_PROBES.entries.clone = { qs: 'demo=2', marker: 'CLONEPROBE', budget: 1000 };
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /参数 demo 被 demo 与 clone 同时占用/);
+});
+test('duplicate DOM markers are caught', () => {
+  const d = cleanData();
+  d.W1980_PROBES.params.push('other');
+  d.W1980_PROBES.entries.other = { qs: 'other=1', marker: 'DEMOPROBE', budget: 1000 };
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /marker DEMOPROBE 被 demo 与 other 同时使用/);
+});
+test('a non-positive budget is caught', () => {
+  const d = cleanData(); d.W1980_PROBES.entries.demo.budget = 0;
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /budget 必须是正数/);
+});
+test('a lowercase marker is caught', () => {
+  const d = cleanData(); d.W1980_PROBES.entries.demo.marker = 'demoprobe';
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /marker 必须是大写字符串/);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_PROBES;
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /未定义 W1980_PROBES/);
+});
+test('probeParamToken reads the token, not the probe key', () => {
+  // `end=1&t=1991-12` is the endprobe query: its parameter token is `end`.
+  assert.strictEqual(checks.probeParamToken('end=1&t=1991-12'), 'end');
+  assert.strictEqual(checks.probeParamToken('sanprobe=1&player=SUN&mil=3.5'), 'sanprobe');
+  assert.strictEqual(checks.probeParamToken(''), '');
 });
 
 // ---- 8b. raster integrity manifest --------------------------------------------

@@ -67,6 +67,25 @@ node tools/validate.test.js
 （Edge / Chrome / Chromium，可用 `W1980_BROWSER` 指定）以 `--headless=new --dump-dom`
 抓取并判定：
 
+**探针注册表是单一事实源**：`out/data/probes.js` 声明每个探针的
+「URL 参数令牌 → 查询串 / DOM 标记 / 虚拟时间预算」，三处消费者读同一份文件：
+
+| 消费者 | 用途 |
+| --- | --- |
+| `app/10-events-save.js` | `CR.probeMode`（探针会话判定）用 `params` |
+| `app/13-boot.js` | 18 个普通探针走「令牌 → 运行函数」分派表；启动时自检令牌已登记 |
+| `tools/probe_runner.py` | 用 `entries` 驱动 25 个探针；启动前自检 `params` 与 `entries` 自洽 |
+| `tools/validate/checks.js` | `checkProbeRegistry` 在 CI 里校验注册表内部一致性 |
+
+于是**新增一个普通探针只需两处**：`data/probes.js` 加一条 + `13-boot.js` 分派表加一行。
+参数不对会立刻失败，而不是静默不跑：
+
+- 运行器侧：`PROBE REGISTRY INVALID (data/probes.js): registry.entries has probes missing from params: domesticprobe`（退出 2）
+- 浏览器侧：`探针分派表里的 ghostprobe 未在 data/probes.js 的 params 中登记`（抛错 → 启动错误面板）
+
+注意 `params` 是**参数令牌**而非探针键：`?end=1` 的令牌是 `end`（探针键是 `endprobe`），
+`?bloc=WP` 的令牌是 `bloc`（键是 `blocprobe`）。校验器强制二者由 `qs` 前缀唯一推导。
+
 ```bash
 # 跑全部探针，任一失败即非零退出
 python tools/probe_runner.py run out tools/probe-results.json
@@ -170,7 +189,7 @@ Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强�
 | 阶段 | 主题 | 风险 | 内容 |
 | --- | --- | --- | --- |
 | **L** ✅ | 参与感与战略灵活性 | — | **已交付**：政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
-| **M** | 卫生与闸门 | 低 | 拆 `07-domestic.js`（2995 行 → 1273）；探针注册收敛；清死代码；断言塌缩自动门 |
+| **M** | 卫生与闸门 | 低 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；新增断言塌缩自动门 |
 | **N** | 契约一致性 | 中 | 议程完成回馈数据声明式；备份仓 pipeline 双写收敛 |
 | **O** | 平台与生成物 | 低 | PWA 深链注册修复；`sw.js` 预缓存清单自动生成 |
 

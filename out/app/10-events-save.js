@@ -127,9 +127,49 @@ function evRun(y, m, silent) {
 // 默认剧本逐位不变：旁观/探针/无头缺省自动选 hist 项且不入收件箱；只有「偏离史实的选择」才记 items。
 const CR = { list: null, pending: null, choices: [], decided: new Set(), deny: new Set(),
   auto: null, resumePlay: false, probeMode: false };
+// ---- M2（探针注册收敛）：探针参数表来自 data/probes.js（单一事实源）---------
+// 同一个参数表同时被 tools/probe_runner.py 读取，所以「运行器认为在跑哪个探针」
+// 与「页面认为自己是不是探针会话」不可能再各说各话。历史上这两处各写一份正则，
+// blocprobe / decprobe 就是因为不同步而长期静默失效。
+//
+// 参数是**令牌**而非探针键：`?end=1` 的令牌是 `end`（探针键是 `endprobe`）。
+function probeParamTokens() {
+  const reg = window.W1980_PROBES;
+  if (!reg || !Array.isArray(reg.params) || !reg.params.length) {
+    // 数据文件没载入是部署错误，不能静默降级成「非探针模式」（那会让所有探针的
+    // 期望值漂移，且难以定位），所以显式抛出。
+    throw new Error("data/probes.js 未载入或缺少 params：探针参数表缺失");
+  }
+  return reg.params;
+}
+
+// 令牌必须整词匹配：`?end=1` 命中 `end`，但 `?endTab=x` 不应命中。
+function hasProbeParam(tokens, search) {
+  const q = search || "";
+  for (let i = 0; i < tokens.length; i++) {
+    if (new RegExp("[?&]" + tokens[i] + "(=|&|$)").test(q)) return true;
+  }
+  return false;
+}
+
+// 分派表自检：boot 里的「令牌 → 运行函数」表必须全部在注册表 params 里。
+// 两个方向都会静默失效 —— 加了分派却没登记（探针永远不跑）、改了参数名却没改
+// 分派（探针永远不跑）—— 所以这里直接抛错，让错误浮到启动错误面板上。
+function assertProbeDispatchConsistency(runners) {
+  const registered = probeParamTokens();
+  const missing = [];
+  for (const token in (runners || {})) {
+    if (registered.indexOf(token) < 0) missing.push(token);
+  }
+  if (missing.length) {
+    throw new Error("探针分派表里的 " + missing.join(", ") + " 未在 data/probes.js 的 params 中登记");
+  }
+  return true;
+}
+
 function crInit() {
   CR.list = window.W1980_CROSSROADS || [];
-  CR.probeMode = /[?&](simprobe|saveprobe|end=1|selftest|flprobe|warprobe|resprobe|tradeprobe|embargoprobe|aiprobe|summitprobe|unscprobe|panelprobe|newsprobe|chronicleprobe|domesticprobe|agendaprobe|crisisprobe|intelprobe|afghanprobe|soundprobe|assetsprobe)/.test(location.search);
+  CR.probeMode = hasProbeParam(probeParamTokens(), location.search);
   // I（数据层工具链）：效果词表的运行期双保险。探针/开发模式下把表外键打到控制台，
   // 同时（任何模式）登记进 W1980_EFFECTS.violations —— 探针断言该表为空，
   // 于是「数据里拼错一个效果键」在构建期和运行期都会失败，而不是静默无效。

@@ -269,77 +269,38 @@ load().then(() => {
     dz.textContent = "ENDPROBE " + JSON.stringify(r);
     document.body.appendChild(dz);
   }
-  // R8A：前线全链路无头探针
-  if (/[?&]flprobe=1/.test(location.search)) {
-    runFrontlineProbe();
-  }
-  // R8B：局部战争动态前线全时序探针
-  if (/[?&]warprobe=1/.test(location.search)) {
-    runWarProbe();
-  }
-  // 经济系统阶段 1：战略资源探针
-  if (/[?&]resprobe=1/.test(location.search)) {
-    runResProbe();
-  }
-  // 经济系统阶段 2：贸易大动脉与双轨清算探针
-  if (/[?&]tradeprobe=1/.test(location.search)) {
-    runTradeProbe();
-  }
-  // 经济系统阶段 3：巴统禁运与能源咽喉封锁经济战探针
-  if (/[?&]embargoprobe=1/.test(location.search)) {
-    runEmbargoProbe();
-  }
-  // R10A：大国战略性格与反应式 AI 决策机全链路探针
-  if (/[?&]aiprobe=1/.test(location.search)) {
-    runAIProbe();
-  }
-  // R10B：首脑峰会与军控谈判机制全链路探针
-  if (/[?&]summitprobe=1/.test(location.search)) {
-    runSummitProbe();
-  }
-  // R10C：联合国安理会与多边调停机制全链路探针
-  if (/[?&]unscprobe=1/.test(location.search)) {
-    runUNSCProbe();
-  }
-  // R11A：面板 Tabs 选项卡体系全链路探针
-  if (/[?&]panelprobe=1/.test(location.search)) {
-    runPanelProbe();
-  }
-  // R11B：时代大新闻头版弹窗全链路探针
-  if (/[?&]newsprobe=1/.test(location.search)) {
-    runNewsProbe();
-  }
-  // R11C：终局后日谈史诗长卷与历史编年史全链路探针
-  if (/[?&]chronicleprobe=1/.test(location.search)) {
-    runChronicleProbe();
-  }
-  // R12A：大国内政生态与派系权力天平全链路探针
-  if (/[?&]domesticprobe=1/.test(location.search)) {
-    runDomesticProbe();
-  }
-  // R12B：次极大国专属国家议程与战略路线全链路探针
-  if (/[?&]agendaprobe=1/.test(location.search)) {
-    runAgendaProbe();
-  }
-  // R12C：中局突发危机抉择卡与升级阶梯全链路探针
-  if (/[?&]crisisprobe=1/.test(location.search)) {
-    runCrisisProbe();
-  }
-  // R13A：隐蔽行动与全球谍战沙盒全链路探针
-  if (/[?&]intelprobe=1/.test(location.search)) {
-    runIntelProbe();
-  }
-  // R13B：阿富汗战争泥潭与帝国消耗槽全链路探针
-  if (/[?&]afghanprobe=1/.test(location.search)) {
-    runAfghanProbe();
-  }
-  // R13C：时代音效架构与合成器全链路探针
-  if (/[?&]soundprobe=1/.test(location.search)) {
-    runSoundProbe();
-  }
-  // R14：钢铁雄心4风格时代美术与游戏资源全链路探针
-  if (/[?&]assetsprobe=1/.test(location.search)) {
-    runAssetsProbe();
+  // ---- M2（探针注册收敛）：普通探针走注册表驱动的分派表 -------------------------
+  // 这里只写「参数令牌 → 运行函数」的一行映射；令牌本身（含查询串、DOM 标记、
+  // 时间预算）由 data/probes.js 声明，运行器读同一份文件。新增一个普通探针 =
+  // 在 probes.js 加一条 + 在此加一行，不再需要同步第四处正则。
+  //
+  // selftest / simprobe / saveprobe / end / sanprobe / decprobe / bloc 有各自的
+  // 前置准备与顺序要求，仍在本文件单独处理。
+  const PROBE_RUNNERS = {
+    flprobe: runFrontlineProbe,
+    warprobe: runWarProbe,
+    resprobe: runResProbe,
+    tradeprobe: runTradeProbe,
+    embargoprobe: runEmbargoProbe,
+    aiprobe: runAIProbe,
+    summitprobe: runSummitProbe,
+    unscprobe: runUNSCProbe,
+    panelprobe: runPanelProbe,
+    newsprobe: runNewsProbe,
+    chronicleprobe: runChronicleProbe,
+    domesticprobe: runDomesticProbe,
+    agendaprobe: runAgendaProbe,
+    crisisprobe: runCrisisProbe,
+    intelprobe: runIntelProbe,
+    afghanprobe: runAfghanProbe,
+    soundprobe: runSoundProbe,
+    assetsprobe: runAssetsProbe
+  };
+  // 自检：分派表里的每个令牌都必须在注册表里，否则就是「加了探针却没登记」
+  // 或「改了参数名却没改分派」—— 两者都会让探针静默不跑。
+  assertProbeDispatchConsistency(PROBE_RUNNERS);
+  for (const token in PROBE_RUNNERS) {
+    if (hasProbeParam([token], location.search)) PROBE_RUNNERS[token]();
   }
 
   const pans = new URLSearchParams(location.search).getAll("pan");

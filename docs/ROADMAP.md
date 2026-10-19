@@ -93,7 +93,7 @@
 
 | # | 发现 | 实测证据 | 对策 |
 | --- | --- | --- | --- |
-| **S-3** | 新增探针要同步 **4 处**（`probe_runner.py PROBES`、`13-boot.js` 25 个 `if`、`CR.probeMode` 正则、`09-debug-hook.js`），**不同步就静默失效** —— 历史上 blocprobe/decprobe 就是这么死的 | 探针 URL 参数在 runner 与 `probeMode` 正则里逐字重复；`endprobe` 用 `end=1` 而非 `endprobe=1`，已是不一致先例 | **L2** `PROBE_PARAMS` 常量 + runner 自检 diff |
+| **S-3** | 新增探针要同步 **4 处**（`probe_runner.py PROBES`、`13-boot.js` 25 个 `if`、`CR.probeMode` 正则、`09-debug-hook.js`），**不同步就静默失效** —— 历史上 blocprobe/decprobe 就是这么死的 | 探针 URL 参数在 runner 与 `probeMode` 正则里逐字重复；`endprobe` 用 `end=1` 而非 `endprobe=1`，已是不一致先例 | ~~M2 `PROBE_PARAMS` 常量 + runner 自检 diff~~ → **✅ 已由 M2 解决**：收敛为单一事实源 `data/probes.js`，三处消费 + 三重自检 |
 | **S-4** | 「断言塌缩」检测只在 `cmp` 一层，**全靠人工核对** | 25 个探针共 **637 条命名断言** + 195 个扁平字段；**16 个断言名跨探针重复**（`spectatorZeroPmods` 出现在 6 个探针） | **L4** `probe_runner.py count` + `cmp` 在断言数减少时判失败 |
 
 ### C. 契约债（真正改代码路径，需逐位核对）
@@ -135,7 +135,7 @@
 **面板占用实测**（新增 UI 不能把侧栏撑爆）：SUN 419px / CHN 470px / ITA 436px，
 无横向溢出；三国均正确渲染 3 个方针按钮与 6 个指令候选。这是「可玩性」不只是「功能存在」的验收线。
 
-### Phase M — 卫生与闸门（✅ M1 + M4 已交付；M2/M3 待办）
+### Phase M — 卫生与闸门（✅ M1 + M2 + M4 已交付；M3 待办）
 
 > 目标：把最大的单文件拆成按域的内聚模块，并给「断言塌缩」加一道自动门。
 > **本轮改动对仿真数值零影响** —— 验收标准就是 `cmp` 仍 `identical:25`。
@@ -183,11 +183,46 @@ ASSERTION COLLAPSE (1 probe(s)):
 所以这些函数所在的脚本必须排在它**之前**。第一次拆分把音效探针排在 debug-hook 之后 →
 `selftest` 立刻报 `runSoundProbe is not defined`。`cmp` 一眼抓住，改名到 `08c-` 前缀后恢复 identical。
 
-### Phase M 剩余（M2 / M3，未做）
+**M2 — 探针注册收敛**
+
+此前「加一个探针」要同步四处，任一处不同步就静默失效（blocprobe / decprobe 就是这么死的）：
+runner 的 `PROBES` 字典、`13-boot.js` 的 20 个 `if`、`CR.probeMode` 的正则、`09-debug-hook.js` 的导出。
+
+现在只有一个事实源 **`out/data/probes.js`**：
+
+```js
+window.W1980_PROBES = { params: [...], entries: { key: { qs, marker, budget } } };
+```
+
+| 消费者 | 用法 |
+| --- | --- |
+| `app/10-events-save.js` | `CR.probeMode = hasProbeParam(probeParamTokens(), location.search)` |
+| `app/13-boot.js` | 18 个普通探针改为 `PROBE_RUNNERS` 分派表（令牌 → 函数）遍历；启动时 `assertProbeDispatchConsistency()` 自检 |
+| `tools/probe_runner.py` | 删除硬编码 `PROBES`，改读同一份 `entries`；`load_registry()` 做内部自洽校验 |
+| `tools/validate/checks.js` | 新增 `checkProbeRegistry`（CI 每次跑） |
+| `data/sound.js` | `isProbeOrHeadless` 的 20 项重复正则改为读注册表（`audit` 单独保留） |
+
+**三重自检**，每一重都被实测触发过：
+
+1. **校验器**（CI）：params 与 entries 必须描述同一组探针、参数令牌唯一、marker 唯一、budget 为正
+   → 新增 10 条单测（65 → **75** 条）。
+2. **运行器**（启动前）：删掉 `params` 里的 `domesticprobe` →
+   `PROBE REGISTRY INVALID (data/probes.js): registry.entries has probes missing from params: domesticprobe`，退出 2。
+3. **浏览器**（启动时）：`assertProbeDispatchConsistency({ghostprobe:1})` →
+   `探针分派表里的 ghostprobe 未在 data/probes.js 的 params 中登记`（抛错 → 启动错误面板）。
+
+**关键细节**：`params` 是**参数令牌**不是探针键 —— `?end=1` 的令牌是 `end`（键是 `endprobe`），
+`?bloc=WP` 的令牌是 `bloc`（键是 `blocprobe`）。匹配必须整词（`[?&]token(=|&|$)`），
+否则 `?endTab=3` 会误命中 `end`。CDP 实测：25 个令牌全部置位、`?endprobe=1` 不命中、`?endTab=3` 不命中。
+
+**验收（已达成）**：`cmp` 仍 `identical:25`；断言总数仍 854（未增未减）；`validate.test` 65 → 75；
+`validate_data` 多一行 `probe registry: 25 probes, 25 url params, 0 problem(s)`；
+CDP 注册表专项检查 4 组全 PASS；`sw.js` → `w1980-v11`，PRECACHE 93 → 94 项且与实际文件数一致。
+
+### Phase M 剩余（M3，未做）
 
 | 项 | 内容 | 验收标准 |
 | --- | --- | --- |
-| **M2** | 探针注册收敛：`13-boot.js` 导出 `PROBE_PARAMS` 常量数组，`CR.probeMode` 改为 `some()`；runner 增加「PROBES 键 vs PROBE_PARAMS」自检 | 新增/改名探针只改一处；两者不同步时 runner 报错 |
 | **M3** | 清死代码：删引擎里数据侧零引用的 `domestic_reform_lead` / `domestic_detente` 两个 handler；`validate_data.js` 增「未知 condition 判失败」 | 基线 identical；故意写一个未注册 condition 必须让 CI 失败 |
 
 ### Phase N — 契约一致性（中风险，1 天）
@@ -212,7 +247,7 @@ ASSERTION COLLAPSE (1 probe(s)):
 
 ```mermaid
 graph LR
-  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ M1+M4]
+  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ M1+M2+M4]
   M --> N[Phase N 契约一致性]
   N --> O[Phase O 平台与生成物]
   L -.->|默认方针中性| B1[既有数值零漂移]
@@ -220,8 +255,11 @@ graph LR
 ```
 
 - **L 已完成**：新增了玩家行动预算与治理路线。
-- **M1+M4 已完成**：单文件从 2995 行降到 1273 行，且 `cmp` 仍 `identical:25` —— 纯搬运的最终判据达成；
-  断言塌缩自动门已上线并被实测证明会失败。M2/M3 仍未做。
+- **M1+M4 已完成**：单文件从 2995 行降到 1279 行，且 `cmp` 仍 `identical:25` —— 纯搬运的最终判据达成；
+  断言塌缩自动门已上线并被实测证明会失败。
+- **M2 已完成**：探针注册收敛为单一事实源 `data/probes.js`，运行器 / 页面 / 校验器三处都读它，
+  且三处各自的自检都被实测触发过。新增普通探针只需「数据文件一条 + boot 分派表一行」。
+- **M3 未做**：清死代码，且「未知 condition 判 CI 失败」需先在数据侧立 condition 词表的事实源。
 - **N 改引擎**：N1 真正改 `updateMonthlyAgendas` 的分派逻辑，必须在 M 的护栏之后。
 - **O 可穿插**：纯平台层，风险最低。
 

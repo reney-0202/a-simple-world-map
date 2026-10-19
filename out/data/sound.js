@@ -26,7 +26,14 @@
     if (typeof window === "undefined") return true;
     if (window.CR && window.CR.probeMode) return true;
     if (typeof navigator !== "undefined" && navigator.webdriver) return true;
-    if (/[?&](simprobe|saveprobe|flprobe|warprobe|resprobe|tradeprobe|embargoprobe|aiprobe|summitprobe|unscprobe|panelprobe|newsprobe|chronicleprobe|domesticprobe|agendaprobe|crisisprobe|intelprobe|afghanprobe|soundprobe|audit)/.test(location.search)) return true;
+    // M2（探针注册收敛）：探针参数令牌来自 data/probes.js —— 与运行器、与页面
+    // 的 CR.probeMode 用的是同一份表。`audit` 是额外的诊断开关而非探针，单独列出。
+    // 令牌按整词匹配：`?audit=1` 命中，`?auditor=x` 不命中。
+    const reg = window.W1980_PROBES;
+    const tokens = (reg && Array.isArray(reg.params)) ? reg.params.concat(["audit"]) : ["audit"];
+    for (let i = 0; i < tokens.length; i++) {
+      if (new RegExp("[?&]" + tokens[i] + "(=|&|$)").test(location.search)) return true;
+    }
     return false;
   }
 
