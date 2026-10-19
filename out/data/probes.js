@@ -35,6 +35,7 @@ window.W1980_PROBES={
   "crisisprobe",
   "intelprobe",
   "afghanprobe",
+  "poleconprobe",
   "soundprobe",
   "assetsprobe"
  ],
@@ -174,6 +175,12 @@ window.W1980_PROBES={
   "afghan": {
    "qs": "afghanprobe=1",
    "marker": "AFGHANPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "polecon": {
+   "qs": "poleconprobe=1",
+   "marker": "POLECONPROBE",
    "budget": 60000,
    "class": "mechanics"
   },

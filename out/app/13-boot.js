@@ -132,6 +132,12 @@ load().then(() => {
     r.milAfterLoad = ST.mil; r.milRestored = r.milAfterLoad === r.mil;
     r.crAfterLoad = CR.choices.slice(); r.crDenyAfterLoad = Array.from(CR.deny);   // R5D：路口决定往返
     r.pmodSUNAfter = SIM.S.P.pmods.SUN === undefined ? null : SIM.S.P.pmods.SUN;
+    // __ 前缀 = 诊断，不参与断言/塌缩门。用来把「账单到底写了多少」量化出来，
+    // 而不是靠猜（P1 调参需要看 breakdown，而不是看一个聚合的 pmods 差值）。
+    r.__polecon = (typeof polEconSnapshot === "function") ? polEconSnapshot() : null;
+    r.__unrestSUN = (ST.domestic && ST.domestic.sun) ? +ST.domestic.sun.unrest.toFixed(2) : null;
+    r.__shortageSUN = (ST.domestic && ST.domestic.sun) ? +ST.domestic.sun.shortage.toFixed(2) : null;
+    r.__billsSUN = (ST.polEcon && ST.polEcon.events) ? ST.polEcon.events.map((e) => e.kind).join(",") : null;
     r.histLenAfterLoad = SIM.S.hist.gdp.SUN.length;
     r.evLogAfterLoad = EV.log.slice();
     r.detOk = (r.sunBefore === r.sunAfterLoad) && (r.evLog.join(",") === r.evLogAfterLoad.join(","));
@@ -293,6 +299,7 @@ load().then(() => {
     crisisprobe: runCrisisProbe,
     intelprobe: runIntelProbe,
     afghanprobe: runAfghanProbe,
+    poleconprobe: runPolEconProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

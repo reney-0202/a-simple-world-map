@@ -304,6 +304,7 @@ function simSave(slot) {
     smuggle: ST.smuggle,                              // R9C：特种走私转口开关
     ai: ST.ai,                                        // R10A：反应式 AI 决策机状态
     domestic: ST.domestic,                            // R12A：内政生态与派系权力天平状态
+    polEcon: ST.polEcon ? JSON.parse(JSON.stringify(ST.polEcon)) : null, // P1：经济账单（期望锚/连续计数/已入账）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -465,6 +466,9 @@ function loadSocietyStates(d) {
   }
   // L：还原玩家施政预算（旧档缺该项 → 按初始值补齐，无需升版）
   ST.politicalCapital = sanitizePoliticalCapital(d.politicalCapital);
+  // P1：还原经济账单（期望锚 / 连续计数 / 已入账记录）。
+  // 旧档缺该项 → 空账单（锚点会在第一次推进时按史实均值补上），无需升版。
+  ST.polEcon = sanitizePolEcon(d.polEcon);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

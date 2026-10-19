@@ -91,6 +91,21 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_POLECON: {
+      ANCHOR: { AAA: [2.0, 1.0], BBB: [3.0, 1.2], CCC: [1.5, 0.8], DEFAULT: [2.0, 1.0] },
+      BLAME: {
+        AAA: { down: ['congressApproval'], up: [] },
+        BBB: { down: ['conservative'], up: ['reformist'] },
+        CCC: { down: ['legitimacy'], up: [] },
+        DEFAULT: { down: ['legitimacy'], up: [] },
+      },
+      Z_BAD: -1.5, Z_GOOD: 1.5, PERSIST: 2, ANCHOR_ADAPT: 0.06, ANCHOR_REVERT: 0.02,
+      UNREST_PULL_UP: 0.22, UNREST_PULL_DOWN: 0.14,
+      UNREST_TARGET_BAD_BASE: 16, UNREST_TARGET_BAD_SPAN: 34,
+      UNREST_TARGET_BOP_BASE: 12, UNREST_TARGET_BOP_SPAN: 26,
+      RESERVE_GDP_SHARE: 0.002,
+      RESERVE_WARN_MONTHS: 2.0, RESERVE_CRIT_MONTHS: 1.0,
+    },
     W1980_PROBES: {
       params: ['demo', 'end'],
       entries: {
@@ -477,7 +492,138 @@ test('probeParamToken reads the token, not the probe key', () => {
   assert.strictEqual(checks.probeParamToken(''), '');
 });
 
-// ---- 8d. agenda condition vocabulary -----------------------------------------
+// ---- 8d. political-economy table (P1) ----------------------------------------
+// The economy -> politics channel is only as good as this table. A missing
+// anchor means a country can never compute a shortfall (so it is politically
+// immune); a misspelled blame field means the bill is written into nothing.
+section('checkPolEcon');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkPolEcon(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_POLECON;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /未定义 W1980_POLECON/);
+});
+test('an entity without an anchor is caught', () => {
+  const d = cleanData(); delete d.W1980_POLECON.ANCHOR.CCC;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR 缺少实体 CCC/);
+});
+test('an entity with neither an explicit blame row nor DEFAULT is caught', () => {
+  // 47 个通用国家共享同一套字段，所以 DEFAULT 兜底是设计意图；但兜底本身丢了
+  // 就是「账单无处落账」，必须构建期失败。
+  const d = cleanData();
+  delete d.W1980_POLECON.BLAME.BBB;
+  assert.deepStrictEqual(checks.checkPolEcon(makeCtx(d)).problems, [], 'DEFAULT 兜底时缺显式行不算问题');
+  delete d.W1980_POLECON.BLAME.DEFAULT;
+  const p = checks.checkPolEcon(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /BLAME 缺少 DEFAULT/.test(x)), '应报出缺 DEFAULT：' + p.join(' | '));
+  assert.ok(p.some((x) => /无处落账/.test(x)), '应报出无处落账的实体：' + p.join(' | '));
+});
+test('a non-positive standard deviation is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.ANCHOR.AAA = [2.0, 0];
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR\.AAA\[1\] 必须是正数/);
+});
+test('a malformed anchor row is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.ANCHOR.AAA = [2.0];
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR\.AAA 必须是 \[史实均值, 史实标准差\]/);
+});
+test('an anchor keyed to a non-entity is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.ANCHOR.ZZZ = [1, 1];
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR\.ZZZ 不是实体键/);
+});
+test('a blame row with no down field is caught', () => {
+  // A bill with nowhere to land is exactly the "panel says it, code never wires it" bug.
+  const d = cleanData(); d.W1980_POLECON.BLAME.AAA.down = [];
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /BLAME\.AAA\.down 不能为空/);
+});
+test('a cross-sign threshold pair is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.Z_BAD = 1.0;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /Z_BAD 必须是负数/);
+});
+test('a reserve pair in the wrong order is caught', () => {
+  const d = cleanData();
+  d.W1980_POLECON.RESERVE_CRIT_MONTHS = 5; d.W1980_POLECON.RESERVE_WARN_MONTHS = 1;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /RESERVE_CRIT_MONTHS < RESERVE_WARN_MONTHS/);
+});
+test('an out-of-range adaptation rate is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.ANCHOR_ADAPT = 0;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR_ADAPT 必须落在 \(0, 1\]/);
+});
+test('a zero revert rate is caught', () => {
+  // Without a pull back to history, any one-off collapse drags the expectation
+  // anchor to wherever it likes and the shortfall stops meaning anything.
+  const d = cleanData(); d.W1980_POLECON.ANCHOR_REVERT = 0;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /ANCHOR_REVERT 必须落在 \(0, 1\]/);
+});
+test('an out-of-range unrest pull rate is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.UNREST_PULL_UP = 1.5;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /UNREST_PULL_UP 必须落在 \(0, 1\]/);
+});
+test('a zero unrest target span is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.UNREST_TARGET_BAD_SPAN = 0;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /UNREST_TARGET_BAD_SPAN 必须是正数/);
+});
+test('a zero reserve materiality share is caught', () => {
+  const d = cleanData(); d.W1980_POLECON.RESERVE_GDP_SHARE = 0;
+  assert.match(checks.checkPolEcon(makeCtx(d)).problems[0], /RESERVE_GDP_SHARE 必须是正数/);
+});
+
+// ---- 8f. bundle hygiene ------------------------------------------------------
+// The shipped tree is the product, and two things rot there silently: total size
+// (every phase adds bytes) and generated records (the province table is produced
+// by the export pipeline, so a field nothing reads can ride along forever --
+// `px` and a redundant `id` were 58 kB of pure dead weight across 2998 records).
+section('checkBundleHygiene');
+function withProvinces(fields) {
+  const d = cleanData();
+  d.W1980_PROVINCES = { 1: fields, 2: fields };
+  return d;
+}
+const GOOD_PROVINCE = { polity: 'AAA', area_km2: 100, cx: 1, cy: 2, bbox: [0, 0, 1, 1], name: 'x' };
+test('clean fixture reports no problems', () => {
+  // outDir points at a real but tiny tree: __dirname has no budget issue
+  assert.deepStrictEqual(checks.checkBundleHygiene(makeCtx(withProvinces(GOOD_PROVINCE), { outDir: __dirname })).problems, []);
+});
+test('a province field nothing reads fails the build', () => {
+  // This is the exact regression: a regenerated export re-adds `px`.
+  const p = checks.checkBundleHygiene(makeCtx(withProvinces(Object.assign({ px: 7 }, GOOD_PROVINCE)), { outDir: __dirname })).problems;
+  assert.ok(p.some((x) => /字段 "px"/.test(x)), '应报出 px 字段：' + p.join(' | '));
+  assert.ok(p.some((x) => /没有任何运行时代码读取它/.test(x)), '应说明无人读取：' + p.join(' | '));
+});
+test('a redundant id field is rejected too', () => {
+  const p = checks.checkBundleHygiene(makeCtx(withProvinces(Object.assign({ id: 1 }, GOOD_PROVINCE)), { outDir: __dirname })).problems;
+  assert.ok(p.some((x) => /字段 "id"/.test(x)), '应报出 id 字段：' + p.join(' | '));
+});
+test('a missing required province field is caught', () => {
+  const bad = Object.assign({}, GOOD_PROVINCE); delete bad.name;
+  const p = checks.checkBundleHygiene(makeCtx(withProvinces(bad), { outDir: __dirname })).problems;
+  assert.ok(p.some((x) => /缺少字段 "name"/.test(x)), '应报出缺字段：' + p.join(' | '));
+});
+test('the declared field list is exactly the six live fields', () => {
+  // Pinning the list is the point: adding a field must be a deliberate act.
+  assert.deepStrictEqual(checks.PROVINCE_FIELDS.slice().sort(),
+    ['area_km2', 'bbox', 'cx', 'cy', 'name', 'polity']);
+});
+test('the size budget is enforced, not just reported', () => {
+  // Build a tree just over the budget in a temp dir and confirm it fails.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'w1980-bundle-'));
+  try {
+    const chunk = Buffer.alloc(1024 * 1024);
+    const n = Math.ceil(checks.BUNDLE_BUDGET_MIB) + 1;
+    for (let i = 0; i < n; i++) fs.writeFileSync(path.join(tmp, 'chunk' + i + '.bin'), chunk);
+    const p = checks.checkBundleHygiene(makeCtx(withProvinces(GOOD_PROVINCE), { outDir: tmp })).problems;
+    assert.ok(p.some((x) => /超出 3\.2 MiB 预算/.test(x)), '应报出超预算：' + p.join(' | '));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+test('a missing outDir skips the size check instead of throwing', () => {
+  const r = checks.checkBundleHygiene(makeCtx(withProvinces(GOOD_PROVINCE), { outDir: path.join(__dirname, 'no-such-dir') }));
+  assert.deepStrictEqual(r.problems, []);
+  assert.ok(r.notes.some((n) => /跳过体积检查/.test(n)));
+});
+
+// ---- 8e. agenda condition vocabulary -----------------------------------------
 // An unregistered `condition` used to mean "the gate never blocks" -- a typo or a
 // deleted engine branch silently disabled a gate. Now the build fails, and the
 // engine fails closed if one ever slips through.

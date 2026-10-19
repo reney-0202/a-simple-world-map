@@ -226,6 +226,12 @@ PLATFORM_FIELD_PREFIXES = ("sig", "c0Rgb", "cOccRgb")
 PLATFORM_FIELD_SUFFIXES = ("Rgb",)
 PLATFORM_FIELDS = {"exportPng"}
 
+# Probe diagnostics are `__`-prefixed and are NOT assertions (see
+# assertion_names). They are reported in the results file for inspection and
+# deliberately excluded from the baseline diff, so a probe-local diagnostic can
+# never turn the regression gate red for something that is not a contract.
+DIAGNOSTIC_PREFIX = "__"
+
 # Fields compared with a tolerance rather than exactly (none today; kept explicit
 # so the intent is visible if a genuinely float-noisy field appears).
 TOLERANT_FIELDS = {}
@@ -308,7 +314,6 @@ NON_ASSERTION_KEYS = {
     "errors", "pass", "allOk", "assertCount", "exception",
     "__parse_error", "__raw",
 }
-DIAGNOSTIC_PREFIX = "__"          # probe diagnostics are not assertions
 
 
 def assertion_names(result):
@@ -417,10 +422,19 @@ def do_run(out_dir, results_path, wanted):
 
 
 def comparable(r):
-    """Strip platform/jitter fields so a regression gate compares only meaningful values."""
+    """Strip platform/jitter fields so a regression gate compares only meaningful values.
+
+    `__`-prefixed keys are diagnostics: `assertion_names()` already excludes them
+    from the assertion-collapse gate, on the stated promise that they are
+    informational and may change without losing coverage. Comparing them here
+    would break that promise -- a probe-local diagnostic would turn the gate red
+    for something that is not an assertion. They stay in the results file for
+    inspection; they are simply not part of the contract.
+    """
     if not isinstance(r, dict):
         return r
-    return {k: v for k, v in r.items() if not _platform_dependent(k, v)}
+    return {k: v for k, v in r.items()
+            if not _platform_dependent(k, v) and not k.startswith(DIAGNOSTIC_PREFIX)}
 
 
 def _lost_names(base, new):
@@ -495,6 +509,8 @@ def do_cmp(base_path, new_path, strict=False, class_filter=None, registry_path=N
         b = new[k].get("result") if isinstance(new[k].get("result"), dict) else {}
         print("---- %s ----" % k)
         for f in sorted(set(list(a.keys()) + list(b.keys()))):
+            if f.startswith(DIAGNOSTIC_PREFIX):
+                continue
             if not strict and _platform_dependent(f, a.get(f)):
                 continue
             va, vb = a.get(f), b.get(f)

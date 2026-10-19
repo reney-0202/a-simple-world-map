@@ -429,6 +429,177 @@ function checkProbeRegistry(ctx) {
   };
 }
 
+// ---- 2k. political-economy table (P1) ----------------------------------------
+// data/polecon.js 是「经济 → 政治」唯一的参数来源。它有两个会让机制**静默失效**
+// 的坏法：期望锚缺一国（该国永远算不出落差，也就永远没有政治后果），
+// 或者归咎映射指向一个拼错的字段名（账单写进虚空）。两者都必须构建期失败。
+function checkPolEcon(ctx) {
+  const notes = [];
+  const problems = [];
+  const PC = ctx.data.W1980_POLECON;
+  if (!PC) return { problems: ['polecon.js: 未定义 W1980_POLECON'], notes };
+  const ANCHOR = PC.ANCHOR, BLAME = PC.BLAME;
+  if (!ANCHOR || typeof ANCHOR !== 'object') return { problems: ['polecon.js: ANCHOR 必须是对象'], notes };
+  if (!BLAME || typeof BLAME !== 'object') return { problems: ['polecon.js: BLAME 必须是对象'], notes };
+  const ents = ctx.entities;
+  const missingAnchor = ents.filter((k) => !ANCHOR[k]);
+  if (missingAnchor.length) {
+    problems.push(`polecon.js: ANCHOR 缺少实体 ${missingAnchor.join(', ')}（该国永远算不出落差）`);
+  }
+  // BLAME 允许靠 DEFAULT 兜底：47 个通用国家的内政对象字段完全相同
+  // （stability/unrest/legitimacy/sanctionStrain），给它们各写一行只会是
+  // 54 份一模一样的拷贝。真正必须保证的是「兜底存在」且「显式行不指向假实体」。
+  if (!BLAME.DEFAULT) problems.push('polecon.js: BLAME 缺少 DEFAULT 兜底行（47 个通用国家会没有落点）');
+  const blameCovered = ents.filter((k) => !BLAME[k] && !BLAME.DEFAULT);
+  if (blameCovered.length) {
+    problems.push(`polecon.js: BLAME 既无显式行也无 DEFAULT，实体无处落账：${blameCovered.join(', ')}`);
+  }
+  for (const k of Object.keys(ANCHOR)) {
+    if (k !== 'DEFAULT' && ents.indexOf(k) < 0) {
+      problems.push(`polecon.js: ANCHOR.${k} 不是实体键`);
+      continue;
+    }
+    const row = ANCHOR[k];
+    if (!Array.isArray(row) || row.length !== 2) {
+      problems.push(`polecon.js: ANCHOR.${k} 必须是 [史实均值, 史实标准差]`);
+      continue;
+    }
+    if (typeof row[0] !== 'number' || !isFinite(row[0])) {
+      problems.push(`polecon.js: ANCHOR.${k}[0] 必须是有限数`);
+    }
+    if (typeof row[1] !== 'number' || !isFinite(row[1]) || !(row[1] > 0)) {
+      problems.push(`polecon.js: ANCHOR.${k}[1] 必须是正数（标准差作 z 的分母）`);
+    }
+  }
+  if (!ANCHOR.DEFAULT) problems.push('polecon.js: ANCHOR 缺少 DEFAULT 兜底行');
+  let fields = 0;
+  for (const k of Object.keys(BLAME)) {
+    if (k !== 'DEFAULT' && ents.indexOf(k) < 0) {
+      problems.push(`polecon.js: BLAME.${k} 不是实体键`);
+      continue;
+    }
+    const row = BLAME[k];
+    if (!row || typeof row !== 'object') {
+      problems.push(`polecon.js: BLAME.${k} 必须是对象`);
+      continue;
+    }
+    for (const side of ['down', 'up']) {
+      if (!Array.isArray(row[side])) {
+        problems.push(`polecon.js: BLAME.${k}.${side} 必须是数组`);
+        continue;
+      }
+      for (const f of row[side]) {
+        if (typeof f !== 'string' || !f) {
+          problems.push(`polecon.js: BLAME.${k}.${side} 含非字符串项`);
+          continue;
+        }
+        fields++;
+      }
+    }
+    if (!Array.isArray(row.down) || !row.down.length) {
+      problems.push(`polecon.js: BLAME.${k}.down 不能为空（坏账必须有落点）`);
+    }
+  }
+  // 阈值必须自洽：坏阈值为负、好阈值为正、两者不能交叉
+  if (!(typeof PC.Z_BAD === 'number' && PC.Z_BAD < 0)) problems.push('polecon.js: Z_BAD 必须是负数');
+  if (!(typeof PC.Z_GOOD === 'number' && PC.Z_GOOD > 0)) problems.push('polecon.js: Z_GOOD 必须是正数');
+  if (!(typeof PC.PERSIST === 'number' && PC.PERSIST >= 1)) problems.push('polecon.js: PERSIST 必须是 >=1 的整数');
+  if (!(typeof PC.ANCHOR_ADAPT === 'number' && PC.ANCHOR_ADAPT > 0 && PC.ANCHOR_ADAPT <= 1)) {
+    problems.push('polecon.js: ANCHOR_ADAPT 必须落在 (0, 1]');
+  }
+  // 回拉比例必须是正数：为 0 时锚会被任意幅度的崩塌拖走（一次性刺激能买永久红利）
+  if (!(typeof PC.ANCHOR_REVERT === 'number' && PC.ANCHOR_REVERT > 0 && PC.ANCHOR_REVERT <= 1)) {
+    problems.push('polecon.js: ANCHOR_REVERT 必须落在 (0, 1]（0 会让期望锚被任意崩塌拖走）');
+  }
+  // 拉向目标的两个速率必须落在 (0, 1]：0 → 动荡永不变化（机制变装饰），
+  // > 1 → 过冲振荡（数值炸开）。
+  for (const k of ['UNREST_PULL_UP', 'UNREST_PULL_DOWN']) {
+    if (!(typeof PC[k] === 'number' && PC[k] > 0 && PC[k] <= 1)) {
+      problems.push(`polecon.js: ${k} 必须落在 (0, 1]`);
+    }
+  }
+  // 动荡目标必须有正的跨度，否则「严重程度」不改变任何东西
+  for (const k of ['UNREST_TARGET_BAD_SPAN', 'UNREST_TARGET_BOP_SPAN']) {
+    if (!(typeof PC[k] === 'number' && PC[k] > 0)) problems.push(`polecon.js: ${k} 必须是正数`);
+  }
+  if (!(typeof PC.RESERVE_GDP_SHARE === 'number' && PC.RESERVE_GDP_SHARE > 0)) {
+    problems.push('polecon.js: RESERVE_GDP_SHARE 必须是正数（0 会让小额逆差也算危机）');
+  }
+  if (!(typeof PC.RESERVE_CRIT_MONTHS === 'number' && typeof PC.RESERVE_WARN_MONTHS === 'number' &&
+    PC.RESERVE_CRIT_MONTHS < PC.RESERVE_WARN_MONTHS)) {
+    problems.push('polecon.js: 必须 RESERVE_CRIT_MONTHS < RESERVE_WARN_MONTHS');
+  }
+  notes.push(`polecon: ${Object.keys(ANCHOR).length} anchors, ${Object.keys(BLAME).length} blame rows, `
+    + `${fields} blame fields, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { anchors: Object.keys(ANCHOR).length, blameFields: fields } };
+}
+
+// ---- 2l. bundle hygiene: size budget + generated-record schema ---------------
+// The shipped `out/` tree is the product. Two things rot silently there:
+//   1. size — every phase adds bytes, and nothing notices until the Pages artifact
+//      gets slow to download on a phone;
+//   2. generated-record bloat — the province table is produced by the export
+//      pipeline, so a field that NOTHING reads (historically `px` and the
+//      redundant `id`) can ride along for years: 2998 copies each, ~58 kB of
+//      pure dead weight that no test ever sees.
+// Both are enforced here so the next export cannot quietly reintroduce them.
+const BUNDLE_BUDGET_MIB = 3.2;
+// The complete set of fields a province record may carry. Anything else is
+// either dead weight or a new field that must be declared (and consumed) on
+// purpose — both deserve a build-time decision rather than silent drift.
+const PROVINCE_FIELDS = ['polity', 'area_km2', 'cx', 'cy', 'bbox', 'name'];
+
+function dirSizeBytes(dir) {
+  const fs = require('fs');
+  const path = require('path');
+  let total = 0;
+  for (const name of fs.readdirSync(dir)) {
+    const p = path.join(dir, name);
+    const st = fs.statSync(p);
+    total += st.isDirectory() ? dirSizeBytes(p) : st.size;
+  }
+  return total;
+}
+
+function checkBundleHygiene(ctx) {
+  const notes = [];
+  const problems = [];
+  const fs = require('fs');
+
+  // (1) every shipped province record must stay inside the declared schema
+  const PM = ctx.data.W1980_PROVINCES || {};
+  const allowed = new Set(PROVINCE_FIELDS);
+  const offenders = {};
+  for (const pid of Object.keys(PM)) {
+    for (const f of Object.keys(PM[pid] || {})) {
+      if (!allowed.has(f)) offenders[f] = (offenders[f] || 0) + 1;
+    }
+  }
+  for (const f of Object.keys(offenders)) {
+    problems.push(`provinces.js: 字段 "${f}" 出现在 ${offenders[f]} 条记录里，`
+      + `但没有任何运行时代码读取它（允许的字段：${PROVINCE_FIELDS.join(', ')}）`);
+  }
+  for (const f of PROVINCE_FIELDS) {
+    let missing = 0;
+    for (const pid of Object.keys(PM)) if (!(f in (PM[pid] || {}))) missing++;
+    if (missing) problems.push(`provinces.js: ${missing} 条记录缺少字段 "${f}"`);
+  }
+
+  // (2) shipped size budget
+  if (ctx.outDir && fs.existsSync(ctx.outDir)) {
+    const bytes = dirSizeBytes(ctx.outDir);
+    const mib = bytes / (1024 * 1024);
+    notes.push(`bundle: ${mib.toFixed(3)} MiB (${bytes} bytes), budget ${BUNDLE_BUDGET_MIB} MiB`);
+    if (mib > BUNDLE_BUDGET_MIB) {
+      problems.push(`out/: ${mib.toFixed(3)} MiB 超出 ${BUNDLE_BUDGET_MIB} MiB 预算`
+        + `（多 ${(bytes - BUNDLE_BUDGET_MIB * 1024 * 1024).toFixed(0)} 字节）`);
+    }
+    return { problems, notes, stats: { bundleBytes: bytes, bundleMib: +mib.toFixed(3) } };
+  }
+  notes.push('bundle: 跳过体积检查（ctx.outDir 不存在）');
+  return { problems, notes };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -516,6 +687,8 @@ const CHECKS = [
   { id: 'effectVocabulary', label: '效果词表', run: checkEffectVocabulary },
   { id: 'strategicObjectives', label: 'AI 主动战略目标外键', run: checkStrategicObjectives },
   { id: 'probeRegistry', label: '探针注册表自洽', run: checkProbeRegistry },
+  { id: 'polEcon', label: '政治经济学表（经济→政治）', run: checkPolEcon },
+  { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
 
@@ -535,6 +708,10 @@ module.exports = {
   checkEffectVocabulary,
   checkStrategicObjectives,
   checkProbeRegistry,
+  checkPolEcon,
+  checkBundleHygiene,
+  PROVINCE_FIELDS,
+  BUNDLE_BUDGET_MIB,
   probeParamToken,
   checkAgendaConditions,
   collectEffectSites,

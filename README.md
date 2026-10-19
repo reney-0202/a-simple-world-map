@@ -183,7 +183,7 @@ python tools/probe_runner.py run out tools/baseline-probes.json
 
 ## 发布包体积
 
-`out/` 就是发布包（Pages 上传的 artifact 就是这个目录），当前约 **3.13 MiB**，目标上限 3.2 MiB。
+`out/` 就是发布包（Pages 上传的 artifact 就是这个目录），当前约 **3.18 MiB**，上限 3.2 MiB。
 压缩只在**不改变运行时可见结果**的前提下做，每一项都实测过：
 
 | 资源 | 处理 | 依据 |
@@ -196,12 +196,14 @@ python tools/probe_runner.py run out tools/baseline-probes.json
 `data/province_id.png`（337 KB，最大单文件）**不动**：它的 2999 个 ID 装不进 256 色调色板，
 而它的解码结果有 `nonzero` / `idSum` 校验，改动风险高于收益。
 
-`data/provinces.js` 里从未被读取的 `has_capital` 字段已删除（−59,827 B）；
-界面上的首都金星走 `data/countries.js` 的 `capital_px`，与省份表无关。
+`data/provinces.js` 里从未被读取的字段已删除：`has_capital`（−59,827 B，界面首都金星走
+`data/countries.js` 的 `capital_px`），以及 P0 时清理的 `px`（2998 条 × 约 9 B）与冗余
+`id`（键本身就是 id）—— 后两项合计 −58,158 B，全部 26 个探针逐位不变（含地图签名哈希）。
 
-**体积策略已冻结**：`out/` 磁盘体积 ≤ 3.2 MiB 仅作为回归护栏，不再作为优化目标 ——
-调色板与缩图已把图片榨干，剩余两个候选方向（`province_id.png` 拆分双 8 位 / 改 16 位灰度）
-实测分别为负收益与「只值 22 KB 却要动栅格解码路径」。详见 `docs/ROADMAP.md`。
+**这道护栏现在是自动的**：`tools/validate/checks.js` 的 `checkBundleHygiene` 在 CI 里
+① 断言 `out/` ≤ 3.2 MiB，② 断言每条省份记录只携带 `PROVINCE_FIELDS` 声明的六个字段。
+第二条尤其重要 —— 省份表是导出管线生成的，一个没人读的字段可以随 2998 条记录静默漂很久，
+任何测试都看不见（`px` / `id` 就是这么活下来的）。新增字段必须是一次**有意识的**改动。
 
 **验收方式**：任何资源改动后跑一遍
 
@@ -256,6 +258,8 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **M** | 卫生与闸门 | ✅ | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；议程门控词表 `data/agenda-conditions.js`；断言塌缩自动门 |
 | **N** | 契约一致性 | ✅ | 议程完成回馈改为数据声明式 `onComplete`（引擎不再按国家/议程 id 分支）；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约） |
 | **O** | 平台与生成物 | ✅ | PWA 深链注册修复（`?player=SUN` 恢复离线能力，探针仍不注册）；`sw.js` 预缓存清单由 `tools/sw_manifest.js` 生成 + CI 校验 |
+| **P0** | 基线分层 | ✅ | 探针按语义分成 `history`（3，史实轨迹，CI **硬门**）与 `mechanics`（23，机制，差异需解释）；发布包死字段清理（`px` + 冗余 `id`，−58 kB）+ 体积/生成记录字段自动门 |
+| **P1** | 账单到期（经济 → 政治） | ✅ | 全游戏第一条**双向**边：增长相对**国民预期**的落差 → 执政路线被问责 → 动荡 → 施政拖累。`data/polecon.js`（54 实体史实锚）+ `app/07d-polecon.js`；修 `growthOf` 单位 bug（`0.025` 实为 0.025%）；26 个探针 / 913 条断言 |
 
 后续如需继续，方向见 `docs/ROADMAP.md` 末尾的「后续可选方向」。
 

@@ -208,6 +208,11 @@ function updateDomesticPolitics(y, m, silent) {
   updatePostureDrift();
   updatePoliticalCapital();
   updateMonthlyDirectives(y, m);
+  // P1（账单到期）：经济表现以「与国民预期的落差」的形式回到内政天平上。
+  // 放在最后是刻意的 —— 账单是当月政治结算的最后一句话，且它写的是
+  // 上面几个推进器刚算完的字段（unrest / 派系 / 支持率）。
+  // 无执政者（旁观 / 史实探针）时它立刻返回，轨迹一字不变。
+  updatePoliticalEconomy(y, m, silent);
 }
 
 // G（收尾评审）：updateDomesticPolitics 的「苏联：政治局权力天平与短缺经济演进」块抽为独立推进器（原样搬运，无逻辑改动）
@@ -292,8 +297,14 @@ function updateDomesticUsa(dom, y, m, silent) {
     }
 
     // 经济增速强劲回补民调与国会支持
+    // P1：这里原写 `gUSA > 0.025`，而 growthOf 返回的是**百分数**（02-sim.js:55
+    // `(cur/prev-1)*100`），所以那个阈值其实是 0.025% —— 叠加实际年化 σ≈0.87pp，
+    // 条件几乎每月为真，国会支持率无条件 +0.30。这是全游戏唯一一条「经济→政治」
+    // 的边，而它是个恒真判断。此处改为 2.5%（2.5pp/年），是有意改变行为，不是漂移。
+    // 注意它与 P1 的 polEcon 是两个不同的信号：这里是**绝对**增速水平，
+    // polEcon 是相对国民预期的**落差**（谁都会习惯好年景，但没人会习惯低增速）。
     const gUSA = growthOf(entKeys("USA"));
-    if (gUSA !== null && gUSA > 0.025) {
+    if (gUSA !== null && gUSA > 2.5) {
       usa.congressApproval = clamp(usa.congressApproval + 0.30, 15, 90);
       usa.presidentialApproval = clamp(usa.presidentialApproval + 0.35, 15, 95);
     }
@@ -795,7 +806,9 @@ function refreshDomesticBox(selKey) {
 
   // L（参与感）：执政国面板顶部统一插入「政治资本」预算条 —— 只加一次，
   // 无需改动 8 个分支构建器；非执政国不显示（资本只属于玩家）。
-  if (isMine) h = domesticCapitalHtml() + h;
+  // P1：紧随其后插入「经济账单」条 —— 落差与储备必须随时可见，
+  // 不可见的机制等于不存在的机制。
+  if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + h;
 
   box.innerHTML = h;
 

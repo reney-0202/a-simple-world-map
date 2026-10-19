@@ -1,17 +1,18 @@
 {
  "selftest": {
   "marker": "SELFTEST",
+  "class": "history",
   "result": {
    "errors": [],
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 76,
-    "pop": 81,
-    "ind": 79,
-    "province": 67,
-    "delta": 65,
-    "resource": 70
+    "bloc": 59,
+    "pop": 56,
+    "ind": 55,
+    "province": 56,
+    "delta": 74,
+    "resource": 80
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,12 +29,13 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1786
+   "totalMs": 1629
   },
   "failed": false
  },
  "simprobe": {
   "marker": "SIMPROBE",
+  "class": "history",
   "result": {
    "ready": true,
    "y0": 1980,
@@ -121,6 +123,7 @@
  },
  "saveprobe": {
   "marker": "SAVEPROBE",
+  "class": "mechanics",
   "result": {
    "savedDate": "1985-6",
    "player": "SUN",
@@ -140,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 140427,
+   "saveBytes": 140710,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -163,7 +166,30 @@
     }
    ],
    "crDenyAfterLoad": [],
-   "pmodSUNAfter": -8,
+   "pmodSUNAfter": -8.091230227618187,
+   "__polecon": {
+    "player": "SUN",
+    "actual": -7.408,
+    "expect": -4.715,
+    "surprise": -2.693,
+    "z": -4.081,
+    "bad": 54,
+    "good": 0,
+    "reserveMonths": null,
+    "lastBill": "bad",
+    "bills": 1,
+    "badBills": 1,
+    "goodBills": 0,
+    "bopAlerts": 0,
+    "anchor": -4.76,
+    "unrest": 48.25,
+    "touched": [
+     "conservative"
+    ]
+   },
+   "__unrestSUN": 48.25,
+   "__shortageSUN": 54.4,
+   "__billsSUN": "bad",
    "histLenAfterLoad": 66,
    "evLogAfterLoad": [
     "iran_iraq_war",
@@ -206,6 +232,7 @@
  },
  "endprobe": {
   "marker": "ENDPROBE",
+  "class": "history",
   "result": {
    "shown": true,
    "date": "1991-12",
@@ -228,6 +255,7 @@
  },
  "sanprobe": {
   "marker": "SANPROBE",
+  "class": "mechanics",
   "result": {
    "player": "SUN",
    "mil": 3.5,
@@ -254,6 +282,7 @@
  },
  "decprobe": {
   "marker": "DECPROBE",
+  "class": "mechanics",
   "result": {
    "player": "USA",
    "mil": 0,
@@ -281,6 +310,7 @@
  },
  "blocprobe": {
   "marker": "BLOCPROBE",
+  "class": "mechanics",
   "result": {
    "blocReq": "WP",
    "valid": true,
@@ -306,8 +336,8 @@
    "c2Friction": -1,
    "c2PmodMatch": true,
    "c2EffectOk": true,
-   "shareTargetWith": 17.574,
-   "shareOrigWith": 22.589,
+   "shareTargetWith": 17.554,
+   "shareOrigWith": 22.595,
    "shareTargetBase": 10.966,
    "shareOrigBase": 29.338,
    "shareShifted": true,
@@ -321,6 +351,7 @@
  },
  "flprobe": {
   "marker": "FLPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -356,6 +387,7 @@
  },
  "warprobe": {
   "marker": "WARPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -412,6 +444,7 @@
  },
  "resprobe": {
   "marker": "RESPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -437,6 +470,7 @@
  },
  "tradeprobe": {
   "marker": "TRADEPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -473,6 +507,7 @@
  },
  "embargo": {
   "marker": "EMBARGOPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -518,6 +553,7 @@
  },
  "aiprobe": {
   "marker": "AIPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "checks": {
@@ -570,6 +606,7 @@
  },
  "summitprobe": {
   "marker": "SUMMITPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "assertCount": 30,
@@ -613,6 +650,7 @@
  },
  "unscprobe": {
   "marker": "UNSCPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "assertCount": 34,
@@ -660,6 +698,7 @@
  },
  "panelprobe": {
   "marker": "PANELPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -686,6 +725,7 @@
  },
  "newsprobe": {
   "marker": "NEWSPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -713,6 +753,7 @@
  },
  "chronicle": {
   "marker": "CHRONICLEPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -745,6 +786,7 @@
  },
  "domestic": {
   "marker": "DOMESTICPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -906,6 +948,7 @@
  },
  "agenda": {
   "marker": "AGENDAPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -997,6 +1040,7 @@
  },
  "crisis": {
   "marker": "CRISISPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -1043,6 +1087,7 @@
  },
  "intel": {
   "marker": "INTELPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -1084,6 +1129,7 @@
  },
  "afghan": {
   "marker": "AFGHANPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -1126,8 +1172,72 @@
   },
   "failed": false
  },
+ "polecon": {
+  "marker": "POLECONPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "anchorCoversEveryEntity": "PASS",
+    "anchorHasDefault": "PASS",
+    "anchorRowsWellFormed": "PASS",
+    "blameCoversEveryEntity": "PASS",
+    "blameHasDefault": "PASS",
+    "blameFieldsExistOnDomesticState": "PASS",
+    "spectatorNoBill": "PASS",
+    "spectatorStateUntouched": "PASS",
+    "noHistoryNoBill": "PASS",
+    "noHistoryNoEvents": "PASS",
+    "historyBuilt": "PASS",
+    "growthAvailable": "PASS",
+    "noRngConsumed": "PASS",
+    "snapshotReturned": "PASS",
+    "actualMatchesGrowthOf": "PASS",
+    "surpriseIsActualMinusExpect": "PASS",
+    "zIsStandardized": "PASS",
+    "reserveMonthsConsistentWithFlows": "PASS",
+    "reserveMaterialityGate": "PASS",
+    "badStreakCounts": "PASS",
+    "badBillRecorded": "PASS",
+    "badBillBlamesIncumbent": "PASS",
+    "badBillLiftsAlternative": "PASS",
+    "badBillRaisesUnrest": "PASS",
+    "badBillOnlyOnce": "PASS",
+    "badBillPersists": "PASS",
+    "goodStreakCounts": "PASS",
+    "goodBillRecorded": "PASS",
+    "goodBillCreditsIncumbent": "PASS",
+    "goodBillLowersUnrest": "PASS",
+    "anchorAdapts": "PASS",
+    "anchorAdaptStep": "PASS",
+    "anchorRevertsTowardHistory": "PASS",
+    "debtorFoundWithMaterialOutflow": "PASS",
+    "reserveMonthsFiniteForDebtor": "PASS",
+    "bopAlertRecorded": "PASS",
+    "bopAlertReachesInbox": "PASS",
+    "bopAlertCooldown": "PASS",
+    "bopRaisesUnrest": "PASS",
+    "bopUnrestSelfLimiting": "PASS",
+    "blameDiffersByCountry": "PASS",
+    "sanitizeRoundTripKeepsEvents": "PASS",
+    "sanitizeRoundTripKeepsAnchor": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNoNaNAnywhere": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "noPmodWrites": "PASS",
+    "noGdpWrites": "PASS",
+    "panelRenders": "PASS",
+    "panelShowsNumbers": "PASS"
+   }
+  },
+  "failed": false
+ },
  "soundprobe": {
   "marker": "SOUNDPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
@@ -1174,6 +1284,7 @@
  },
  "assetsprobe": {
   "marker": "ASSETSPROBE",
+  "class": "mechanics",
   "result": {
    "pass": true,
    "errors": [],
