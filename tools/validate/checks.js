@@ -564,7 +564,12 @@ function checkPolEcon(ctx) {
 //      redundant `id`) can ride along for years: 2998 copies each, ~58 kB of
 //      pure dead weight that no test ever sees.
 // Both are enforced here so the next export cannot quietly reintroduce them.
-const BUNDLE_BUDGET_MIB = 3.2;
+// Bundle budget = current size + ~10% headroom. Its job is to catch ACCIDENTAL
+// bloat (an unoptimised image, a duplicated data file), not to ration features:
+// a gate that trips on every deliberate addition is a gate people learn to skip.
+// Phase F (prestige race) grew the tree by ~30 kB, a whole subsystem, so the
+// budget moved 3.2 -> 3.5 MiB in the same commit that added it.
+const BUNDLE_BUDGET_MIB = 3.5;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
@@ -634,6 +639,92 @@ function checkBundleHygiene(ctx) {
   }
   notes.push('bundle: 跳过体积检查（ctx.outDir 不存在）');
   return { problems, notes };
+}
+
+// ---- 2m. prestige race table (F) ---------------------------------------------
+// data/prestige.js 是「位置性威望」的唯一参数来源。它的坏法有两种，且都会静默失真：
+//   · 里程碑写错主人/年份 → 史实梯子不再对应历史，竞赛变成随机噪声；
+//   · 工程缺 cost/drag/gain → 要么白送威望（无取舍），要么白扣资源（纯惩罚）。
+// 两者都必须构建期失败。
+function checkPrestige(ctx) {
+  const notes = [];
+  const problems = [];
+  const PR = ctx.data.W1980_PRESTIGE;
+  if (!PR) return { problems: ['prestige.js: 未定义 W1980_PRESTIGE'], notes };
+  const MS = PR.MILESTONES, PG = PR.PROGRAMS, P = PR.PARAMS;
+  if (!Array.isArray(MS) || !MS.length) return { problems: ['prestige.js: MILESTONES 必须是非空数组'], notes };
+  if (!PG || typeof PG !== 'object' || !Object.keys(PG).length) {
+    return { problems: ['prestige.js: PROGRAMS 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['prestige.js: PARAMS 缺失'], notes };
+
+  const seen = {};
+  let pos = 0, neg = 0;
+  for (const m of MS) {
+    const tag = `prestige.js: 里程碑 ${m && m.id ? m.id : '(无 id)'}`;
+    if (!m || typeof m.id !== 'string' || !m.id) { problems.push('prestige.js: 里程碑缺 id'); continue; }
+    if (seen[m.id]) problems.push(`${tag} 的 id 重复`);
+    seen[m.id] = true;
+    if (typeof m.y !== 'number' || m.y < 1980 || m.y > 1991) problems.push(`${tag} 的年份必须在 1980..1991`);
+    if (typeof m.m !== 'number' || m.m < 1 || m.m > 12) problems.push(`${tag} 的月份必须在 1..12`);
+    if (typeof m.gain !== 'number' || !isFinite(m.gain)) problems.push(`${tag} 的 gain 必须是有限数`);
+    if (!m.zh) problems.push(`${tag} 缺 zh`);
+    if (m.owner !== 'BOTH' && !ctx.resolves(m.owner)) problems.push(`${tag} 的 owner "${m.owner}" 不可解析`);
+    if (m.rival && !ctx.resolves(m.rival)) problems.push(`${tag} 的 rival "${m.rival}" 不可解析`);
+    if (m.owner !== 'BOTH' && m.rival === m.owner) problems.push(`${tag} 的 rival 不能等于 owner`);
+    if (typeof m.gain === 'number') { if (m.gain > 0) pos++; else if (m.gain < 0) neg++; }
+    if (m.rivalLoss !== undefined && (typeof m.rivalLoss !== 'number' || m.rivalLoss < 0)) {
+      problems.push(`${tag} 的 rivalLoss 必须是非负数`);
+    }
+  }
+  // 一份只有正分的梯子不是竞赛，是一张成绩单
+  if (!pos) problems.push('prestige.js: 里程碑里没有任何得分事件（竞赛必须有赢的一面）');
+  if (!neg) problems.push('prestige.js: 里程碑里没有任何丢分事件（竞赛必须有输的一面）');
+
+  let costed = 0;
+  for (const id of Object.keys(PG)) {
+    const d = PG[id] || {};
+    const tag = `prestige.js: 工程 ${id}`;
+    if (!d.zh) problems.push(`${tag} 缺 zh`);
+    if (typeof d.cost !== 'number' || !(d.cost > 0)) problems.push(`${tag} 的 cost 必须是正数（否则白送）`);
+    if (typeof d.drag !== 'number' || !(d.drag > 0)) problems.push(`${tag} 的 drag 必须是正数（否则没有机会成本）`);
+    if (typeof d.gain !== 'number' || !(d.gain > 0)) problems.push(`${tag} 的 gain 必须是正数`);
+    if (typeof d.risk !== 'number' || d.risk < 0 || d.risk > 1) problems.push(`${tag} 的 risk 必须落在 [0,1]`);
+    if (typeof d.failLoss !== 'number' || !(d.failLoss > 0)) problems.push(`${tag} 的 failLoss 必须是正数`);
+    if (typeof d.cost === 'number' && typeof d.drag === 'number' && d.cost > 0 && d.drag > 0) costed++;
+  }
+  if (costed !== Object.keys(PG).length) {
+    problems.push(`prestige.js: ${Object.keys(PG).length - costed} 项工程缺 cost/drag —— 「取舍」不成立`);
+  }
+
+  // 参数自洽
+  if (!(typeof P.MAX_ACTIVE === 'number' && P.MAX_ACTIVE >= 1 && P.MAX_ACTIVE < Object.keys(PG).length)) {
+    problems.push('prestige.js: MAX_ACTIVE 必须 >=1 且严格小于工程总数（否则没有取舍）');
+  }
+  if (!(typeof P.DECAY === 'number' && P.DECAY > 0 && P.DECAY <= 1)) {
+    problems.push('prestige.js: DECAY 必须落在 (0,1]（0 会让威望永不衰减）');
+  }
+  if (!(typeof P.SCORE_START === 'number' && P.SCORE_START >= P.SCORE_MIN && P.SCORE_START <= P.SCORE_MAX)) {
+    problems.push('prestige.js: SCORE_START 必须落在 [SCORE_MIN, SCORE_MAX]');
+  }
+  if (!(typeof P.DRIFT_GAP === 'number' && P.DRIFT_GAP > 0)) problems.push('prestige.js: DRIFT_GAP 必须是正数');
+  if (!(typeof P.DRIFT_MONTHS === 'number' && P.DRIFT_MONTHS >= 1)) problems.push('prestige.js: DRIFT_MONTHS 必须 >=1');
+  if (!(typeof P.DRIFT_TOTAL === 'number' && P.DRIFT_TOTAL >= 1)) problems.push('prestige.js: DRIFT_TOTAL 必须 >=1');
+  if (!Array.isArray(P.DRIFT_ELIGIBLE) || !P.DRIFT_ELIGIBLE.length) {
+    problems.push('prestige.js: DRIFT_ELIGIBLE 必须是非空数组（漂移候选的阵营）');
+  }
+  for (const k of Object.keys(P.RIVAL || {})) {
+    if (!ctx.resolves(k)) problems.push(`prestige.js: PARAMS.RIVAL 的键 "${k}" 不可解析`);
+    if (!ctx.resolves(P.RIVAL[k])) problems.push(`prestige.js: PARAMS.RIVAL["${k}"] 的值不可解析`);
+    if (P.RIVAL[k] === k) problems.push(`prestige.js: PARAMS.RIVAL["${k}"] 不能指向自己`);
+  }
+  for (const b of Object.keys(P.BLOC_LEADER || {})) {
+    if (!ctx.resolves(P.BLOC_LEADER[b])) problems.push(`prestige.js: BLOC_LEADER["${b}"] 不可解析`);
+  }
+
+  notes.push(`prestige: ${MS.length} milestones (${pos}+ / ${neg}-), ${Object.keys(PG).length} programs, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { milestones: MS.length, programs: Object.keys(PG).length } };
 }
 
 // ---- 2j. agenda condition vocabulary -----------------------------------------
@@ -724,6 +815,7 @@ const CHECKS = [
   { id: 'strategicObjectives', label: 'AI 主动战略目标外键', run: checkStrategicObjectives },
   { id: 'probeRegistry', label: '探针注册表自洽', run: checkProbeRegistry },
   { id: 'polEcon', label: '政治经济学表（经济→政治）', run: checkPolEcon },
+  { id: 'prestige', label: '威望竞赛表（位置性威望）', run: checkPrestige },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -745,6 +837,7 @@ module.exports = {
   checkStrategicObjectives,
   checkProbeRegistry,
   checkPolEcon,
+  checkPrestige,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

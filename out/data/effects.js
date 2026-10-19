@@ -33,6 +33,7 @@
     stabilityBonus: { group: "crisis", type: "number", target: "ST.domestic.generals[*].stability（通用实体）；七大国为 *.unrest -= 值×0.4", zh: "次极大国政局稳定度加成" },
     cocomStrict: { group: "crisis", type: "boolean", target: "ST.cocom.strict", zh: "巴统极严格出口管制开关" },
     defconRisk: { group: "crisis", type: "number", target: "展示用（核威慑时钟）", zh: "核威慑风险读数" },
+    prestigeDelta: { group: "crisis", type: "number", target: "ST.prestige.scores[玩家]（F：威望竞赛）", zh: "危机抉择对威望的即时影响" },
     natoCohesion: { group: "crisis", type: "number", target: "展示用（阵营凝聚）", zh: "北约凝聚力" },
     middleEastTension: { group: "crisis", type: "number", target: "展示用（地区张力）", zh: "中东局势张力" },
     gbrPopularity: { group: "crisis", type: "number", target: "展示用", zh: "英国国内民意" },

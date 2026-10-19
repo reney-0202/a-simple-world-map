@@ -91,6 +91,21 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_PRESTIGE: {
+      MILESTONES: [
+        { id: 'm1', y: 1981, m: 4, owner: 'AAA', gain: 8, rival: 'BBB', rivalLoss: 2, zh: 'x' },
+        { id: 'm2', y: 1986, m: 4, owner: 'BBB', gain: -9, zh: 'y' },
+      ],
+      PROGRAMS: {
+        p1: { zh: 'p', cost: 10, drag: 0.1, gain: 0.5, risk: 0.01, failLoss: 2 },
+        p2: { zh: 'q', cost: 20, drag: 0.3, gain: 1.1, risk: 0.02, failLoss: 6 },
+      },
+      PARAMS: {
+        SCORE_MIN: 0, SCORE_MAX: 100, SCORE_START: 50, DECAY: 0.025, MAX_ACTIVE: 1,
+        RIVAL: { AAA: 'BBB' }, BLOC_LEADER: { NATO: 'AAA' },
+        DRIFT_GAP: 12, DRIFT_MONTHS: 6, DRIFT_TOTAL: 6, DRIFT_ELIGIBLE: ['NA'],
+      },
+    },
     W1980_POLECON: {
       ANCHOR: { AAA: [2.0, 1.0], BBB: [3.0, 1.2], CCC: [1.5, 0.8], DEFAULT: [2.0, 1.0] },
       BLAME: {
@@ -621,7 +636,10 @@ test('the size budget is enforced, not just reported', () => {
     const n = Math.ceil(checks.BUNDLE_BUDGET_MIB) + 1;
     for (let i = 0; i < n; i++) fs.writeFileSync(path.join(tmp, 'chunk' + i + '.bin'), chunk);
     const p = checks.checkBundleHygiene(makeCtx(withProvinces(GOOD_PROVINCE), { outDir: tmp })).problems;
-    assert.ok(p.some((x) => /超出 3\.2 MiB 预算/.test(x)), '应报出超预算：' + p.join(' | '));
+    // 断言用的是导出的常量本身 —— 否则每次调预算都要改测试，测试就会变成
+    // 「跟着实现走」的空转检查，而不是在验证预算真的被执行。
+    const want = new RegExp('超出 ' + checks.BUNDLE_BUDGET_MIB + ' MiB 预算');
+    assert.ok(p.some((x) => want.test(x)), '应报出超预算（' + want + '）：' + p.join(' | '));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -630,6 +648,79 @@ test('a missing outDir skips the size check instead of throwing', () => {
   const r = checks.checkBundleHygiene(makeCtx(withProvinces(GOOD_PROVINCE), { outDir: path.join(__dirname, 'no-such-dir') }));
   assert.deepStrictEqual(r.problems, []);
   assert.ok(r.notes.some((n) => /跳过体积检查/.test(n)));
+});
+
+// ---- 8g. prestige race table (F) ---------------------------------------------
+// The prestige ladder is only a competition if it has both winning and losing
+// movements, both superpowers, and programmes that actually cost something.
+// Every one of those is a way for the mechanic to quietly become decoration.
+section('checkPrestige');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkPrestige(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_PRESTIGE;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /未定义 W1980_PRESTIGE/);
+});
+test('a ladder with only gains is not a competition', () => {
+  const d = cleanData();
+  d.W1980_PRESTIGE.MILESTONES = [{ id: 'm1', y: 1981, m: 4, owner: 'AAA', gain: 8, zh: 'x' }];
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /没有任何丢分事件/);
+});
+test('a ladder with only losses is rejected too', () => {
+  const d = cleanData();
+  d.W1980_PRESTIGE.MILESTONES = [{ id: 'm1', y: 1981, m: 4, owner: 'AAA', gain: -8, zh: 'x' }];
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /没有任何得分事件/);
+});
+test('a milestone outside 1980..1991 is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.MILESTONES[0].y = 1999;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /年份必须在 1980\.\.1991/);
+});
+test('a duplicate milestone id is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.MILESTONES[1].id = 'm1';
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /id 重复/);
+});
+test('an unresolvable milestone owner is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.MILESTONES[0].owner = 'ZZZ';
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /owner "ZZZ" 不可解析/);
+});
+test('a rival equal to the owner is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.MILESTONES[0].rival = 'AAA';
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /rival 不能等于 owner/);
+});
+test('a programme with no cost is caught', () => {
+  // Free prestige would make the whole axis a no-brainer.
+  const d = cleanData(); d.W1980_PRESTIGE.PROGRAMS.p1.cost = 0;
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /工程 p1 的 cost 必须是正数/.test(x)), '应报出 cost：' + p.join(' | '));
+});
+test('a programme with no drag is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.PROGRAMS.p2.drag = 0;
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /工程 p2 的 drag 必须是正数/.test(x)), '应报出 drag：' + p.join(' | '));
+});
+test('a risk outside [0,1] is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.PROGRAMS.p1.risk = 2;
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /risk 必须落在 \[0,1\]/.test(x)), '应报出 risk：' + p.join(' | '));
+});
+test('MAX_ACTIVE covering every programme is caught', () => {
+  // If you can run everything at once there is no trade-off to make.
+  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.MAX_ACTIVE = 2;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /MAX_ACTIVE 必须 >=1 且严格小于工程总数/);
+});
+test('a zero decay is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.DECAY = 0;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /DECAY 必须落在 \(0,1\]/);
+});
+test('a rival mapping pointing at itself is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.RIVAL = { AAA: 'AAA' };
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /RIVAL\["AAA"\] 不能指向自己/.test(x)), '应报出自指：' + p.join(' | '));
+});
+test('an empty drift eligibility list is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.DRIFT_ELIGIBLE = [];
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /DRIFT_ELIGIBLE 必须是非空数组/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

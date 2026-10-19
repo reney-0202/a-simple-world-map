@@ -86,6 +86,10 @@ function evRun(y, m, silent) {
   updateMonthlyCrises(y, m, silent);        // R12C：中局突发危机抉择卡与升级阶梯月度检测
   updateMonthlyIntel(y, m, silent);         // R13A：隐蔽行动与全球谍战沙盒月度演进
   updateMonthlyAfghan(y, m, silent);        // R13B：阿富汗战区态势与帝国失血槽月度结算
+  // F（威望竞赛）：史实威望梯子 + 玩家工程 + 第三世界漂移。
+  // 放在最后是刻意的：它读的是上面刚算完的内政字段（动荡/合法性），
+  // 并且它的漂移会改 ST.blocOverride，随后 refreshAIBox/地图重烘会反映出来。
+  updatePrestigeRace(y, m, silent);
   // R10B：历史首脑峰会事件窗口照会通知
   if (isAIActive() && window.W1980_AI && Array.isArray(window.W1980_AI.SUMMIT_PRESETS)) {
     const p = window.W1980_AI.SUMMIT_PRESETS.find((sp) => sp.year === y && sp.month === m);
@@ -305,6 +309,7 @@ function simSave(slot) {
     ai: ST.ai,                                        // R10A：反应式 AI 决策机状态
     domestic: ST.domestic,                            // R12A：内政生态与派系权力天平状态
     polEcon: ST.polEcon ? JSON.parse(JSON.stringify(ST.polEcon)) : null, // P1：经济账单（期望锚/连续计数/已入账）
+    prestige: ST.prestige ? JSON.parse(JSON.stringify(ST.prestige)) : null, // F：威望竞赛（分数/工程/漂移/里程碑）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -469,6 +474,9 @@ function loadSocietyStates(d) {
   // P1：还原经济账单（期望锚 / 连续计数 / 已入账记录）。
   // 旧档缺该项 → 空账单（锚点会在第一次推进时按史实均值补上），无需升版。
   ST.polEcon = sanitizePolEcon(d.polEcon);
+  // F：还原威望竞赛（分数 / 在建工程 / 漂移记录 / 已结算里程碑）。
+  // 旧档缺该项 → 空状态（分数在首次读取时按 SCORE_START 补齐），无需升版。
+  ST.prestige = sanitizePrestigeState(d.prestige);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

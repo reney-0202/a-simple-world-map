@@ -792,6 +792,21 @@ function setTop(k) {
     ge.textContent = growthText(gv);
     ge.style.color = gv === null ? "" : (gv >= 0 ? "#8fd18f" : "#e0a35a");
   }
+  // F（威望竞赛）：顶栏常驻威望读数 —— 位置性计分必须随时可见，
+  // 否则「竞赛」只是一份赛后报告。
+  const pe = $("r-pres");
+  if (pe && typeof prestigeSnapshot === "function") {
+    const ps = prestigeSnapshot();
+    if (!ps) { pe.textContent = "–"; pe.style.color = ""; }
+    else if (ps.player && ps.score !== null) {
+      pe.textContent = ps.score.toFixed(1) + (ps.rivalScore !== null ? " : " + ps.rivalScore.toFixed(1) : "");
+      pe.style.color = ps.gap === null ? "" : (ps.gap >= 0 ? "#8fd18f" : "#e0a35a");
+    } else {
+      // 旁观：显示美苏落差（正 = 苏联领先），这是世界状态的一部分
+      pe.textContent = (ps.superGap >= 0 ? "苏+" : "美+") + Math.abs(ps.superGap).toFixed(1);
+      pe.style.color = "";
+    }
+  }
   $("topbar").classList.toggle("sel", !!k);
 }
 

@@ -247,11 +247,29 @@ function endStats() {
     const G = clamp(G_bloc + G_act, 0, 25);
     const total = E + R + M + G;
 
+    // F（威望竞赛）：威望**不进**满分 100 的评分（那套是物质记分卡，已校准并有文档）。
+    // 它作为独立的「裁决」呈现，并且已经通过真实渠道影响局面：
+    // 领先导致的第三世界漂移直接改变了上面 G_bloc 的阵营份额。
+    let pres = null;
+    if (typeof prestigeSnapshot === "function") {
+      const ps = prestigeSnapshot();
+      if (ps && ps.player) {
+        const rvZh = ps.rival ? ((CM.countries[ps.rival] || {}).zh || ps.rival) : "—";
+        pres = {
+          score: ps.score, rival: rvZh, rivalScore: ps.rivalScore, gap: ps.gap,
+          drifted: ps.drifted, fired: ps.fired, drag: ps.drag,
+          verdict: ps.gap === null ? "无对手" : (ps.gap >= 8 ? "赢得威望竞赛"
+            : ps.gap <= -8 ? "输掉威望竞赛" : "威望大致持平")
+        };
+      }
+    }
+
     out.player = { k: pk, zh: c.zh, mil: ST.mil,
       gdp: v.gdp_bn, gdp0: c.gdp_bn, gdpDelta: c.gdp_bn ? (v.gdp_bn / c.gdp_bn - 1) * 100 : 0,
       pop: v.pop_m, pop0: c.pop_m, popDelta: c.pop_m ? (v.pop_m / c.pop_m - 1) * 100 : 0,
       gSelf: gSelf, gWorld: gWorld, pctl: pctl, rank0: rank0, rank1: rank1, dr: dr,
-      E: E, R: R, M: M, G: G, G_bloc: G_bloc, G_act: G_act, total: total };
+      E: E, R: R, M: M, G: G, G_bloc: G_bloc, G_act: G_act, total: total,
+      prestige: pres };
   }
   return out;
 }
@@ -797,6 +815,18 @@ function renderEnd(st) {
       '<div class="s"><b>' + p.M.toFixed(1) + "</b><span>国防适度 /15</span></div>" +
       '<div class="s"><b>' + p.G.toFixed(1) + "</b><span>地缘战略 /25</span></div></div>" +
       '<div class="tot">总分 <b>' + p.total.toFixed(1) + "</b> / 100</div>";
+    // F（威望竞赛）裁决：独立于物质记分卡呈现 —— 因为它是位置性的，不是累积的。
+    // 但它不是装饰：领先带来的第三世界漂移已经改变了上面 G_bloc 的阵营份额。
+    if (p.prestige) {
+      const pr = p.prestige;
+      const pcol = pr.gap === null ? "" : (pr.gap >= 0 ? "#8fd18f" : "#e0a35a");
+      h += '<div class="note"><b>🏅 威望裁决：' + pr.verdict + "</b>　你的威望 <b style=\"color:" + pcol +
+        '">' + pr.score.toFixed(1) + "</b> vs " + pr.rival + " " + pr.rivalScore.toFixed(1) +
+        "（" + (pr.gap >= 0 ? "+" : "") + pr.gap.toFixed(1) + "）。" +
+        "已结算史实威望事件 " + pr.fired + " 起，第三世界倒向我国 " + pr.drifted + " 国。" +
+        (pr.drag !== 0 ? "在建工程牺牲 GDP 增速 " + pr.drag.toFixed(2) + "pp/年。" : "") +
+        "威望不进满分 100 的物质评分 —— 它是另一把尺子；它的作用通过阵营份额与执政合法性体现。</div>";
+    }
     // R5C'/R6A：对外干预叙事行（含地缘战略分说明）
     if (ST.sanctions.length || ST.aid.length) {
       const yrs = (e, kind) => Math.max(0, curMonthIdx() - (e.since || 0)) / 12;
@@ -946,6 +976,7 @@ function simReset() {
   ST.ai = { enabled: true, decisions: {}, tensions: {}, cables: [], treaties: [], unsc: { passed: [], history: [] } }; // R10A/B/C：重置清空反应式 AI、军控条约与安理会决议
   initDomesticState();                                                                        // R12A：重置内政生态与派系权力天平至 1980 基准
   initPolEcon(true);                                                                         // P1：重置经济账单（期望锚/连续计数/已入账记录）
+  initPrestigeState(true);                                                                   // F：重置威望竞赛（分数/工程/漂移/里程碑）
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initDirectiveState(true);                                                                   // L：重置国家战略指令板

@@ -103,6 +103,13 @@ if (ST.domestic) {
 if (ST.player === "SUN" && ST.afghan && ST.afghan.withdrawn) {
   selfPP += 0.35;
 }
+// F（威望竞赛）：在建工程的机会成本 —— 工程挤占的是经济增长，不是军费。
+// 走同一条 pmods 累加链（applyPlayerDecisions 仍是唯一写者），所以存档、
+// 探针、AI 决策层看到的都是同一份数字。
+if (typeof prestigeProgramDrag === "function") {
+  const pd = prestigeProgramDrag();
+  if (pd !== 0) selfPP += pd;
+}
   return selfPP;
 }
 

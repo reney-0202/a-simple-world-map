@@ -168,6 +168,14 @@ function resolveCrisis(crId, tier, silent) {
     ST.cocom.strict = true;
   }
 
+  // 3b. F（威望竞赛）：危机抉择的威望影响 —— 落点是玩家自己（无玩家时静默跳过）。
+  // 这条效果键把「在危机中站在哪一边」与「谁看起来代表未来」连了起来：
+  // 强硬回击可能赢得威望，也可能当众丢脸，取决于危机卡怎么设计。
+  if (typeof eff.prestigeDelta === "number" && eff.prestigeDelta !== 0 &&
+      ST.player && typeof prestigeAdd === "function") {
+    prestigeAdd(ST.player, eff.prestigeDelta, "危机决断：" + cr.title);
+  }
+
   // 4. 收件箱入账与即时反馈
   const inboxItem = {
     y: y,

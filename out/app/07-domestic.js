@@ -808,7 +808,7 @@ function refreshDomesticBox(selKey) {
   // 无需改动 8 个分支构建器；非执政国不显示（资本只属于玩家）。
   // P1：紧随其后插入「经济账单」条 —— 落差与储备必须随时可见，
   // 不可见的机制等于不存在的机制。
-  if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + h;
+  if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + prestigeBoardHtml() + h;
 
   box.innerHTML = h;
 
@@ -836,6 +836,18 @@ function refreshDomesticBox(selKey) {
   // L（参与感）：战略指令采纳按钮
   box.querySelectorAll(".pdb-directive-btn").forEach((btn) => {
     btn.addEventListener("click", () => adoptDirective(btn.dataset.directive));
+  });
+
+  // F（威望竞赛）：工程启停按钮 —— 启动要消耗政治资本，停止不返还（沉没成本）
+  box.querySelectorAll(".pdb-prog-btn").forEach((btn) => {
+    if (btn.disabled) return;
+    const id = btn.dataset.prog;
+    const on = ST.prestige && Array.isArray(ST.prestige.active) && ST.prestige.active.indexOf(id) >= 0;
+    btn.addEventListener("click", () => {
+      if (on) stopPrestigeProgram(id);
+      else startPrestigeProgram(id);
+      refreshDomesticBox(ST.sel);
+    });
   });
 }
 
@@ -868,6 +880,8 @@ function domesticCapitalHtml() {
   h += '<div class="pdb-posture-desc">' + POSTURES[cur].icon + ' <b>' + POSTURES[cur].zh + '</b>：' +
     POSTURES[cur].desc + (cur === "balanced" ? "" : '（切换消耗 ' + POSTURE_SWITCH_COST + ' 点政治资本）') + '</div>';
   h += domesticDirectivesHtml();
+  // F（威望竞赛）：与内政动作抢同一份政治资本 —— 这才是「战略灵活性」
+  h += prestigeProgramsHtml();
   h += '</div>';
   return h;
 }
