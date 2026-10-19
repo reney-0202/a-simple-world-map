@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 49,
-    "pop": 64,
-    "ind": 54,
-    "province": 57,
-    "delta": 70,
-    "resource": 69
+    "bloc": 65,
+    "pop": 78,
+    "ind": 82,
+    "province": 68,
+    "delta": 68,
+    "resource": 72
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1446
+   "totalMs": 1765
   },
   "failed": false
  },
@@ -979,7 +979,13 @@
     "gbrShareholdingAllowedAfterCity": "PASS",
     "jpnMaekawaCompletionFeedsDomestic": "PASS",
     "fraNationalizationCompletionFeedsDomestic": "PASS",
-    "gbrMonetaristCompletionFeedsDomestic": "PASS"
+    "gbrMonetaristCompletionFeedsDomestic": "PASS",
+    "agendaConditionRegistryApi": "PASS",
+    "__agendaConditionsUsed": "mil_le_3,domestic_faction,mil_le_1,mil_ge_5",
+    "__agendaConditionsRegistered": 4,
+    "agendaConditionsAllRegistered": "PASS",
+    "unknownAgendaConditionBlocks": "PASS",
+    "deadAgendaConditionsRejected": "PASS"
    }
   },
   "failed": false

@@ -21,6 +21,7 @@ function runAgendaProbe() {
     agendaProbeEndgameAndState(r, assert, ctx);
     agendaProbeChnDeuTrees(r, assert, ctx);
     agendaProbeJpnFraGbrTrees(r, assert, ctx);
+    agendaProbeConditionVocabulary(r, assert, ctx);
   } catch (e) {
     r.pass = false;
     r.errors.push("Exception: " + e.message);
@@ -415,4 +416,44 @@ function agendaProbeJpnFraGbrTrees(r, assert, ctx) {
   initAgendaState();
   applyPlayerDecisions();
   refreshAgendaBox(ST.sel);
+}
+
+// M3（清死代码 + 门控词表）：议程门控必须是登记过的名字，未登记的一律 fail-closed。
+// 此前「写错名字」或「引擎删了分支但数据还在用」会得到「门控永远放行」的静默失效。
+function agendaProbeConditionVocabulary(r, assert, ctx) {
+  const REG = window.W1980_AGENDA_CONDITIONS;
+  assert("agendaConditionRegistryApi",
+    !!REG && typeof REG.isRegistered === "function" && Array.isArray(REG.names()),
+    "W1980_AGENDA_CONDITIONS 暴露门控词表（isRegistered / names）");
+
+  // 数据里声明过的每个门控都必须是登记值（构建期由 validate 判失败，这里是运行期双保险）
+  const AGD = (window.W1980_AGENDAS && window.W1980_AGENDAS.database) || {};
+  const used = [];
+  let unregistered = 0;
+  for (const ck of Object.keys(AGD)) {
+    for (const ag of (AGD[ck] || [])) {
+      if (ag.condition === undefined || ag.condition === null) continue;
+      if (used.indexOf(ag.condition) < 0) used.push(ag.condition);
+      if (!REG || !REG.isRegistered(ag.condition)) unregistered++;
+    }
+  }
+  r.details.__agendaConditionsUsed = used.join(",");
+  r.details.__agendaConditionsRegistered = REG ? REG.names().length : 0;
+  assert("agendaConditionsAllRegistered", unregistered === 0,
+    "数据里使用的 " + used.length + " 种门控全部已登记（未登记 " + unregistered + " 处）");
+
+  // fail-closed：未登记的名字必须判未通过，而不是默认放行
+  const ghost = checkAgendaCondition("CHN", { id: "probe_ghost", title: "探针虚拟议程", condition: "ghost_condition_xyz" });
+  assert("unknownAgendaConditionBlocks",
+    ghost.ok === false && String(ghost.reason).indexOf("未注册") >= 0,
+    "未登记的门控判未通过并说明原因（" + ghost.reason + "）");
+
+  // 死代码不得复活：Phase K 之后数据侧已改用 domestic_faction，
+  // 这两个旧名字既没有引擎分支也不在词表里 —— 一旦被重新使用，上面的断言就会失败。
+  const deadA = checkAgendaCondition("CHN", { id: "probe_dead_a", title: "旧门控 A", condition: "domestic_reform_lead" });
+  const deadB = checkAgendaCondition("DEU", { id: "probe_dead_b", title: "旧门控 B", condition: "domestic_detente" });
+  assert("deadAgendaConditionsRejected",
+    deadA.ok === false && deadB.ok === false &&
+    !REG.isRegistered("domestic_reform_lead") && !REG.isRegistered("domestic_detente"),
+    "已删除的 domestic_reform_lead / domestic_detente 既不在词表也求值不通过");
 }

@@ -60,6 +60,13 @@ function cleanData() {
     W1980_EVENTS: [{ id: 'e1', targets: ['AAA', 'MMM'] }],
     W1980_CROSSROADS: [{ id: 'x1', actors: ['BBB', 'CCC'] }],
     W1980_AGENDAS: { database: { AAA: [{ id: 'a1', effects: { gdpBonus: 0.3, desc: 'x' } }], DEFAULT: [] } },
+    W1980_AGENDA_CONDITIONS: {
+      CONDITIONS: {
+        mil_le_3: { zh: '军费 ≤ 3%', fields: [], faction: false },
+        domestic_faction: { zh: '内政天平', fields: [], faction: true },
+      },
+      isRegistered(name) { return Object.prototype.hasOwnProperty.call(this.CONDITIONS, name); },
+    },
     W1980_INTEL: { AGENCIES: { BBB: { name: 'b' }, DEFAULT: null } },
     W1980_AFGHAN: { POLICIES: { p1: {} } },
     W1980_AI: {
@@ -450,6 +457,59 @@ test('probeParamToken reads the token, not the probe key', () => {
   assert.strictEqual(checks.probeParamToken('end=1&t=1991-12'), 'end');
   assert.strictEqual(checks.probeParamToken('sanprobe=1&player=SUN&mil=3.5'), 'sanprobe');
   assert.strictEqual(checks.probeParamToken(''), '');
+});
+
+// ---- 8d. agenda condition vocabulary -----------------------------------------
+// An unregistered `condition` used to mean "the gate never blocks" -- a typo or a
+// deleted engine branch silently disabled a gate. Now the build fails, and the
+// engine fails closed if one ever slips through.
+section('checkAgendaConditions');
+function withAgenda(cond, extra) {
+  const d = cleanData();
+  const ag = { id: 'a1', effects: { gdpBonus: 0.3, desc: 'x' } };
+  if (cond !== undefined) ag.condition = cond;
+  Object.assign(ag, extra || {});
+  d.W1980_AGENDAS.database.AAA = [ag];
+  return d;
+}
+test('clean fixture (no condition) reports no problems', () => {
+  assert.deepStrictEqual(checks.checkAgendaConditions(makeCtx(cleanData())).problems, []);
+});
+test('a registered condition passes', () => {
+  assert.deepStrictEqual(checks.checkAgendaConditions(makeCtx(withAgenda('mil_le_3'))).problems, []);
+});
+test('an unregistered condition fails the build', () => {
+  const p = checks.checkAgendaConditions(makeCtx(withAgenda('mil_le_9'))).problems;
+  assert.match(p[0], /未注册的门控 "mil_le_9"/);
+  assert.match(p[0], /合法值：mil_le_3, domestic_faction/);
+});
+test('the two deleted handlers are no longer registered', () => {
+  const p = checks.checkAgendaConditions(makeCtx(withAgenda('domestic_reform_lead'))).problems;
+  assert.match(p[0], /未注册的门控 "domestic_reform_lead"/);
+});
+test('a faction gate without its faction declaration is caught', () => {
+  const p = checks.checkAgendaConditions(makeCtx(withAgenda('domestic_faction'))).problems;
+  assert.match(p[0], /缺少 faction 声明/);
+});
+test('a faction gate with neither lead/over nor field/min is caught', () => {
+  const p = checks.checkAgendaConditions(makeCtx(withAgenda('domestic_faction', { faction: { key: 'chn' } }))).problems;
+  assert.match(p[0], /必须给出 lead\+over 或 field\+min/);
+});
+test('a faction gate with lead+over passes', () => {
+  const d = withAgenda('domestic_faction', { faction: { key: 'chn', lead: 'reformist', over: 'planned' } });
+  assert.deepStrictEqual(checks.checkAgendaConditions(makeCtx(d)).problems, []);
+});
+test('a faction gate with field+min passes', () => {
+  const d = withAgenda('domestic_faction', { faction: { key: 'deu', field: 'detenteDepth', min: 55 } });
+  assert.deepStrictEqual(checks.checkAgendaConditions(makeCtx(d)).problems, []);
+});
+test('a missing condition vocabulary is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_AGENDA_CONDITIONS;
+  assert.match(checks.checkAgendaConditions(makeCtx(d)).problems[0], /未定义 W1980_AGENDA_CONDITIONS/);
+});
+test('a vocabulary entry without a zh label is caught', () => {
+  const d = cleanData(); d.W1980_AGENDA_CONDITIONS.CONDITIONS.mil_le_3.zh = '';
+  assert.match(checks.checkAgendaConditions(makeCtx(d)).problems[0], /mil_le_3\.zh/);
 });
 
 // ---- 8b. raster integrity manifest --------------------------------------------

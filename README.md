@@ -34,6 +34,10 @@ node tools/validate_data.js out --quiet    # 只打印问题 / OK 行
 - **栅格完整性摘要**：`checksum.json` / `countries.js` 里的 `sha256_province_id_png` 必须与实际 PNG 字节一致（两处副本也必须互相一致）；
 - 事件效果键必须属于 `data/effects.js` 的词表（28 个合法键），站点来自 crises / agendas / **`UNSC_RESOLUTIONS`**；
 - AI 主动战略目标（`STRATEGIC_OBJECTIVES`）的属主与 target 必须可解析；
+- **议程门控词表**：每个议程的 `condition` 必须是 `data/agenda-conditions.js` 登记过的名字
+  （`mil_le_3` / `mil_le_1` / `mil_ge_5` / `domestic_faction`），且 `domestic_faction` 必须带完整
+  `faction` 声明（`key` + `lead`/`over` 或 `field`/`min`）。写错一个名字 = 构建期失败，
+  而不是「门控静默放行」；
 - 巨型边界数据（`data/borders_*.json`）的结构与量程。
 
 ### 1b. 校验器自身的单元测试（Node，无依赖）
@@ -189,7 +193,7 @@ Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强�
 | 阶段 | 主题 | 风险 | 内容 |
 | --- | --- | --- | --- |
 | **L** ✅ | 参与感与战略灵活性 | — | **已交付**：政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
-| **M** | 卫生与闸门 | 低 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；新增断言塌缩自动门 |
+| **M** | 卫生与闸门 | 低 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；议程门控词表 `data/agenda-conditions.js`（未登记即 CI 失败）；新增断言塌缩自动门 |
 | **N** | 契约一致性 | 中 | 议程完成回馈数据声明式；备份仓 pipeline 双写收敛 |
 | **O** | 平台与生成物 | 低 | PWA 深链注册修复；`sw.js` 预缓存清单自动生成 |
 

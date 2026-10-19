@@ -405,6 +405,59 @@ function checkProbeRegistry(ctx) {
   return { problems, notes, stats: { probes: Object.keys(entries).length, params: params.length } };
 }
 
+// ---- 2j. agenda condition vocabulary -----------------------------------------
+// M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
+// 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
+// 这里则让它在构建期就失败 —— 两条路都不允许「门控静默放行」。
+function checkAgendaConditions(ctx) {
+  const notes = [];
+  const problems = [];
+  const REG = ctx.data.W1980_AGENDA_CONDITIONS;
+  if (!REG || !REG.CONDITIONS) return { problems: ['agenda-conditions.js: 未定义 W1980_AGENDA_CONDITIONS.CONDITIONS'], notes };
+  const known = REG.CONDITIONS;
+  const AGD = (ctx.data.W1980_AGENDAS || {}).database || {};
+
+  // 词表自身必须自洽：每条都要有 zh 与 fields 数组
+  for (const name of Object.keys(known)) {
+    const c = known[name] || {};
+    if (typeof c.zh !== 'string' || !c.zh) problems.push(`agenda-conditions.js: ${name}.zh 必须是非空字符串`);
+    if (!Array.isArray(c.fields)) problems.push(`agenda-conditions.js: ${name}.fields 必须是数组`);
+  }
+
+  let sites = 0;
+  for (const ck of Object.keys(AGD)) {
+    for (const ag of (AGD[ck] || [])) {
+      if (ag.condition === undefined || ag.condition === null) continue;
+      sites++;
+      const def = known[ag.condition];
+      if (!def) {
+        problems.push(`agendas.js: ${ck}/${ag.id} 使用了未注册的门控 "${ag.condition}"（合法值：${Object.keys(known).join(', ')}）`);
+        continue;
+      }
+      for (const field of (def.fields || [])) {
+        if (ag[field] === undefined || ag[field] === null) {
+          problems.push(`agendas.js: ${ck}/${ag.id} 的门控 "${ag.condition}" 缺少必需字段 ${field}`);
+        }
+      }
+      if (def.faction) {
+        const f = ag.faction;
+        if (!f || typeof f !== 'object') {
+          problems.push(`agendas.js: ${ck}/${ag.id} 的门控 "domestic_faction" 缺少 faction 声明`);
+          continue;
+        }
+        if (typeof f.key !== 'string' || !f.key) problems.push(`agendas.js: ${ck}/${ag.id}.faction.key 必须是非空字符串`);
+        const hasPair = typeof f.lead === 'string' && typeof f.over === 'string';
+        const hasField = typeof f.field === 'string' && typeof f.min === 'number';
+        if (!hasPair && !hasField) {
+          problems.push(`agendas.js: ${ck}/${ag.id}.faction 必须给出 lead+over 或 field+min`);
+        }
+      }
+    }
+  }
+  notes.push(`agenda conditions: ${Object.keys(known).length} registered, ${sites} agenda sites, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { registered: Object.keys(known).length, sites } };
+}
+
 const CHECKS = [
   { id: 'addressSpaces', label: '双地址空间与联合体别名', run: checkAddressSpaces },
   { id: 'crises', label: '危机抉择卡外键', run: checkCrises },
@@ -418,6 +471,7 @@ const CHECKS = [
   { id: 'effectVocabulary', label: '效果词表', run: checkEffectVocabulary },
   { id: 'strategicObjectives', label: 'AI 主动战略目标外键', run: checkStrategicObjectives },
   { id: 'probeRegistry', label: '探针注册表自洽', run: checkProbeRegistry },
+  { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
 
 module.exports = {
@@ -437,5 +491,6 @@ module.exports = {
   checkStrategicObjectives,
   checkProbeRegistry,
   probeParamToken,
+  checkAgendaConditions,
   collectEffectSites,
 };

@@ -125,6 +125,13 @@ function checkAgendaCondition(cKey, ag) {
 
   // 结构性国策条件
   if (ag.condition) {
+    // M3：门控名字必须先登记在 data/agenda-conditions.js。未登记的名字一律**判未通过**
+    // —— 一个无法求值的条件绝不能默认放行（那正是「写错名字 → 门控静默失效」的成因）。
+    const condReg = window.W1980_AGENDA_CONDITIONS;
+    if (!condReg || typeof condReg.isRegistered !== "function" || !condReg.isRegistered(ag.condition)) {
+      return { ok: false, reason: "未注册的议程门控『" + ag.condition + "』（见 data/agenda-conditions.js）" };
+    }
+
     let curMil = 0;
     if (cKey === ST.player) {
       curMil = ST.mil;
@@ -143,21 +150,6 @@ function checkAgendaCondition(cKey, ag) {
     }
     if (ag.condition === "mil_ge_5" && curMil < 5.0) {
       return { ok: false, reason: "天基尖端军备研发要求军费 ≥ 5.0%（当前 " + curMil.toFixed(1) + "%）" };
-    }
-    // H（玩法深度）：议程树门控挂在「内政天平」上 —— 改革/缓和派压过对手才推得动下一步
-    if (ag.condition === "domestic_reform_lead") {
-      const chn = (ST.domestic && ST.domestic.chn) ? ST.domestic.chn : null;
-      if (!chn) return { ok: false, reason: "内政天平尚未初始化" };
-      if (!(chn.reformist > chn.planned)) {
-        return { ok: false, reason: "特区/市场派权重必须高于计划/国营派（当前 " + chn.reformist.toFixed(0) + " vs " + chn.planned.toFixed(0) + "）" };
-      }
-    }
-    if (ag.condition === "domestic_detente") {
-      const deu = (ST.domestic && ST.domestic.deu) ? ST.domestic.deu : null;
-      if (!deu) return { ok: false, reason: "内政天平尚未初始化" };
-      if (deu.detenteDepth < 55) {
-        return { ok: false, reason: "东西欧缓和深度必须 ≥ 55（当前 " + deu.detenteDepth.toFixed(1) + "）" };
-      }
     }
     // K（玩法深度）：内政门控统一由数据侧声明（ag.faction），引擎只按声明求值，
     // 复制 CHN/DEU 的模板到 JPN/FRA/GBR 时无需再改引擎分支。

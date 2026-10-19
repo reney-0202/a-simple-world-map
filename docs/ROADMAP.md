@@ -101,7 +101,7 @@
 | # | 发现 | 实测证据 | 对策 |
 | --- | --- | --- | --- |
 | **S-5** | **议程完成回馈是逐国 if-else**（加一国就要改引擎），且 `effects.js` 的 target 注释已与实现不同步（`stabilityBonus` 仍写 `generals[*].stability`，但七大国已走专属分支） | `updateMonthlyAgendas` 中 `stabilityBonus` 分派为 SUN/USA/CHN/DEU/JPN/FRA/GBR/generals **八路** | **M1** 改为数据声明式 `ag.onComplete` |
-| **S-6** | 引擎里 `domestic_reform_lead` / `domestic_detente` 两个 handler 在数据侧**零引用**（Phase K 已把 CHN/DEU 改写成 `domestic_faction`），已成死代码；而「数据用了未注册 condition」目前不会让 CI 失败 | 数据侧 condition 全集 = `{mil_le_1, mil_le_3, mil_ge_5, domestic_faction}` | **L3** 删两个 handler + 「未知 condition 判 CI 失败」 |
+| **S-6** | 引擎里 `domestic_reform_lead` / `domestic_detente` 两个 handler 在数据侧**零引用**（Phase K 已把 CHN/DEU 改写成 `domestic_faction`），已成死代码；而「数据用了未注册 condition」目前不会让 CI 失败 | 数据侧 condition 全集 = `{mil_le_1, mil_le_3, mil_ge_5, domestic_faction}` | ~~删两个 handler +「未知 condition 判 CI 失败」~~ → **✅ 已由 M3 解决**：分支已删，词表 `data/agenda-conditions.js` 让未登记名字在构建期失败、运行期 fail-closed |
 | **S-7** | **备份仓 pipeline 与主仓 `out/` 双写**，靠 `robocopy /MIR` 手工同步 | Phase K 需在两侧各改一次 `has_capital`；镜像后 `git status` 出现 8 个待提交文件 | **M2** 二选一：pipeline 为唯一事实源 / 备份仓 CI 加 diff 门 |
 
 ### D. 生成物与平台债
@@ -135,7 +135,7 @@
 **面板占用实测**（新增 UI 不能把侧栏撑爆）：SUN 419px / CHN 470px / ITA 436px，
 无横向溢出；三国均正确渲染 3 个方针按钮与 6 个指令候选。这是「可玩性」不只是「功能存在」的验收线。
 
-### Phase M — 卫生与闸门（✅ M1 + M2 + M4 已交付；M3 待办）
+### Phase M — 卫生与闸门（✅ 全部完成：M1 + M2 + M3 + M4）
 
 > 目标：把最大的单文件拆成按域的内聚模块，并给「断言塌缩」加一道自动门。
 > **本轮改动对仿真数值零影响** —— 验收标准就是 `cmp` 仍 `identical:25`。
@@ -219,11 +219,34 @@ window.W1980_PROBES = { params: [...], entries: { key: { qs, marker, budget } } 
 `validate_data` 多一行 `probe registry: 25 probes, 25 url params, 0 problem(s)`；
 CDP 注册表专项检查 4 组全 PASS；`sw.js` → `w1980-v11`，PRECACHE 93 → 94 项且与实际文件数一致。
 
-### Phase M 剩余（M3，未做）
+**M3 — 清死代码 + 门控词表**
 
-| 项 | 内容 | 验收标准 |
-| --- | --- | --- |
-| **M3** | 清死代码：删引擎里数据侧零引用的 `domestic_reform_lead` / `domestic_detente` 两个 handler；`validate_data.js` 增「未知 condition 判失败」 | 基线 identical；故意写一个未注册 condition 必须让 CI 失败 |
+两件事：删掉零引用的引擎分支，并把「门控名字」变成有契约的词汇表。
+
+1. **删死代码**：`checkAgendaCondition` 里的 `domestic_reform_lead` / `domestic_detente` 两个分支
+   在 Phase K 之后数据侧零引用（CHN/DEU 已改用 `domestic_faction`），直接删除。
+2. **门控词表**：新增 `out/data/agenda-conditions.js` 作为**单一事实源**：
+
+```js
+window.W1980_AGENDA_CONDITIONS = {
+  CONDITIONS: { mil_le_3: {...}, mil_le_1: {...}, mil_ge_5: {...}, domestic_faction: {...} },
+  isRegistered(name), names(), get(name)
+};
+```
+
+3. **两个方向都堵住**：
+   - **构建期**：`checkAgendaConditions` 校验每个议程的 `condition` 必须是登记值，且
+     `domestic_faction` 必须带完整 `faction`（`key` + `lead`/`over` 或 `field`/`min`）。
+     注入 `condition: "mil_le_9"` → `FAIL: agendas.js: JPN/jpn_defense_cap 使用了未注册的门控 "mil_le_9"（合法值：…）`，退出 1。
+   - **运行期**：引擎遇到未登记的名字**一律判未通过**（fail-closed），并说明
+     `未注册的议程门控『X』（见 data/agenda-conditions.js）` —— 一个无法求值的条件绝不能默认放行。
+4. **探针**：`agendaProbeConditionVocabulary` 新增 4 条断言 —— 词表 API 存在、数据里用到的门控
+   全部已登记、未登记名字被拦下、两个已删的旧名字既不在词表也求值不通过。
+
+**验收（已达成）**：`cmp` 除 `agenda` 外 24 个探针逐位一致；`agenda` 从 70 → **74** 条断言，
+**零丢失**（脚本核对 lost = none），新增 2 条诊断；`validate.test` 75 → **85**；
+`validate_data` 多一行 `agenda conditions: 4 registered, 11 agenda sites, 0 problem(s)`；
+注入未注册门控实测让 CI 失败；`sw.js` → `w1980-v12`，PRECACHE 94 → 95 项。
 
 ### Phase N — 契约一致性（中风险，1 天）
 
@@ -247,20 +270,20 @@ CDP 注册表专项检查 4 组全 PASS；`sw.js` → `w1980-v11`，PRECACHE 93 
 
 ```mermaid
 graph LR
-  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ M1+M2+M4]
+  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ 全部完成]
   M --> N[Phase N 契约一致性]
   N --> O[Phase O 平台与生成物]
   L -.->|默认方针中性| B1[既有数值零漂移]
-  M -.->|M4 塌缩自动门| B2[后续改动有护栏]
+  M -.->|M4 塌缩自动门 + M2 注册表自检 + M3 门控词表| B2[后续改动有护栏]
 ```
 
 - **L 已完成**：新增了玩家行动预算与治理路线。
-- **M1+M4 已完成**：单文件从 2995 行降到 1279 行，且 `cmp` 仍 `identical:25` —— 纯搬运的最终判据达成；
-  断言塌缩自动门已上线并被实测证明会失败。
-- **M2 已完成**：探针注册收敛为单一事实源 `data/probes.js`，运行器 / 页面 / 校验器三处都读它，
-  且三处各自的自检都被实测触发过。新增普通探针只需「数据文件一条 + boot 分派表一行」。
-- **M3 未做**：清死代码，且「未知 condition 判 CI 失败」需先在数据侧立 condition 词表的事实源。
-- **N 改引擎**：N1 真正改 `updateMonthlyAgendas` 的分派逻辑，必须在 M 的护栏之后。
+- **M 全部完成（M1–M4）**：
+  - M1 单文件 2995 → 1279 行，`cmp` 仍 `identical:25` —— 纯搬运的最终判据达成；
+  - M2 探针注册收敛为 `data/probes.js`，三处消费者 + 三重自检；
+  - M3 删掉两个零引用门控分支，门控名字收敛为 `data/agenda-conditions.js`，未登记即构建期失败、运行期 fail-closed；
+  - M4 断言塌缩自动门上线并被实测证明会失败。
+- **N 改引擎**：N1 真正改 `updateMonthlyAgendas` 的分派逻辑，必须在 M 的护栏之后（现在三道护栏齐备）。
 - **O 可穿插**：纯平台层，风险最低。
 
 ---
