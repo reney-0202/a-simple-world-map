@@ -1,6 +1,6 @@
 # world1980 · 项目评审与后续迭代路线
 
-> 评审日期：2026-10-17（Phase L 交付于 2026-10-18，M/N 交付于 2026-10-19）｜ 基线提交：`0e82a70` 之后连续推进
+> 评审日期：2026-10-17（Phase L 交付于 2026-10-18；M/N/O 交付于 2026-10-19）｜ 基线提交：`0e82a70` 之后连续推进
 >
 > **基线全绿**：`validate_data` ✅ · `validate.test` 88/88 ✅ · 探针 25/25 ✅ · `cmp` identical:25 ✅
 > **断言总数**：861（`probe_runner.py count` 口径，含 190 条扁平探针观测）+ 43 条诊断（Phase L 前为 854 + 39）
@@ -49,6 +49,7 @@
 | **L** | 参与感与灵活性 | 政治资本行动预算（月度结算、动作扣费、不足即拒绝且零副作用）；47 个通用实体获得 3 条施政路线；施政方针三选一（均衡/强硬/改革）改变成本与漂移；面板预算条 + 成本角标 + 禁用态；国家战略指令板（6 选 2 跨年度目标） |
 | **M** | 卫生与闸门 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；两个 UI 卡片归位到 `11-shell.js`；新增 `probe_runner.py count` 与**断言塌缩自动门**（丢一条断言即失败）；探针注册收敛为 `data/probes.js`；议程门控词表 `data/agenda-conditions.js` |
 | **N** | 契约一致性 | 议程完成回馈改为数据声明式 `onComplete`（删掉 7 国 if-else + 14 段硬编码）；`domesticStateOf` 单一入口；`ONCOMPLETE_FIELDS` 词表 + 校验 + 探针断言；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约，实测能抓 `has_capital` 类漂移） |
+| **O** | 平台与生成物 | PWA 注册判定改为「是否探针/诊断会话」——`?player=SUN` 等深链恢复离线能力，探针仍不注册（10 种 URL 实测）；`sw.js` 预缓存清单由 `tools/sw_manifest.js` 生成、两仓 CI 校验 |
 
 ### 当前玩法骨架（七大国全覆盖）
 
@@ -109,8 +110,8 @@
 
 | # | 发现 | 实测证据 | 对策 |
 | --- | --- | --- | --- |
-| **S-8** | `sw.js` 的 `PRECACHE` **87 项手写**维护；而 README 已声称「这两个文件由 `out/` 的文件清单生成」——**实际上仓库里没有任何生成器** | `Select-String` 全仓（排除 `out/`）搜 `PRECACHE`/`precache`/`sw.js` → **0 命中**，即无生成脚本 | **N2** `tools/sw_manifest.js` 自动生成 + CI diff 校验（顺带修正 README 的表述） |
-| **S-9** | PWA 在带参深链下**静默失效**（`?player=SUN` 丢掉离线能力，且无提示） | `14-pwa.js`：`bare = q === "" \|\| q === "?"`，带任何参数即不注册 | **N1** 改用 `PROBE_PARAMS` 反向匹配 |
+| **S-8** | `sw.js` 的 `PRECACHE` **87 项手写**维护；而 README 已声称「这两个文件由 `out/` 的文件清单生成」——**实际上仓库里没有任何生成器** | `Select-String` 全仓（排除 `out/`）搜 `PRECACHE`/`precache`/`sw.js` → **0 命中**，即无生成脚本 ~~N2 `tools/sw_manifest.js` 自动生成 + CI diff 校验~~ → **✅ 已由 O2 解决**（清单为生成物，两仓 CI 校验） |
+| **S-9** | PWA 在带参深链下**静默失效**（`?player=SUN` 丢掉离线能力，且无提示） | `14-pwa.js`：`bare = q === "" \|\| q === "?"`，带任何参数即不注册 ~~N1 改用 `PROBE_PARAMS` 反向匹配~~ → **✅ 已由 O1 解决**（改判「是否探针会话」，10 种 URL 实测） |
 
 ---
 
@@ -293,14 +294,46 @@ window.W1980_AGENDA_CONDITIONS = {
 **验收**：`node tools/check_export_schema.js out` → `OK: export schema matches the pipeline contract`
 （2998 省份 × 8 字段、54 实体 19 字段并集）。
 
-### Phase O — 平台与生成物（低风险，0.5 天）
+### Phase O — 平台与生成物（✅ 已交付 O1 + O2）
 
-> 对应发现：O1→S-9 · O2→S-8
+**O1 — PWA 深链注册修复**
 
-| 项 | 内容 | 验收标准 |
+开关从「查询串是否为空」改成「是不是探针/诊断会话」：
+
+| URL | 注册 SW | 说明 |
 | --- | --- | --- |
-| **O1** | PWA 深链注册修复：判定从「查询串为空」改为「不含探针参数」 | `?player=SUN` 下 `navigator.serviceWorker.controller` 非空；探针下仍不注册 |
-| **O2** | `sw.js` 预缓存清单自动生成：`tools/sw_manifest.js` 扫 `out/` 写 `PRECACHE`，CI diff 校验；修正 README 中「已自动生成」的表述 | 新增静态文件后不更新 `sw.js` → CI 失败 |
+| 裸地址 | ✅ | 常规入口 |
+| `?player=SUN` / `?c=CHN` / `?m=pop` | ✅ | 普通深链（此前被误判成探针而丢掉离线） |
+| `?sw=1` / `?nosw=1` | ✅ / ❌ | 显式强制开 / 关 |
+| 任何已登记探针参数（`?domesticprobe=1`、`?end=1&t=…` …） | ❌ | 探针必须走纯网络路径 |
+| `dev` / `audit` / `modeprobe` | ❌ | 诊断开关：查问题时命中旧缓存只会更难查 |
+
+判定依据是 `data/probes.js` 的 `params`（与运行器、`CR.probeMode` 同一份事实源），
+所以**新增探针自动获得这条保护**，不需要再改 PWA 代码。
+
+**验收**：`files/cdp_pwa.js` 在真浏览器里逐 URL 起独立 profile 验证 **10 种情形全部符合预期**
+（4 种深链注册、4 种探针不注册、强制开关各一、诊断开关一）；探针仍 `cmp identical:25`
+—— 说明「不注册」这条硬约束没有被放松。
+
+**O2 — `sw.js` 预缓存清单改为生成物**
+
+原先是 95 行手写清单，与 `out/` 实际文件集靠人工核对。新增：
+- `tools/sw_manifest.js`（默认校验，`--update` 重写，`--json` 机读）；
+- 排除项只有三个且写明理由：`sw.js`（自身）、`serve.py`（本地开发服务器）、`打开地图.bat`（Windows 启动器）；
+- 两个仓库的 CI 都加了 `node tools/sw_manifest.js out`。
+
+**实测两种漂移都会失败**：新增一个文件 → `磁盘上有但清单里没有（离线会 404）：+ assets/ui/__probe_new_asset.txt`；
+删除文件 → `清单里有但磁盘上已不存在：- …`。`--update` 往返后文件与原始 `sw.js` **逐字节相同**（幂等）。
+
+`CACHE_VERSION` 刻意留在脚本职责之外：清单只反映文件**集合**，内容变更改不出来，
+所以仍需手动 bump —— 版本号是人的判断，不是文件列表的副产品。
+
+### 相关发现状态
+
+| 发现 | 状态 |
+| --- | --- |
+| S-8 `sw.js` 预缓存手写 | ✅ O2 解决 |
+| S-9 PWA 深链静默失效 | ✅ O1 解决 |
 
 ### 执行顺序的理由
 
@@ -308,7 +341,7 @@ window.W1980_AGENDA_CONDITIONS = {
 graph LR
   L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ 全部完成]
   M --> N[Phase N 契约一致性 ✅]
-  N --> O[Phase O 平台与生成物]
+  N --> O[Phase O 平台与生成物 ✅]
   L -.->|默认方针中性| B1[既有数值零漂移]
   M -.->|M4 塌缩自动门 + M2 注册表自检 + M3 门控词表| B2[后续改动有护栏]
 ```
@@ -322,7 +355,10 @@ graph LR
 - **N 已完成**：N1 把议程完成回馈从「7 国 if-else + 14 段硬编码」变成数据声明式 `onComplete`，
   引擎不再认任何国家名或议程 id；N2 给「产物 ↔ pipeline」加了结构对账门，
   实测能抓到 `has_capital` 那类漂移。
-- **O 可穿插**：纯平台层，风险最低。
+- **O 已完成**：PWA 深链恢复离线能力（探针仍不注册，10 种 URL 实测）；`sw.js` 预缓存清单变成生成物，
+  两仓 CI 校验，实测新增/删除文件都会失败。
+
+**L / M / N / O 四个阶段全部交付完毕。**
 
 ---
 

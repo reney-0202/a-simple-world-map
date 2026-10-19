@@ -57,6 +57,20 @@ node tools/check_export_schema.js out
 任何一方单独改动都会失败，必须显式更新契约 —— 这是刻意的：改动要有意识，不要静默漂移
 （`has_capital` 当初就是这么留下来的）。主仓没有 `pipeline/`，此步打印 `SKIP` 并 exit 0。
 
+### 1a2. Service Worker 预缓存清单（Node）
+
+```bash
+node tools/sw_manifest.js out            # 校验：与磁盘不一致 → exit 1
+node tools/sw_manifest.js out --update   # 按磁盘重写 sw.js 的 PRECACHE
+```
+
+`out/sw.js` 的 `PRECACHE` 是生成物，排除项只有 `sw.js` / `serve.py` / `打开地图.bat` 三个
+（都写明了理由）。新增或删除任何发布文件后不重新生成就会构建失败 ——
+离线缓存与发布文件集再也不会悄悄错位。
+
+`CACHE_VERSION` **不在**该脚本职责内：清单只反映文件集合，改内容是改不出来的，
+所以内容变更后仍然必须手动 bump（否则用户会一直吃到旧缓存）。
+
 ### 1b. 校验器自身的单元测试（Node，无依赖）
 
 ```bash
@@ -185,35 +199,44 @@ python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.
   Pages（需在仓库设置里把 Pages 的 Source 设为「GitHub Actions」）。站点地址形如
   `https://<owner>.github.io/<repo>/`。
 - **离线（PWA）**：`out/manifest.webmanifest` 声明应用元信息，`out/sw.js` 在安装时
-  预缓存全部应用文件（87 项），之后以 cache-first 提供，断网也能启动。
-  这两个文件由 `out/` 的文件清单生成，**新增/删除文件后需重新生成 `sw.js`**
-  （或改动 `CACHE_VERSION`），否则离线缓存会缺失新文件。
+  预缓存全部发布文件（当前 95 项），之后以 cache-first 提供，断网也能启动。
+  `PRECACHE` 由 `node tools/sw_manifest.js out --update` 从 `out/` 实际文件集生成，
+  CI 用 `node tools/sw_manifest.js out` 校验一致性 —— **新增/删除发布文件后不重新生成就构建失败**。
+  注意 `CACHE_VERSION` 仍需手动 bump：清单只反映文件**集合**，改内容是改不出来的。
 
 ### PWA 注册的开关条件
 
-Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强制启用）。
-原因：CI 的无头探针使用 `--dump-dom` + `--virtual-time-budget` 运行，而 Service Worker
-的安装/缓存生命周期会与虚拟时钟交互、使探针时序不确定；探针一律带查询参数，
-因此这条规则从根上保证探针走纯网络路径。带参数的深链（如 `?player=SUN`）不启用离线，
-功能不受影响。
+Service Worker 在**正常访问时一律注册**，只有「探针 / 诊断会话」才跳过：
 
-> 已知取舍：`?player=SUN` 这类玩家深链会因此丢掉离线能力。这是为了让探针时序确定而做的
-> 刻意选择，改进方案见 `docs/ROADMAP.md` 的 N1（把判定从「无查询参数」改为「不含探针参数」）。
+| URL | 是否注册 SW | 说明 |
+| --- | --- | --- |
+| `/`（裸地址） | ✅ | 常规入口 |
+| `?player=SUN`、`?c=CHN`、`?m=pop` … | ✅ | 普通深链（O1 之前会被误判成探针而丢掉离线能力） |
+| `?sw=1` | ✅ | 强制注册（验证 PWA 用） |
+| `?nosw=1` | ❌ | 强制不注册（调试 / 自动化验证用） |
+| `?domesticprobe=1`、`?selftest=1`、`?end=1&t=…`（任何已登记探针参数） | ❌ | 探针必须走纯网络路径 |
+
+判定依据是 `data/probes.js` 的 `params`（与运行器、`CR.probeMode` 同一份事实源），
+所以**新增探针自动获得这条保护**，不需要再改 PWA 代码。另有 `dev` / `audit` / `modeprobe`
+三个诊断开关同样跳过注册 —— 正在查问题时命中旧缓存只会让问题更难查。
+
+原因：CI 的无头探针用 `--dump-dom` + `--virtual-time-budget` 运行，Service Worker 的
+install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不确定。实测 10 种 URL 的注册行为
+见 `files/cdp_pwa.js`（O1 验收脚本，全部通过）。
 
 ## 后续迭代路线
 
 完整的项目评审与后续路线见 **[`docs/ROADMAP.md`](docs/ROADMAP.md)**。
 
-摘要：项目已完成 A–L 十二轮迭代，四道护栏（数据契约 / 效果词表 / 存档迁移 / 跨平台探针）齐备，
-七大国全部跑通「外部压力 → 内政天平 → 议程门控 → 完成回馈」的闭环。后续按三个阶段推进：
+摘要：项目已完成 A–O 十五轮迭代，四道护栏（数据契约 / 效果词表 / 存档迁移 / 跨平台探针）齐备，
+七大国全部跑通「外部压力 → 内政天平 → 议程门控 → 完成回馈」的闭环。L–O 五个阶段全部交付：
 
-| 阶段 | 主题 | 风险 | 内容 |
+| 阶段 | 主题 | 状态 | 内容 |
 | --- | --- | --- | --- |
-| **L** ✅ | 参与感与战略灵活性 | — | **已交付**：政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
-| **M** | 卫生与闸门 | 低 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；议程门控词表 `data/agenda-conditions.js`（未登记即 CI 失败）；新增断言塌缩自动门 |
-| **N** | 契约一致性 | 中 | 议程完成回馈改为数据声明式 `onComplete`（引擎不再按国家/议程 id 分支）；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约） |
-| **O** | 平台与生成物 | 低 | PWA 深链注册修复；`sw.js` 预缓存清单自动生成 |
+| **L** | 参与感与战略灵活性 | ✅ | 政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
+| **M** | 卫生与闸门 | ✅ | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；议程门控词表 `data/agenda-conditions.js`；断言塌缩自动门 |
+| **N** | 契约一致性 | ✅ | 议程完成回馈改为数据声明式 `onComplete`（引擎不再按国家/议程 id 分支）；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约） |
+| **O** | 平台与生成物 | ✅ | PWA 深链注册修复（`?player=SUN` 恢复离线能力，探针仍不注册）；`sw.js` 预缓存清单由 `tools/sw_manifest.js` 生成 + CI 校验 |
 
-M 阶段全部**不改变仿真数值**，是后续改动的干净地基；N 阶段会真正改引擎分派逻辑，
-必须等 M 把基线护栏加固之后再动。
+后续如需继续，方向见 `docs/ROADMAP.md` 末尾的「后续可选方向」。
 
