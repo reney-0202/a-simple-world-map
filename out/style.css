@@ -187,7 +187,11 @@ button,input{font:inherit;color:inherit}
 #panel .p-domestic-box .pdb-act-btn:disabled:hover{border-color:#2d353f;color:#7c8794;background:#1b2026}
 #panel .p-domestic-box .pdb-cost{color:#f0b429;font-variant-numeric:tabular-nums;opacity:.85}
 #panel .p-domestic-box .pdb-capital{margin:4px 0 6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
-#panel .p-domestic-box .pdb-postures{display:flex;gap:3px;margin-top:4px}
+/* P1：经济账单条 —— 与政治资本条同一块视觉语言，紧贴其下方 */
+#panel .p-domestic-box .pdb-polecon{margin:0 0 6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
+#panel .p-domestic-box .pdb-polecon-note{margin-top:2px;font-size:8.5px;line-height:1.45;color:#8b949e}
+#panel .p-domestic-box .pdb-polecon-note b{color:#c9d4df;font-variant-numeric:tabular-nums}
+#panel .p-domestic-box .pdb-polecon-good{margin-top:3px;padding:3px 6px;background:#12261a;border:1px solid #2e7d32;color:#86efac;border-radius:2px;font-size:9.5px;line-height:1.35}#panel .p-domestic-box .pdb-postures{display:flex;gap:3px;margin-top:4px}
 #panel .p-domestic-box .pdb-posture-btn{flex:1;padding:2px 3px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;transition:all .12s}
 #panel .p-domestic-box .pdb-posture-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold2)}
 #panel .p-domestic-box .pdb-posture-btn.active{border-color:var(--gold);color:var(--gold2);background:#242b33;cursor:default}
