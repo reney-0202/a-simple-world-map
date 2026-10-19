@@ -323,6 +323,16 @@ function checkEffectVocabulary(ctx) {
   const EFF = ctx.data.W1980_EFFECTS;
   if (!EFF || !EFF.EFFECTS) return { problems: ['effects.js: no W1980_EFFECTS.EFFECTS'], notes };
   notes.push(`effect vocabulary: ${Object.keys(EFF.EFFECTS).length} keys (crisis=${EFF.keysOf('crisis').length}, agenda=${EFF.keysOf('agenda').length}, ai=${EFF.keysOf('ai').length})`);
+  // 「展示用」的效果键 = 面板上写着但没有任何引擎分支消费的键。
+  // 让这个数字可审计，而不是靠读注释：「这个游戏有多少是戏台布景」应该是一个数，
+  // 而不是一种感觉。它只报告、不失败 —— 展示型效果本身是合法的，
+  // 但每一次增长都应该是有人做了决定。
+  const displayOnly = Object.keys(EFF.EFFECTS).filter((k) => {
+    const t = String((EFF.EFFECTS[k] || {}).target || '');
+    return t.indexOf('展示用') >= 0;
+  });
+  notes.push(`effect vocabulary display-only: ${displayOnly.length}`
+    + (displayOnly.length ? ` (${displayOnly.join(', ')})` : ''));
   const sites = collectEffectSites(ctx);
   let bad = 0;
   for (const site of sites) {
@@ -330,7 +340,7 @@ function checkEffectVocabulary(ctx) {
     if (unk.length) { problems.push(`${site.label}: 未登记效果键 ${unk.join(', ')}`); bad += unk.length; }
   }
   notes.push(`effect vocabulary violations: ${bad}`);
-  return { problems, notes, stats: { violations: bad, sites: sites.length } };
+  return { problems, notes, stats: { violations: bad, sites: sites.length, displayOnly: displayOnly.length } };
 }
 
 // ---- 2h. AI strategic objectives ----------------------------------------------
