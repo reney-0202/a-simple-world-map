@@ -16,6 +16,10 @@
         monthMin: 1,
         duration: 18,
         conditionDesc: "1980 年起即可启动",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          sezMomentum: 10
+        },
         effects: {
           gdpBonus: 0.35,
           reserveMonthly: 1.5,
@@ -34,6 +38,10 @@
         requires: "chn_sez",
         condition: "mil_le_3",
         conditionDesc: "需完成特区开放，且国防军费占比 ≤ 3.0%",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          dualTrackPrice: -8
+        },
         effects: {
           gdpBonus: 0.40,
           domesticShortage: -8,
@@ -73,6 +81,12 @@
         condition: "domestic_faction",
         faction: { key: "chn", lead: "reformist", over: "planned", leadLabel: "特区/市场派", overLabel: "计划/国营派" },
         conditionDesc: "需完成百万大裁军，且特区/市场派权重高于计划/国营派",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          sezMomentum: 14,
+          reformist: 6,
+          planned: -6
+        },
         effects: {
           gdpBonus: 0.45,
           domesticShortage: -10,
@@ -126,6 +140,12 @@
         duration: 15,
         requires: "jpn_semiconductor",
         conditionDesc: "需完成半导体霸权，1985 年后开启",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          tradeFriction: -6,
+          exportist: 4,
+          domesticist: -4
+        },
         effects: {
           gdpBonus: 0.25,
           reserveMonthly: 2.0,
@@ -149,6 +169,13 @@
         condition: "domestic_faction",
         faction: { key: "jpn", lead: "domesticist", over: "exportist", leadLabel: "内需开放派", overLabel: "出口产业派" },
         conditionDesc: "需完成黑潮计划，且内需开放派权重高于出口产业派",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          tradeFriction: -14,
+          domesticist: 8,
+          exportist: -8,
+          unrest: -2
+        },
         effects: {
           gdpBonus: 0.30,
           stabilityBonus: 10,
@@ -175,6 +202,10 @@
         condition: "domestic_faction",
         faction: { key: "deu", field: "detenteDepth", min: 55, fieldLabel: "东西欧缓和深度" },
         conditionDesc: "1980 年起可推进，且东西欧缓和深度 ≥ 55（内政天平偏向缓和派）",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          detenteDepth: 8
+        },
         effects: {
           gdpBonus: 0.25,
           reserveMonthly: 1.5,
@@ -192,6 +223,10 @@
         duration: 15,
         requires: "deu_ostpolitik",
         conditionDesc: "需先达成新东方政策，1986 年起欧共体成型",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          natoBurden: -5
+        },
         effects: {
           gdpBonus: 0.30,
           stabilityBonus: 8,
@@ -209,6 +244,10 @@
         duration: 12,
         requires: "eur_single_market_deu",
         conditionDesc: "需先达成欧洲单一市场，1988 年起协调建军",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          natoBurden: 10
+        },
         effects: {
           gdpBonus: 0.15,
           stabilityBonus: 10,
@@ -266,6 +305,13 @@
         condition: "domestic_faction",
         faction: { key: "fra", lead: "dirigiste", over: "rigueur", leadLabel: "国家干预派", overLabel: "紧缩坚挺派" },
         conditionDesc: "需由国家干预派掌舵（干预派权重高于紧缩派）",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          dirigiste: 6,
+          rigueur: -6,
+          francStrength: -12,
+          externalPressure: 10
+        },
         effects: {
           gdpBonus: 0.20,
           desc: "国家冠军工业体系成型，重化与军工产能扩张 (+0.20pp/年)"
@@ -284,6 +330,14 @@
         condition: "domestic_faction",
         faction: { key: "fra", lead: "rigueur", over: "dirigiste", leadLabel: "紧缩坚挺派", overLabel: "国家干预派" },
         conditionDesc: "需完成国有化，且紧缩坚挺派权重高于国家干预派",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          rigueur: 8,
+          dirigiste: -8,
+          francStrength: 15,
+          externalPressure: -8,
+          unrest: 2
+        },
         effects: {
           gdpBonus: 0.25,
           stabilityBonus: -4,
@@ -303,6 +357,11 @@
         condition: "domestic_faction",
         faction: { key: "fra", field: "francStrength", min: 55, fieldLabel: "法郎与外部竞争力" },
         conditionDesc: "需先完成紧缩转向，且法郎与外部竞争力 ≥ 55",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          francStrength: 10,
+          unrest: -3
+        },
         effects: {
           gdpBonus: 0.30,
           stabilityBonus: 8,
@@ -359,6 +418,14 @@
         condition: "domestic_faction",
         faction: { key: "gbr", lead: "monetarist", over: "welfarist", leadLabel: "货币主义派", overLabel: "福利共识派" },
         conditionDesc: "需由货币主义派掌舵（货币主义派权重高于福利共识派）",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          inflation: -14,
+          cityStrength: 6,
+          monetarist: 6,
+          welfarist: -6,
+          unrest: 3
+        },
         effects: {
           gdpBonus: -0.15,
           stabilityBonus: -8,
@@ -376,6 +443,12 @@
         duration: 15,
         requires: "gbr_monetarist_turn",
         conditionDesc: "需先完成货币主义转向，1984 年矿工罢工期启动",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          inflation: -6,
+          cityStrength: 4,
+          unrest: 4
+        },
         effects: {
           gdpBonus: 0.20,
           stabilityBonus: -6,
@@ -395,6 +468,11 @@
         condition: "domestic_faction",
         faction: { key: "gbr", field: "cityStrength", min: 55, fieldLabel: "金融城与服务业竞争力" },
         conditionDesc: "需先完成工会法制改革，且金融城与服务业竞争力 ≥ 55",
+        // 完成回馈：引擎按声明把增量施加到本国的内政状态（0~100 夹取）。
+        onComplete: {
+          cityStrength: 8,
+          unrest: -4
+        },
         effects: {
           gdpBonus: 0.30,
           stabilityBonus: 10,

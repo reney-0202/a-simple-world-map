@@ -1,9 +1,9 @@
 # world1980 · 项目评审与后续迭代路线
 
-> 评审日期：2026-10-17（Phase L 交付于 2026-10-18）｜ 基线提交：`0e82a70` → Phase L 之后
+> 评审日期：2026-10-17（Phase L 交付于 2026-10-18，M/N 交付于 2026-10-19）｜ 基线提交：`0e82a70` 之后连续推进
 >
-> **基线全绿**：`validate_data` ✅ · `validate.test` 65/65 ✅ · 探针 25/25 ✅ · `cmp` identical:25 ✅
-> **断言总数**：664 条命名断言 + 39 条诊断（Phase L 前为 614 + 23）
+> **基线全绿**：`validate_data` ✅ · `validate.test` 88/88 ✅ · 探针 25/25 ✅ · `cmp` identical:25 ✅
+> **断言总数**：861（`probe_runner.py count` 口径，含 190 条扁平探针观测）+ 43 条诊断（Phase L 前为 854 + 39）
 
 ---
 
@@ -47,7 +47,8 @@
 | **J** | 平台化 | 存档 v2→v3 迁移链；GitHub Pages + PWA（预缓存 87 项）；产物 3.516 → 3.127 MiB |
 | **K** | 玩法深度 | JPN/FRA/GBR 专属内政 + 三步议程树；门控统一为数据声明式 `domestic_faction`；删 `has_capital`（−59,827 B） |
 | **L** | 参与感与灵活性 | 政治资本行动预算（月度结算、动作扣费、不足即拒绝且零副作用）；47 个通用实体获得 3 条施政路线；施政方针三选一（均衡/强硬/改革）改变成本与漂移；面板预算条 + 成本角标 + 禁用态；国家战略指令板（6 选 2 跨年度目标） |
-| **M** | 卫生与闸门 | `07-domestic.js` 2995 → 1273 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；两个 UI 卡片归位到 `11-shell.js`；新增 `probe_runner.py count` 与**断言塌缩自动门**（丢一条断言即失败） |
+| **M** | 卫生与闸门 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；两个 UI 卡片归位到 `11-shell.js`；新增 `probe_runner.py count` 与**断言塌缩自动门**（丢一条断言即失败）；探针注册收敛为 `data/probes.js`；议程门控词表 `data/agenda-conditions.js` |
+| **N** | 契约一致性 | 议程完成回馈改为数据声明式 `onComplete`（删掉 7 国 if-else + 14 段硬编码）；`domesticStateOf` 单一入口；`ONCOMPLETE_FIELDS` 词表 + 校验 + 探针断言；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约，实测能抓 `has_capital` 类漂移） |
 
 ### 当前玩法骨架（七大国全覆盖）
 
@@ -114,7 +115,6 @@
 ---
 
 ## 四、后续路线（Phase L–O）
-
 ### Phase L — 参与感与战略灵活性（✅ 已交付）
 > 目标：让「选择」真的成为选择。此前七大国各有 2 个内政动作且**零代价、可无限点击**，
 > 47/54 个实体（所有非大国）面板里**一个可点的按钮都没有** —— 这是可玩性与参与感的最大缺口。
@@ -248,14 +248,50 @@ window.W1980_AGENDA_CONDITIONS = {
 `validate_data` 多一行 `agenda conditions: 4 registered, 11 agenda sites, 0 problem(s)`；
 注入未注册门控实测让 CI 失败；`sw.js` → `w1980-v12`，PRECACHE 94 → 95 项。
 
-### Phase N — 契约一致性（中风险，1 天）
+### Phase N — 契约一致性（✅ 已交付 N1 + N2）
 
-> 对应发现：N1→S-5 · N2→S-7
+**N1 — 议程完成回馈改为数据声明式**
 
-| 项 | 内容 | 验收标准 |
-| --- | --- | --- |
-| **N1** | 议程完成回馈数据声明式：`ag.onComplete` 描述内政变量增量，引擎统一求值，删除 8 路 if-else；同步修正 `effects.js` 的 target 注释 | 五条 `*CompletionFeedsDomestic` 断言全绿；基线差异只落在预期字段 |
-| **N2** | 备份仓 pipeline 双写收敛：pipeline 为唯一事实源（主仓 `out/` 由它组装）**或** 备份仓 CI 加「pipeline 输出 == out/」diff 门 | 重跑 pipeline 后 `git status` 干净 |
+此前 `updateMonthlyAgendas` 的完成回馈是 **7 国 if-else + 14 段按议程 id 的硬编码**（约 90 行）：
+加一个国家的议程树就必须回来改引擎。
+
+现在是两层：
+
+| 层次 | 机制 |
+| --- | --- |
+| 通用规则 | 按「本国状态里有没有这个字段」分派：`domesticShortage` → `shortage`（苏联）；`stabilityBonus` → 专属内政压 `unrest`、通用实体抬 `stability`；`congressBonus` → `congressApproval`（美国） |
+| 议程专属 | `agendas.js` 里 `onComplete: {字段: 增量}`，引擎不认任何国家名或议程 id |
+
+配套：
+- 新增 `domesticStateOf(cKey)` —— 「国家键 → 内政状态对象」的唯一入口，取代散落的 8 处国家清单；
+- `data/agenda-conditions.js` 新增 `ONCOMPLETE_FIELDS`（30 个合法字段）与 `isOnCompleteField`；
+- 校验器 `checkAgendaConditions` 扩展：`onComplete` 字段必须已登记、增量必须是有限数字；
+- 探针 `agendaProbeConditionVocabulary` 扩 3 条断言：字段全部已登记、每个字段都能在该国内政状态上解析、
+  **原硬编码的 14 项全部改为数据声明**（迁移完整性）；
+- 修正 `effects.js` 里 `stabilityBonus` / `congressBonus` 的 target 注释（已与实现不同步）。
+
+**验收**：`cmp` 除 `agenda` 外 24 个探针**逐位一致**（证明重构等价）；`agenda` 74 → **77** 条断言、
+零丢失；`validate.test` 85 → **88**；`validate_data` 新增 `14 onComplete sites`。
+
+**N2 — 导出结构对账**
+
+`out/data/provinces.js` / `countries.js` 由备份仓 `pipeline/` 生成，两侧靠人工同步（Phase K 删
+`has_capital` 时就得两边各改一次）。完整重跑 pipeline 需要 `work/` 里十几 GB 原始栅格，CI 做不到，
+所以新增 `tools/check_export_schema.js` 守可验证的那一半：
+
+1. 产物字段集 == `pipeline/export-schema.json`（结构契约，提交在备份仓）；
+2. `pipeline/s5_meta.py` 的 `pj.append({...})` / `t.update({...})` 仍在写这些字段；
+3. 省份字段集必须**逐省一致**（任何单省漂移立即失败）；
+4. 省份数 / 实体数变化也算违约。
+
+**实测两种漂移都会失败**：
+- pipeline 重新写 `has_capital` → `x s5_meta.py 新写了产物里没有的省份字段：has_capital（需要重跑 pipeline 并更新契约）`；
+- 产物里少一个字段 → `FAIL: provinces.js 中 2997 个省份字段集不一致（例如 id=3）`。
+
+主仓没有 `pipeline/`，此步打印 `SKIP` 并 exit 0；备份仓 CI 才真正对账（两边 CI 都加了这一步）。
+
+**验收**：`node tools/check_export_schema.js out` → `OK: export schema matches the pipeline contract`
+（2998 省份 × 8 字段、54 实体 19 字段并集）。
 
 ### Phase O — 平台与生成物（低风险，0.5 天）
 
@@ -271,7 +307,7 @@ window.W1980_AGENDA_CONDITIONS = {
 ```mermaid
 graph LR
   L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ 全部完成]
-  M --> N[Phase N 契约一致性]
+  M --> N[Phase N 契约一致性 ✅]
   N --> O[Phase O 平台与生成物]
   L -.->|默认方针中性| B1[既有数值零漂移]
   M -.->|M4 塌缩自动门 + M2 注册表自检 + M3 门控词表| B2[后续改动有护栏]
@@ -283,7 +319,9 @@ graph LR
   - M2 探针注册收敛为 `data/probes.js`，三处消费者 + 三重自检；
   - M3 删掉两个零引用门控分支，门控名字收敛为 `data/agenda-conditions.js`，未登记即构建期失败、运行期 fail-closed；
   - M4 断言塌缩自动门上线并被实测证明会失败。
-- **N 改引擎**：N1 真正改 `updateMonthlyAgendas` 的分派逻辑，必须在 M 的护栏之后（现在三道护栏齐备）。
+- **N 已完成**：N1 把议程完成回馈从「7 国 if-else + 14 段硬编码」变成数据声明式 `onComplete`，
+  引擎不再认任何国家名或议程 id；N2 给「产物 ↔ pipeline」加了结构对账门，
+  实测能抓到 `has_capital` 那类漂移。
 - **O 可穿插**：纯平台层，风险最低。
 
 ---

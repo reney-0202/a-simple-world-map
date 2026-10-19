@@ -6,12 +6,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 65,
-    "pop": 78,
-    "ind": 82,
-    "province": 68,
-    "delta": 68,
-    "resource": 72
+    "bloc": 76,
+    "pop": 81,
+    "ind": 79,
+    "province": 67,
+    "delta": 65,
+    "resource": 70
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -28,7 +28,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1765
+   "totalMs": 1786
   },
   "failed": false
  },
@@ -985,7 +985,12 @@
     "__agendaConditionsRegistered": 4,
     "agendaConditionsAllRegistered": "PASS",
     "unknownAgendaConditionBlocks": "PASS",
-    "deadAgendaConditionsRejected": "PASS"
+    "deadAgendaConditionsRejected": "PASS",
+    "__onCompleteSites": 14,
+    "__onCompleteFields": 30,
+    "agendaOnCompleteFieldsRegistered": "PASS",
+    "agendaOnCompleteFieldsResolve": "PASS",
+    "agendaOnCompleteMigrationComplete": "PASS"
    }
   },
   "failed": false

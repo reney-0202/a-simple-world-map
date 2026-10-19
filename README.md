@@ -38,7 +38,24 @@ node tools/validate_data.js out --quiet    # 只打印问题 / OK 行
   （`mil_le_3` / `mil_le_1` / `mil_ge_5` / `domestic_faction`），且 `domestic_faction` 必须带完整
   `faction` 声明（`key` + `lead`/`over` 或 `field`/`min`）。写错一个名字 = 构建期失败，
   而不是「门控静默放行」；
+- **议程完成回馈字段**：`onComplete: {字段: 增量}` 里的字段名同样必须在同一份词表里登记
+  （完成议程时的内政回馈完全由数据声明，引擎不再按国家名/议程 id 分支）；
 - 巨型边界数据（`data/borders_*.json`）的结构与量程。
+
+### 1a. 导出结构对账（pipeline ↔ 产物）
+
+```bash
+node tools/check_export_schema.js out
+```
+
+`out/data/provinces.js` / `countries.js` 由备份仓的 `pipeline/` 生成，两侧是同一事实的两份拷贝。
+完整重跑 pipeline 需要十几 GB 原始栅格（`work/` 未入库），CI 里做不到，所以这道门守的是可验证的那一半：
+
+- 发布的产物字段集必须等于 `pipeline/export-schema.json`（结构契约，随备份仓提交）；
+- `pipeline/s5_meta.py` 里 `pj.append({...})` / `t.update({...})` 仍在写这些字段。
+
+任何一方单独改动都会失败，必须显式更新契约 —— 这是刻意的：改动要有意识，不要静默漂移
+（`has_capital` 当初就是这么留下来的）。主仓没有 `pipeline/`，此步打印 `SKIP` 并 exit 0。
 
 ### 1b. 校验器自身的单元测试（Node，无依赖）
 
@@ -194,7 +211,7 @@ Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强�
 | --- | --- | --- | --- |
 | **L** ✅ | 参与感与战略灵活性 | — | **已交付**：政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
 | **M** | 卫生与闸门 | 低 | `07-domestic.js` 2995 → 1279 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；探针注册收敛为单一事实源 `data/probes.js`；议程门控词表 `data/agenda-conditions.js`（未登记即 CI 失败）；新增断言塌缩自动门 |
-| **N** | 契约一致性 | 中 | 议程完成回馈数据声明式；备份仓 pipeline 双写收敛 |
+| **N** | 契约一致性 | 中 | 议程完成回馈改为数据声明式 `onComplete`（引擎不再按国家/议程 id 分支）；导出结构对账 `tools/check_export_schema.js`（产物 ↔ pipeline 契约） |
 | **O** | 平台与生成物 | 低 | PWA 深链注册修复；`sw.js` 预缓存清单自动生成 |
 
 M 阶段全部**不改变仿真数值**，是后续改动的干净地基；N 阶段会真正改引擎分派逻辑，

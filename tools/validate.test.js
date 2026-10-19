@@ -59,13 +59,16 @@ function cleanData() {
     },
     W1980_EVENTS: [{ id: 'e1', targets: ['AAA', 'MMM'] }],
     W1980_CROSSROADS: [{ id: 'x1', actors: ['BBB', 'CCC'] }],
-    W1980_AGENDAS: { database: { AAA: [{ id: 'a1', effects: { gdpBonus: 0.3, desc: 'x' } }], DEFAULT: [] } },
+    W1980_AGENDAS: { database: { AAA: [{ id: 'a1', onComplete: { sezMomentum: 10 }, effects: { gdpBonus: 0.3, desc: 'x' } }], DEFAULT: [] } },
     W1980_AGENDA_CONDITIONS: {
       CONDITIONS: {
         mil_le_3: { zh: '军费 ≤ 3%', fields: [], faction: false },
         domestic_faction: { zh: '内政天平', fields: [], faction: true },
       },
       isRegistered(name) { return Object.prototype.hasOwnProperty.call(this.CONDITIONS, name); },
+      // N1：完成回馈字段词表
+      ONCOMPLETE_FIELDS: { sezMomentum: { zh: '特区动能' }, unrest: { zh: '动荡' } },
+      isOnCompleteField(name) { return Object.prototype.hasOwnProperty.call(this.ONCOMPLETE_FIELDS, name); },
     },
     W1980_INTEL: { AGENCIES: { BBB: { name: 'b' }, DEFAULT: null } },
     W1980_AFGHAN: { POLICIES: { p1: {} } },
@@ -510,6 +513,22 @@ test('a missing condition vocabulary is reported, not thrown', () => {
 test('a vocabulary entry without a zh label is caught', () => {
   const d = cleanData(); d.W1980_AGENDA_CONDITIONS.CONDITIONS.mil_le_3.zh = '';
   assert.match(checks.checkAgendaConditions(makeCtx(d)).problems[0], /mil_le_3\.zh/);
+});
+// N1：完成回馈的字段名同样有契约 —— 拼错 = 静默无效，所以构建期就要失败。
+test('an unregistered onComplete field fails the build', () => {
+  const d = cleanData();
+  d.W1980_AGENDAS.database.AAA[0].onComplete = { sezMomentumm: 10 };
+  assert.match(checks.checkAgendaConditions(makeCtx(d)).problems[0], /未登记的内政字段 "sezMomentumm"/);
+});
+test('a non-numeric onComplete delta fails the build', () => {
+  const d = cleanData();
+  d.W1980_AGENDAS.database.AAA[0].onComplete = { sezMomentum: '10' };
+  assert.match(checks.checkAgendaConditions(makeCtx(d)).problems[0], /onComplete\.sezMomentum 必须是有限数字/);
+});
+test('registered onComplete fields pass', () => {
+  const d = cleanData();
+  d.W1980_AGENDAS.database.AAA[0].onComplete = { sezMomentum: 10, unrest: -2 };
+  assert.deepStrictEqual(checks.checkAgendaConditions(makeCtx(d)).problems, []);
 });
 
 // ---- 8b. raster integrity manifest --------------------------------------------

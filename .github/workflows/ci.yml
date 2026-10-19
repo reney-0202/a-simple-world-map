@@ -29,6 +29,11 @@ jobs:
         run: node tools/validate_data.js out --json > validate-report.json
       - name: Entity coverage matrix (54 entities x data surfaces)
         run: node tools/validate_data.js out --report
+
+      - name: Export-schema parity with the generation pipeline
+        # N2：本仓没有 pipeline/（生成器在备份仓），此步会打印 SKIP 并 exit 0；
+        # 同一脚本在备份仓的 CI 里才真正做对账。放在这里是为了让脚本本身也进 CI。
+        run: node tools/check_export_schema.js out
       - uses: actions/upload-artifact@v7
         if: always()
         with:

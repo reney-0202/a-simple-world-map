@@ -88,6 +88,24 @@ function getGeneralDomestic(k) {
   return ST.domestic.generals[k];
 }
 
+// N1：把「国家键 → 该国内政状态对象」收敛成唯一入口。
+// 七大国各有专属对象，其余实体走 generals 缓存。议程完成回馈、以及
+// 短缺/安定/国会三种通用效果的分派都只通过它取对象，不再各自写一遍国家清单。
+// 注意：这里**不做别名解析** —— 存进来的 cKey 一律是议程状态里的可玩实体键，
+// 保持与拆分前逐位一致的取值语义。
+function domesticStateOf(cKey) {
+  if (!cKey || !ST.domestic) return null;
+  if (cKey === "SUN") return ST.domestic.sun || null;
+  if (cKey === "USA") return ST.domestic.usa || null;
+  if (cKey === "CHN") return ST.domestic.chn || null;
+  if (cKey === "DEU") return ST.domestic.deu || null;
+  if (cKey === "JPN") return ST.domestic.jpn || null;
+  if (cKey === "FRA") return ST.domestic.fra || null;
+  if (cKey === "GBR") return ST.domestic.gbr || null;
+  const g = ST.domestic.generals;
+  return (g && g[cKey]) ? g[cKey] : null;
+}
+
 function sanitizeDomesticState(d) {
   const fresh = {
     sun: { conservative: 55, reformist: 45, shortage: 28, unrest: 5, crisisWarning: null },

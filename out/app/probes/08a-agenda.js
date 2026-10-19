@@ -456,4 +456,44 @@ function agendaProbeConditionVocabulary(r, assert, ctx) {
     deadA.ok === false && deadB.ok === false &&
     !REG.isRegistered("domestic_reform_lead") && !REG.isRegistered("domestic_detente"),
     "已删除的 domestic_reform_lead / domestic_detente 既不在词表也求值不通过");
+
+  // ---- N1：完成回馈的数据契约 ------------------------------------------------
+  // `onComplete: {字段: 增量}` 取代了引擎里 14 段按议程 id 的硬编码。字段名拼错会
+  // 静默无效，所以这里做运行期双保险：字段已登记 + 目标国家真的有这个字段。
+  const OC_FIELDS = REG.ONCOMPLETE_FIELDS || {};
+  const ocUnregistered = [];
+  const ocUnresolved = [];
+  const ocIds = [];
+  for (const ck of Object.keys(AGD)) {
+    for (const ag of (AGD[ck] || [])) {
+      if (!ag.onComplete || typeof ag.onComplete !== "object") continue;
+      ocIds.push(ag.id);
+      const ocSt = domesticStateOf(ck);
+      for (const field in ag.onComplete) {
+        if (typeof REG.isOnCompleteField !== "function" || !REG.isOnCompleteField(field)) ocUnregistered.push(ag.id + "." + field);
+        if (!ocSt || typeof ocSt[field] !== "number") ocUnresolved.push(ag.id + "." + field);
+      }
+    }
+  }
+  r.details.__onCompleteSites = ocIds.length;
+  r.details.__onCompleteFields = Object.keys(OC_FIELDS).length;
+  assert("agendaOnCompleteFieldsRegistered", ocUnregistered.length === 0,
+    "onComplete 使用的字段全部已登记（未登记 " + ocUnregistered.length + " 处" +
+      (ocUnregistered.length ? "：" + ocUnregistered.join(",") : "") + "）");
+  assert("agendaOnCompleteFieldsResolve", ocUnresolved.length === 0,
+    "onComplete 的每个字段都能在该国内政状态上解析（无解 " + ocUnresolved.length + " 处" +
+      (ocUnresolved.length ? "：" + ocUnresolved.join(",") : "") + "）");
+
+  // 迁移完整性：这 14 项曾硬编码在引擎里，现在必须全部由数据声明
+  const migrated = [
+    "chn_sez", "chn_disarm", "chn_market",
+    "jpn_black_current", "jpn_maekawa",
+    "deu_ostpolitik", "eur_single_market_deu", "eur_defense_pillar_deu",
+    "fra_nationalization", "fra_rigueur", "fra_reconversion",
+    "gbr_monetarist_turn", "gbr_union_reform", "gbr_wider_shareholding"
+  ];
+  const ocMissing = migrated.filter((id) => ocIds.indexOf(id) < 0);
+  assert("agendaOnCompleteMigrationComplete", ocMissing.length === 0,
+    "原硬编码的 14 项议程回馈全部改为数据声明（缺 " + ocMissing.length + " 项" +
+      (ocMissing.length ? "：" + ocMissing.join(",") : "") + "）");
 }

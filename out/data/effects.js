@@ -30,7 +30,7 @@
     sunReformist: { group: "crisis", type: "number", target: "ST.domestic.sun.reformist", zh: "苏联改革派影响力" },
     sunShortage: { group: "crisis", type: "number", target: "ST.domestic.sun.shortage", zh: "苏联物资短缺度" },
     usaCongressApproval: { group: "crisis", type: "number", target: "ST.domestic.usa.congressApproval", zh: "美国国会支持率" },
-    stabilityBonus: { group: "crisis", type: "number", target: "ST.domestic.generals[*].stability", zh: "次极大国政局稳定度加成" },
+    stabilityBonus: { group: "crisis", type: "number", target: "ST.domestic.generals[*].stability（通用实体）；七大国为 *.unrest -= 值×0.4", zh: "次极大国政局稳定度加成" },
     cocomStrict: { group: "crisis", type: "boolean", target: "ST.cocom.strict", zh: "巴统极严格出口管制开关" },
     defconRisk: { group: "crisis", type: "number", target: "展示用（核威慑时钟）", zh: "核威慑风险读数" },
     natoCohesion: { group: "crisis", type: "number", target: "展示用（阵营凝聚）", zh: "北约凝聚力" },
@@ -44,7 +44,7 @@
     gdpBonus: { group: "agenda", type: "number", target: "P.gdp 乘性加成", zh: "GDP 增速加成（pp/年）" },
     reserveMonthly: { group: "agenda", type: "number", target: "ST.reserves 月度现金流", zh: "月度外汇储备变动" },
     domesticShortage: { group: "agenda", type: "number", target: "ST.domestic.*.shortage", zh: "国内短缺度" },
-    congressBonus: { group: "agenda", type: "number", target: "ST.domestic.usa.congressApproval", zh: "国会支持率加成" },
+    congressBonus: { group: "agenda", type: "number", target: "拥有 congressApproval 的内政模型（当前仅 USA）", zh: "国会支持率加成" },
     decoupleImmunity: { group: "agenda", type: "boolean", target: "阵营脱钩震荡免疫", zh: "脱钩震荡免疫开关" },
     techSecurity: { group: "agenda", type: "number", target: "技术安全评级", zh: "技术安全评级加成" },
     // 注：agendas 的 effects 里还带一条 desc（效果摘要文案，与 crisis 的 summary 同类）。

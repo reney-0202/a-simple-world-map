@@ -241,100 +241,36 @@ function updateMonthlyAgendas(y, m, silent) {
       state.bonuses = calcAgendaBonuses(cKey);
 
       // 即时效果渗透至内政与安定度
-      if (ag.effects) {
-        if (typeof ag.effects.domesticShortage === "number" && ST.domestic) {
-          if (cKey === "SUN" && ST.domestic.sun) {
-            ST.domestic.sun.shortage = clamp(ST.domestic.sun.shortage + ag.effects.domesticShortage, 0, 100);
+      // N1：完成回馈改为**数据声明式**。此前这里是 7 国 if-else + 14 段按议程 id 的
+      // 硬编码，加一个国家的议程树就必须回来改引擎。现在：
+      //   · 通用规则（短缺 / 安定 / 国会）按「本国状态里有没有这个字段」分派；
+      //   · 每项议程的专属回馈由 agendas.js 的 `onComplete: {字段: 增量}` 声明。
+      const st = domesticStateOf(cKey);
+      if (st && ag.effects) {
+        // 短缺：只有拥有 shortage 的内政模型（苏联）会命中
+        if (typeof ag.effects.domesticShortage === "number" && typeof st.shortage === "number") {
+          st.shortage = clamp(st.shortage + ag.effects.domesticShortage, 0, 100);
+        }
+        // 安定：专属内政有 unrest 而无 stability → 压动荡；通用国家相反 → 抬稳定性
+        if (typeof ag.effects.stabilityBonus === "number") {
+          if (typeof st.unrest === "number" && typeof st.stability !== "number") {
+            st.unrest = clamp(st.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
+          } else if (typeof st.stability === "number") {
+            st.stability = clamp(st.stability + ag.effects.stabilityBonus, 0, 100);
           }
         }
-        if (typeof ag.effects.stabilityBonus === "number" && ST.domestic) {
-          if (cKey === "SUN" && ST.domestic.sun) {
-            ST.domestic.sun.unrest = clamp(ST.domestic.sun.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "USA" && ST.domestic.usa) {
-            ST.domestic.usa.unrest = clamp(ST.domestic.usa.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "CHN" && ST.domestic.chn) {
-            ST.domestic.chn.unrest = clamp(ST.domestic.chn.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "DEU" && ST.domestic.deu) {
-            ST.domestic.deu.unrest = clamp(ST.domestic.deu.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "JPN" && ST.domestic.jpn) {
-            ST.domestic.jpn.unrest = clamp(ST.domestic.jpn.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "FRA" && ST.domestic.fra) {
-            ST.domestic.fra.unrest = clamp(ST.domestic.fra.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (cKey === "GBR" && ST.domestic.gbr) {
-            ST.domestic.gbr.unrest = clamp(ST.domestic.gbr.unrest - ag.effects.stabilityBonus * 0.4, 0, 100);
-          } else if (ST.domestic.generals && ST.domestic.generals[cKey]) {
-            ST.domestic.generals[cKey].stability = clamp(ST.domestic.generals[cKey].stability + ag.effects.stabilityBonus, 0, 100);
-          }
+        // 国会：只有拥有 congressApproval 的内政模型（美国）会命中
+        if (typeof ag.effects.congressBonus === "number" && typeof st.congressApproval === "number") {
+          st.congressApproval = clamp(st.congressApproval + ag.effects.congressBonus, 0, 100);
         }
-        // H（玩法深度）：CHN/DEU 议程树与内政天平双向联动 —— 完成节点即时回馈内政变量，
-        // 使「内政门控 → 推进议程 → 内政改善 → 解锁下一步」形成闭环。
-        if (cKey === "CHN" && ST.domestic && ST.domestic.chn) {
-          if (ag.id === "chn_sez") ST.domestic.chn.sezMomentum = clamp(ST.domestic.chn.sezMomentum + 10, 0, 100);
-          else if (ag.id === "chn_disarm") ST.domestic.chn.dualTrackPrice = clamp(ST.domestic.chn.dualTrackPrice - 8, 0, 100);
-          else if (ag.id === "chn_market") {
-            ST.domestic.chn.sezMomentum = clamp(ST.domestic.chn.sezMomentum + 14, 0, 100);
-            ST.domestic.chn.reformist = clamp(ST.domestic.chn.reformist + 6, 0, 100);
-            ST.domestic.chn.planned = clamp(ST.domestic.chn.planned - 6, 0, 100);
-          }
-        }
-        if (cKey === "DEU" && ST.domestic && ST.domestic.deu) {
-          if (ag.id === "deu_ostpolitik") ST.domestic.deu.detenteDepth = clamp(ST.domestic.deu.detenteDepth + 8, 0, 100);
-          else if (ag.id === "eur_single_market_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden - 5, 0, 100);
-          else if (ag.id === "eur_defense_pillar_deu") ST.domestic.deu.natoBurden = clamp(ST.domestic.deu.natoBurden + 10, 0, 100);
-        }
-        // K（玩法深度）：JPN/FRA/GBR 议程树与内政天平双向联动（模板同 CHN/DEU）。
-        if (cKey === "JPN" && ST.domestic && ST.domestic.jpn) {
-          const jpn = ST.domestic.jpn;
-          if (ag.id === "jpn_black_current") {
-            jpn.tradeFriction = clamp(jpn.tradeFriction - 6, 0, 100);
-            jpn.exportist = clamp(jpn.exportist + 4, 0, 100);
-            jpn.domesticist = clamp(jpn.domesticist - 4, 0, 100);
-          } else if (ag.id === "jpn_maekawa") {
-            jpn.tradeFriction = clamp(jpn.tradeFriction - 14, 0, 100);
-            jpn.domesticist = clamp(jpn.domesticist + 8, 0, 100);
-            jpn.exportist = clamp(jpn.exportist - 8, 0, 100);
-            jpn.unrest = clamp(jpn.unrest - 2, 0, 100);
-          }
-        }
-        if (cKey === "FRA" && ST.domestic && ST.domestic.fra) {
-          const fra = ST.domestic.fra;
-          if (ag.id === "fra_nationalization") {
-            // 国有化 → 赤字与资本外逃：干预派得势但法郎承压、外部约束加剧
-            fra.dirigiste = clamp(fra.dirigiste + 6, 0, 100);
-            fra.rigueur = clamp(fra.rigueur - 6, 0, 100);
-            fra.francStrength = clamp(fra.francStrength - 12, 0, 100);
-            fra.externalPressure = clamp(fra.externalPressure + 10, 0, 100);
-          } else if (ag.id === "fra_rigueur") {
-            // 紧缩转向 → 法郎平价回升、外部压力回落，但紧缩初期民怨上升
-            fra.rigueur = clamp(fra.rigueur + 8, 0, 100);
-            fra.dirigiste = clamp(fra.dirigiste - 8, 0, 100);
-            fra.francStrength = clamp(fra.francStrength + 15, 0, 100);
-            fra.externalPressure = clamp(fra.externalPressure - 8, 0, 100);
-            fra.unrest = clamp(fra.unrest + 2, 0, 100);
-          } else if (ag.id === "fra_reconversion") {
-            fra.francStrength = clamp(fra.francStrength + 10, 0, 100);
-            fra.unrest = clamp(fra.unrest - 3, 0, 100);
-          }
-        }
-        if (cKey === "GBR" && ST.domestic && ST.domestic.gbr) {
-          const gbr = ST.domestic.gbr;
-          if (ag.id === "gbr_monetarist_turn") {
-            gbr.inflation = clamp(gbr.inflation - 14, 0, 100);
-            gbr.cityStrength = clamp(gbr.cityStrength + 6, 0, 100);
-            gbr.monetarist = clamp(gbr.monetarist + 6, 0, 100);
-            gbr.welfarist = clamp(gbr.welfarist - 6, 0, 100);
-            gbr.unrest = clamp(gbr.unrest + 3, 0, 100);
-          } else if (ag.id === "gbr_union_reform") {
-            gbr.inflation = clamp(gbr.inflation - 6, 0, 100);
-            gbr.cityStrength = clamp(gbr.cityStrength + 4, 0, 100);
-            gbr.unrest = clamp(gbr.unrest + 4, 0, 100);
-          } else if (ag.id === "gbr_wider_shareholding") {
-            gbr.cityStrength = clamp(gbr.cityStrength + 8, 0, 100);
-            gbr.unrest = clamp(gbr.unrest - 4, 0, 100);
-          }
-        }
-        if (typeof ag.effects.congressBonus === "number" && cKey === "USA" && ST.domestic && ST.domestic.usa) {
-          ST.domestic.usa.congressApproval = clamp(ST.domestic.usa.congressApproval + ag.effects.congressBonus, 0, 100);
+      }
+      // 议程专属回馈：完全由数据声明，引擎不认任何国家名或议程 id
+      if (st && ag.onComplete && typeof ag.onComplete === "object") {
+        for (const field in ag.onComplete) {
+          const delta = ag.onComplete[field];
+          if (typeof delta !== "number" || !isFinite(delta)) continue;
+          if (typeof st[field] !== "number") continue;
+          st[field] = clamp(st[field] + delta, 0, 100);
         }
       }
 

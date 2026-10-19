@@ -454,8 +454,29 @@ function checkAgendaConditions(ctx) {
       }
     }
   }
-  notes.push(`agenda conditions: ${Object.keys(known).length} registered, ${sites} agenda sites, ${problems.length} problem(s)`);
-  return { problems, notes, stats: { registered: Object.keys(known).length, sites } };
+
+  // N1：完成回馈 `onComplete` 的字段名同样必须是登记值 —— 拼错就是「回馈静默无效」。
+  let onCompleteSites = 0;
+  if (typeof REG.isOnCompleteField === 'function') {
+    for (const ck of Object.keys(AGD)) {
+      for (const ag of (AGD[ck] || [])) {
+        if (!ag.onComplete || typeof ag.onComplete !== 'object') continue;
+        onCompleteSites++;
+        for (const field of Object.keys(ag.onComplete)) {
+          if (!REG.isOnCompleteField(field)) {
+            problems.push(`agendas.js: ${ck}/${ag.id}.onComplete 使用了未登记的内政字段 "${field}"`);
+          }
+          const v = ag.onComplete[field];
+          if (typeof v !== 'number' || !isFinite(v)) {
+            problems.push(`agendas.js: ${ck}/${ag.id}.onComplete.${field} 必须是有限数字`);
+          }
+        }
+      }
+    }
+  }
+
+  notes.push(`agenda conditions: ${Object.keys(known).length} registered, ${sites} agenda sites, ${onCompleteSites} onComplete sites, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { registered: Object.keys(known).length, sites, onCompleteSites } };
 }
 
 const CHECKS = [
