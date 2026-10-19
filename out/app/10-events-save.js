@@ -78,7 +78,10 @@ function evRun(y, m, silent) {
     }
   }
   updateTimelineFrontlines(y, m, silent);   // R8B：同步前线战况
-  updateMonthlyTrade(y, m);                 // R9B：月度外汇储备池与贸易结算
+  // D（地面战争）：把日期状态机升级成可争夺的战局。
+  // 紧跟在前线之后：它读的是同一份战线省份，并把「谁在赢」算出来。
+  // 无执政者时它照样推进（旁观观战），但不写 pmods / 内政 / 威望。
+  updateGroundWars(y, m, silent);  updateMonthlyTrade(y, m);                 // R9B：月度外汇储备池与贸易结算
   updateTimelineEmbargo(y, m);              // R9C：巴统禁运与霍尔木兹海峡安全态势
   if (isAIActive()) updateAIDecisions(y, m, silent); // R10A：反应式 AI 决策机
   updateDomesticPolitics(y, m, silent);     // R12A：大国内政生态与派系权力天平月度演进
@@ -310,6 +313,7 @@ function simSave(slot) {
     domestic: ST.domestic,                            // R12A：内政生态与派系权力天平状态
     polEcon: ST.polEcon ? JSON.parse(JSON.stringify(ST.polEcon)) : null, // P1：经济账单（期望锚/连续计数/已入账）
     prestige: ST.prestige ? JSON.parse(JSON.stringify(ST.prestige)) : null, // F：威望竞赛（分数/工程/漂移/里程碑）
+    wars: ST.wars ? JSON.parse(JSON.stringify(ST.wars)) : null, // D：地面战争（战线优势/消耗/厌战/结局）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -477,6 +481,8 @@ function loadSocietyStates(d) {
   // F：还原威望竞赛（分数 / 在建工程 / 漂移记录 / 已结算里程碑）。
   // 旧档缺该项 → 空状态（分数在首次读取时按 SCORE_START 补齐），无需升版。
   ST.prestige = sanitizePrestigeState(d.prestige);
+  // D：还原地面战争（战线优势 / 消耗 / 厌战 / 结局）。旧档缺该项 → 空战局。
+  ST.wars = sanitizeGroundWarState(d.wars);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

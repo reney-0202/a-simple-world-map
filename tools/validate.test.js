@@ -91,6 +91,26 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_WARS: {
+      WARS: {
+        w1: {
+          zh: '测试战争', sideA: 'AAA', sideB: 'BBB',
+          start: [1980, 9], historicEnd: [1988, 8],
+          phases: [[1980, 9, 28], [1982, 5, -32]], stake: 6, decisive: 60,
+          provinces: [1, 2], ceaseRes: 'res_598',
+        },
+      },
+      OPS: {
+        attack: { zh: '攻势', pc: 18, strength: 6, enemyAttr: 0.5, selfAttr: 0.4, wear: 0.4 },
+        truce: { zh: '停火', pc: 10, strength: 0, enemyAttr: 0, selfAttr: 0, wear: -0.3, endEarly: true },
+      },
+      PARAMS: {
+        CONTROL_MIN: -100, CONTROL_MAX: 100, DEVIATION_PER_SUPPORT: 7, DEVIATION_CLAMP: 45,
+        DECISIVE_DEV: 28, ATTR_PER_DEV: 0.012, ATTR_DRAG: 0.45, ATTR_DRAG_DIV: 6,
+        WEAR_MAX: 100, WEAR_UNREST: 0.22, WEAR_DECAY: 0.35, STALEMATE_BAND: 22,
+        SETTLE_PRESTIGE: 0.45, LOG_MAX: 24,
+      },
+    },
     W1980_PRESTIGE: {
       MILESTONES: [
         { id: 'm1', y: 1981, m: 4, owner: 'AAA', gain: 8, rival: 'BBB', rivalLoss: 2, zh: 'x' },
@@ -721,6 +741,68 @@ test('a rival mapping pointing at itself is caught', () => {
 test('an empty drift eligibility list is caught', () => {
   const d = cleanData(); d.W1980_PRESTIGE.PARAMS.DRIFT_ELIGIBLE = [];
   assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /DRIFT_ELIGIBLE 必须是非空数组/);
+});
+
+// ---- 8h. ground-war table (D) ------------------------------------------------
+// Three date machines became contestable campaigns here. The silent failure modes
+// are: a belligerent that is not an entity (the war then costs nobody), a phase
+// step outside the war's own window (control jumps with no war on), and a
+// decisive threshold the ladder can never reach (early victory is then dead).
+section('checkWars');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkWars(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_WARS;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /未定义 W1980_WARS/);
+});
+test('an unresolvable belligerent is caught', () => {
+  const d = cleanData(); d.W1980_WARS.WARS.w1.sideA = 'ZZZ';
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /sideA "ZZZ" 不可解析/);
+});
+test('identical sides are caught', () => {
+  const d = cleanData(); d.W1980_WARS.WARS.w1.sideB = 'AAA';
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /sideA 与 sideB 不能相同/);
+});
+test('a historicEnd before start is caught', () => {
+  const d = cleanData(); d.W1980_WARS.WARS.w1.historicEnd = [1979, 1];
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /historicEnd 必须晚于 start/);
+});
+test('a phase before the war starts is caught', () => {
+  const d = cleanData(); d.W1980_WARS.WARS.w1.phases = [[1979, 1, 20], [1982, 5, -30]];
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /阶段早于 start/);
+});
+test('phases out of order are caught', () => {
+  const d = cleanData();
+  d.W1980_WARS.WARS.w1.phases = [[1982, 5, -32], [1980, 9, 28]];
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /必须按时间升序/);
+});
+test('a flat ladder is caught', () => {
+  // A ladder that never moves renders as a line that never moves.
+  const d = cleanData();
+  d.W1980_WARS.WARS.w1.phases = [[1980, 9, 10], [1982, 5, 10]];
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /全程同一档/);
+});
+test('an unreachable decisive threshold is caught', () => {
+  const d = cleanData(); d.W1980_WARS.WARS.w1.decisive = 99;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /提前决胜永远不可能触发/);
+});
+test('an operation with no political cost is caught', () => {
+  const d = cleanData(); d.W1980_WARS.OPS.attack.pc = 0;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /方针 attack\.pc 必须是正数/);
+});
+test('a negative self attrition is caught', () => {
+  const d = cleanData(); d.W1980_WARS.OPS.attack.selfAttr = -1;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /selfAttr 不能为负/);
+});
+test('a war table with no exit operation is caught', () => {
+  // Without a "seek ceasefire" option the player cannot cut their losses.
+  const d = cleanData(); delete d.W1980_WARS.OPS.truce;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /没有任何「主动停火」方针/);
+});
+test('DECISIVE_DEV above DEVIATION_CLAMP is caught', () => {
+  const d = cleanData(); d.W1980_WARS.PARAMS.DECISIVE_DEV = 60;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /DECISIVE_DEV\(60\) 高于 DEVIATION_CLAMP\(45\)/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

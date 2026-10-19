@@ -737,6 +737,107 @@ function checkPrestige(ctx) {
   return { problems, notes, stats: { milestones: MS.length, programs: Object.keys(PG).length } };
 }
 
+// ---- 2n. ground-war table (D) -------------------------------------------------
+// The war table is what turned three date machines into contestable campaigns.
+// Failure modes that stay silent: a belligerent that is not a real entity (the
+// war then costs nobody), a phase step outside the war's own window (control
+// jumps with no war on), or a decisive threshold the historic ladder can never
+// reach (the war can then never end early, so the mechanic is inert).
+function checkWars(ctx) {
+  const notes = [];
+  const problems = [];
+  const W = ctx.data.W1980_WARS;
+  if (!W) return { problems: ['wars.js: 未定义 W1980_WARS'], notes };
+  const WARS = W.WARS, OPS = W.OPS, P = W.PARAMS;
+  if (!WARS || typeof WARS !== 'object' || !Object.keys(WARS).length) {
+    return { problems: ['wars.js: WARS 必须是非空对象'], notes };
+  }
+  if (!OPS || typeof OPS !== 'object' || !Object.keys(OPS).length) {
+    return { problems: ['wars.js: OPS 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['wars.js: PARAMS 缺失'], notes };
+
+  const m = (pair) => (Array.isArray(pair) && pair.length === 2) ? pair[0] * 12 + pair[1] : null;
+  let phases = 0;
+  for (const id of Object.keys(WARS)) {
+    const d = WARS[id] || {};
+    const tag = `wars.js: ${id}`;
+    if (!d.zh) problems.push(`${tag} 缺 zh`);
+    if (!ctx.resolves(d.sideA)) problems.push(`${tag}.sideA "${d.sideA}" 不可解析`);
+    if (!ctx.resolves(d.sideB)) problems.push(`${tag}.sideB "${d.sideB}" 不可解析`);
+    if (d.sideA === d.sideB) problems.push(`${tag} 的 sideA 与 sideB 不能相同`);
+    const st = m(d.start), en = m(d.historicEnd);
+    if (st === null) problems.push(`${tag}.start 必须是 [年, 月]`);
+    if (en === null) problems.push(`${tag}.historicEnd 必须是 [年, 月]`);
+    if (st !== null && en !== null && !(en > st)) problems.push(`${tag} 的 historicEnd 必须晚于 start`);
+    if (!(typeof d.stake === 'number' && d.stake > 0)) problems.push(`${tag}.stake 必须是正数`);
+    if (!(typeof d.decisive === 'number' && d.decisive > 0 && d.decisive <= P.CONTROL_MAX)) {
+      problems.push(`${tag}.decisive 必须落在 (0, ${P.CONTROL_MAX}]`);
+    }
+    if (!Array.isArray(d.provinces) || !d.provinces.length) problems.push(`${tag}.provinces 必须是非空数组`);
+    if (!Array.isArray(d.phases) || !d.phases.length) {
+      problems.push(`${tag}.phases 必须是非空数组（没有基线就没有史实轨迹）`);
+    } else {
+      let prev = -Infinity;
+      for (const ph of d.phases) {
+        phases++;
+        if (!Array.isArray(ph) || ph.length !== 3) { problems.push(`${tag}.phases 每项必须是 [年, 月, control]`); continue; }
+        const at = m([ph[0], ph[1]]);
+        if (at === null) { problems.push(`${tag}.phases 的日期非法`); continue; }
+        if (at < prev) problems.push(`${tag}.phases 必须按时间升序（否则基线会跳回过去）`);
+        prev = at;
+        if (st !== null && at < st) problems.push(`${tag}.phases 有阶段早于 start（战线会在开战前就偏）`);
+        if (en !== null && at > en) problems.push(`${tag}.phases 有阶段晚于 historicEnd`);
+        if (typeof ph[2] !== 'number' || Math.abs(ph[2]) > P.CONTROL_MAX) {
+          problems.push(`${tag}.phases 的 control 必须落在 ±${P.CONTROL_MAX} 内`);
+        }
+      }
+      // 阶梯必须真的能推动战局：全程只有一档等于没有战局
+      if (d.phases.every((ph) => ph[2] === d.phases[0][2])) {
+        problems.push(`${tag}.phases 全程同一档，战局不会变化（面板会显示一条永不移动的线）`);
+      }
+      // 决胜阈值必须可被基线+最大偏离触达，否则「提前决胜」是死分支
+      const maxMag = Math.max.apply(null, d.phases.map((ph) => Math.abs(ph[2])));
+      if (typeof d.decisive === 'number' && maxMag + P.DEVIATION_CLAMP < d.decisive) {
+        problems.push(`${tag} 的 decisive(${d.decisive}) 高于「基线峰值 ${maxMag} + 偏离上限 ${P.DEVIATION_CLAMP}」，`
+          + `提前决胜永远不可能触发`);
+      }
+    }
+  }
+
+  let ops = 0;
+  for (const id of Object.keys(OPS)) {
+    const o = OPS[id] || {};
+    const tag = `wars.js: 方针 ${id}`;
+    ops++;
+    if (!o.zh) problems.push(`${tag} 缺 zh`);
+    if (!(typeof o.pc === 'number' && o.pc > 0)) problems.push(`${tag}.pc 必须是正数（否则免费）`);
+    for (const f of ['strength', 'enemyAttr', 'selfAttr', 'wear']) {
+      if (typeof o[f] !== 'number' || !isFinite(o[f])) problems.push(`${tag}.${f} 必须是有限数`);
+    }
+    if (typeof o.enemyAttr === 'number' && o.enemyAttr < 0) problems.push(`${tag}.enemyAttr 不能为负`);
+    if (typeof o.selfAttr === 'number' && o.selfAttr < 0) problems.push(`${tag}.selfAttr 不能为负`);
+  }
+  // 至少一项方针能让玩家主动结束战争，否则「止损」这个最重要的选择不存在
+  const hasExit = Object.keys(OPS).some((id) => OPS[id].endEarly);
+  if (!hasExit) problems.push('wars.js: 没有任何「主动停火」方针 —— 玩家无法止损');
+  if (!(typeof P.ATTR_PER_DEV === 'number' && P.ATTR_PER_DEV > 0)) problems.push('wars.js: ATTR_PER_DEV 必须是正数');
+  if (!(typeof P.ATTR_DRAG === 'number' && P.ATTR_DRAG > 0)) problems.push('wars.js: ATTR_DRAG 必须是正数');
+  if (!(typeof P.WEAR_UNREST === 'number' && P.WEAR_UNREST >= 0)) problems.push('wars.js: WEAR_UNREST 不能为负');
+  if (!(typeof P.DEVIATION_CLAMP === 'number' && P.DEVIATION_CLAMP > 0)) problems.push('wars.js: DEVIATION_CLAMP 必须是正数');
+  // 提前决胜必须由偏离造成；DECISIVE_DEV 必须 <= 最大偏离，否则「打赢」永远不可能
+  if (!(typeof P.DECISIVE_DEV === 'number' && P.DECISIVE_DEV > 0)) {
+    problems.push('wars.js: DECISIVE_DEV 必须是正数（否则提前决胜要么永远不可能、要么一点干预就触发）');
+  } else if (P.DECISIVE_DEV > P.DEVIATION_CLAMP) {
+    problems.push(`wars.js: DECISIVE_DEV(${P.DECISIVE_DEV}) 高于 DEVIATION_CLAMP(${P.DEVIATION_CLAMP})，`
+      + '提前决胜永远不可能触发');
+  }
+
+  notes.push(`wars: ${Object.keys(WARS).length} wars, ${phases} phase steps, ${ops} operations, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { wars: Object.keys(WARS).length, phases, operations: ops } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -826,6 +927,7 @@ const CHECKS = [
   { id: 'probeRegistry', label: '探针注册表自洽', run: checkProbeRegistry },
   { id: 'polEcon', label: '政治经济学表（经济→政治）', run: checkPolEcon },
   { id: 'prestige', label: '威望竞赛表（位置性威望）', run: checkPrestige },
+  { id: 'wars', label: '地面战争表（可争夺战局）', run: checkWars },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -848,6 +950,7 @@ module.exports = {
   checkProbeRegistry,
   checkPolEcon,
   checkPrestige,
+  checkWars,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

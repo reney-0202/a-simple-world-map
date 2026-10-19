@@ -24,6 +24,9 @@ function applyPlayerDecisions() {
   accAiDecisions(acc);
   accTreatyDividends(acc);
   accUnscResolutionEffects(acc);
+  // D（地面战争）：只对**偏离史实的那部分**消耗计费。
+  // 历史总代价已在校准曲线里，重复收费会变成对史实的双重扣款。
+  if (typeof accWarAttrition === "function") accWarAttrition(acc);
   for (const k in acc) {
     if (acc[k] !== 0) W1980_SIM.setPMod(SIM.S, k, acc[k]);
   }
@@ -109,6 +112,11 @@ if (ST.player === "SUN" && ST.afghan && ST.afghan.withdrawn) {
 if (typeof prestigeProgramDrag === "function") {
   const pd = prestigeProgramDrag();
   if (pd !== 0) selfPP += pd;
+}
+// D（地面战争）：玩家自己作为交战方的额外消耗（同样只算偏离史实的部分）
+if (typeof groundWarSelfDrag === "function") {
+  const wd = groundWarSelfDrag();
+  if (wd !== 0) selfPP += wd;
 }
   return selfPP;
 }

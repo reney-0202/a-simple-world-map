@@ -284,6 +284,7 @@ load().then(() => {
   // 前置准备与顺序要求，仍在本文件单独处理。
   const PROBE_RUNNERS = {
     flprobe: runFrontlineProbe,
+    groundwarprobe: runGroundWarProbe,
     warprobe: runWarProbe,
     resprobe: runResProbe,
     tradeprobe: runTradeProbe,

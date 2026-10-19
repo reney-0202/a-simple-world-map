@@ -21,6 +21,7 @@ window.W1980_PROBES={
   "bloc",
   "flprobe",
   "warprobe",
+  "groundwarprobe",
   "resprobe",
   "tradeprobe",
   "embargoprobe",
@@ -87,6 +88,12 @@ window.W1980_PROBES={
   "flprobe": {
    "qs": "flprobe=1",
    "marker": "FLPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "groundwar": {
+   "qs": "groundwarprobe=1",
+   "marker": "GROUNDWARPROBE",
    "budget": 60000,
    "class": "mechanics"
   },

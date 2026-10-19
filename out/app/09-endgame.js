@@ -977,6 +977,7 @@ function simReset() {
   initDomesticState();                                                                        // R12A：重置内政生态与派系权力天平至 1980 基准
   initPolEcon(true);                                                                         // P1：重置经济账单（期望锚/连续计数/已入账记录）
   initPrestigeState(true);                                                                   // F：重置威望竞赛（分数/工程/漂移/里程碑）
+  initGroundWarState(true);                                                                  // D：重置地面战争（战线优势/消耗/厌战/结局）
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initDirectiveState(true);                                                                   // L：重置国家战略指令板

@@ -49,6 +49,11 @@ function clearFrontlines() {
   }
 }
 // ---- R8B/R8C：局部战争动态前线状态机与大国对外干预深度联动 ----
+// D（地面战争）：时间线是「战争何时结束」的**唯一事实源** —— 它会因为干预而
+// 提前/延后停火日。地面战争引擎需要同一个月份来判断「这一场是否还在打」，
+// 所以时间线把自己的计算结果发布在这里，而不是让引擎另算一份。
+// （两处各算一次 = 出现「时间线还在打、引擎已经结算」的经典脱节。）
+const FL = { endOf: {} };
 function getInterventionScore(ctry) {
   if (!ctry) return 0;
   const targetKey = resolvePlayableKey(ctry);
@@ -119,6 +124,7 @@ function timelineIranIraq(now, silent, syncFl) {
   } else if (deltaIran <= -2) {
     m_iranCounter = 1983 * 12 + 5; // 坚守延后1年收复
   }
+  FL.endOf.iran_iraq = m_iranIraqEnd;   // D：发布给地面战争引擎
 
   if (!iranIraqDenied && !res598Passed && now >= m_iranIraqStart && now < m_iranCounter) {
     syncFl(1684, "IRQ", "iran_iraq", 8);
@@ -176,6 +182,7 @@ function timelineFalklands(now, silent, syncFl) {
   } else if (isGbrSwift) {
     m_falklandsEnd = 1982 * 12 + 5;
   }
+  FL.endOf.falklands = m_falklandsEnd;   // D：发布给地面战争引擎
 
   if (!res502Passed && now >= m_falklandsStart && now < m_falklandsEnd) {
     const prevFalklands = ST.frontlines[1248] ? ST.frontlines[1248].occupier : null;
@@ -214,6 +221,7 @@ function timelineGulfWar(now, silent, syncFl) {
   } else if (isGulfSwift) {
     m_gulfEnd = 1990 * 12 + 11; // 提前光复科威特
   }
+  FL.endOf.gulf_war = m_gulfEnd;   // D：发布给地面战争引擎
 
   if (!res660Passed && now >= m_gulfStart && now < m_gulfEnd) {
     syncFl(1809, "IRQ", "gulf_war", 127);
@@ -306,7 +314,13 @@ function refreshWarBox(selKey) {
   }
 
   if (wars.length === 0 && occupiedPids.length === 0 && lostPids.length === 0) {
-    box.style.display = "none"; box.innerHTML = ""; return;
+    // D：战争结束后战线已清空，但「谁赢了」必须仍然可见 ——
+    // 否则结局只存在于收件箱里的一条推送，玩家看不到战果。
+    const gOnly = (typeof groundWarPanelHtml === "function") ? groundWarPanelHtml(actualKey) : "";
+    if (!gOnly) { box.style.display = "none"; box.innerHTML = ""; return; }
+    box.innerHTML = '<div class="wh"><span>⚔ 战局与地缘前线</span><span class="w-badge">战果</span></div>' + gOnly;
+    box.style.display = "block";
+    return;
   }
 
   let h = '<div class="wh"><span>⚔ 战局与地缘前线</span><span class="w-badge">' + (wars.length ? wars[0].name : "局部前线") + '</span></div>';
@@ -339,6 +353,25 @@ function refreshWarBox(selKey) {
   }
   h += '<div class="w-impact">★ 外交干预：' + imp + '</div>';
 
+  // D（地面战争）：把「谁在赢」并入同一个战局面板 ——
+  // 两个面板各说各话正是这一阶段要消灭的东西。
+  if (typeof groundWarPanelHtml === "function") {
+    const gw = groundWarPanelHtml(actualKey);
+    if (gw) h += gw;
+  }
+
   box.innerHTML = h;
   box.style.display = "block";
+
+  // D：作战方针按钮 —— 与内政动作、威望工程抢同一份政治资本
+  box.querySelectorAll(".gw-op-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const wid = btn.dataset.war, op = btn.dataset.op;
+      const w = ST.wars && ST.wars.wars ? ST.wars.wars[wid] : null;
+      if (w && w.op === op) clearWarOp(wid);
+      else setWarOp(wid, op);
+      refreshWarBox(selKey);
+      if (typeof refreshDomesticBox === "function" && ST.sel) refreshDomesticBox(ST.sel);
+    });
+  });
 }

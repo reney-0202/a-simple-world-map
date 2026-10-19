@@ -203,7 +203,19 @@ button,input{font:inherit;color:inherit}
 #panel .p-domestic-box .pdb-prog-btn i{font-style:normal;color:#f0b429;font-variant-numeric:tabular-nums;opacity:.85}
 #panel .p-domestic-box .pdb-prog-btn:hover:not(.disabled){border-color:var(--gold);color:var(--gold2)}
 #panel .p-domestic-box .pdb-prog-btn.active{border-color:var(--gold);color:var(--gold2);background:#242b33}
-#panel .p-domestic-box .pdb-prog-btn.disabled{opacity:.42;cursor:not-allowed}#panel .p-domestic-box .pdb-postures{display:flex;gap:3px;margin-top:4px}
+#panel .p-domestic-box .pdb-prog-btn.disabled{opacity:.42;cursor:not-allowed}
+/* D：地面战争 —— 战线优势条 + 作战方针按钮（与战局面板同址） */
+#panel .warbox .gw-block{margin-top:6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
+#panel .warbox .gw-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:var(--dim)}
+#panel .warbox .gw-row b{font-size:11px;font-variant-numeric:tabular-nums}
+#panel .warbox .gw-bar{height:6px;background:#1a1e24;border:1px solid #262c33;border-radius:2px;overflow:hidden;margin-top:3px}
+#panel .warbox .gw-bar i{display:block;height:100%;border-radius:2px;transition:width .2s ease}
+#panel .warbox .gw-note{margin-top:3px;font-size:8.5px;line-height:1.45;color:#8b949e}
+#panel .warbox .gw-ops{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px}
+#panel .warbox .gw-op-btn{padding:2px 4px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;text-align:left;transition:all .12s}
+#panel .warbox .gw-op-btn i{font-style:normal;color:#f0b429;font-variant-numeric:tabular-nums;opacity:.85}
+#panel .warbox .gw-op-btn:hover{border-color:var(--gold);color:var(--gold2)}
+#panel .warbox .gw-op-btn.active{border-color:var(--gold);color:var(--gold2);background:#242b33}#panel .p-domestic-box .pdb-postures{display:flex;gap:3px;margin-top:4px}
 #panel .p-domestic-box .pdb-posture-btn{flex:1;padding:2px 3px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;transition:all .12s}
 #panel .p-domestic-box .pdb-posture-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold2)}
 #panel .p-domestic-box .pdb-posture-btn.active{border-color:var(--gold);color:var(--gold2);background:#242b33;cursor:default}
