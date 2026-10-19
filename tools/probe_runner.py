@@ -9,10 +9,13 @@ which this runner scrapes and judges.
 Usage:
     python tools/probe_runner.py run <out_dir> <results.json> [probe ...]
     python tools/probe_runner.py cmp <baseline.json> <results.json> [--strict]
+    python tools/probe_runner.py count <results.json> [--json]
 
 Exit codes:
-    run : 0 all probes ok, 1 at least one failed/missing/errored
-    cmp : 0 identical (jitter fields ignored), 2 differences present
+    run   : 0 all probes ok, 1 at least one failed/missing/errored
+    cmp   : 0 identical (jitter fields ignored), 2 differences present or an
+            assertion count decreased (see "ASSERTION COLLAPSE")
+    count : 0 always (it only reports)
 
 Browser discovery order: $W1980_BROWSER, then the usual Edge/Chrome/Chromium
 locations on Windows, macOS and Linux. Set W1980_BROWSER to override.
@@ -188,6 +191,66 @@ def probe_failed(r):
     return False
 
 
+# Keys that describe the probe run itself rather than an observed value. The
+# flat probes (selftest / simprobe / saveprobe / endprobe / sanprobe / decprobe /
+# blocprobe) have no `details` object: their observations are the result keys.
+NON_ASSERTION_KEYS = {
+    "errors", "pass", "allOk", "assertCount", "exception",
+    "__parse_error", "__raw",
+}
+DIAGNOSTIC_PREFIX = "__"          # probe diagnostics are not assertions
+
+
+def assertion_names(result):
+    """The named assertions a probe result carries.
+
+    Assertion-style probes put them in `details` (a few older ones use
+    `checks`); the flat probes expose their observations directly on the
+    result. Diagnostics (`__`-prefixed) are informational and excluded: they
+    may legitimately change without losing coverage.
+    """
+    if not isinstance(result, dict):
+        return []
+    for holder in ("details", "checks"):
+        d = result.get(holder)
+        if isinstance(d, dict):
+            return [n for n in d if not n.startswith(DIAGNOSTIC_PREFIX)]
+    return [n for n in result
+            if not n.startswith(DIAGNOSTIC_PREFIX) and n not in NON_ASSERTION_KEYS]
+
+
+def count_assertions(results):
+    """Per-probe assertion counts, plus a total under the key `total`."""
+    counts = {}
+    for key, entry in results.items():
+        counts[key] = len(assertion_names((entry or {}).get("result")))
+    counts["total"] = sum(v for k, v in counts.items() if k != "total")
+    return counts
+
+
+def do_count(results_path, as_json=False):
+    """Report how many named assertions each probe carries.
+
+    This exists because "the probes are green" is not the same as "the probes
+    still assert everything they used to": a refactor that silently drops an
+    assertion keeps the suite green. `cmp` uses the same counts to fail on a
+    decrease.
+    """
+    results = json.load(open(results_path, encoding="utf-8"))
+    counts = count_assertions(results)
+    if as_json:
+        print(json.dumps(counts, indent=1, sort_keys=True))
+        return 0
+    width = max([len(k) for k in counts] + [5])
+    print("%-*s  %s" % (width, "probe", "assertions"))
+    for key in sorted(counts):
+        if key == "total":
+            continue
+        print("%-*s  %d" % (width, key, counts[key]))
+    print("%-*s  %d" % (width, "TOTAL", counts["total"]))
+    return 0
+
+
 def do_run(out_dir, results_path, wanted):
     out_dir = os.path.abspath(out_dir)
     port = int(os.environ.get("W1980_PROBE_PORT", "8899"))
@@ -229,6 +292,20 @@ def comparable(r):
     return {k: v for k, v in r.items() if not _platform_dependent(k, v)}
 
 
+def _lost_names(base, new):
+    """Assertion names present in the baseline probe but gone from the new one."""
+    lost = []
+    for k in sorted(base):
+        if k not in new:
+            continue
+        before = assertion_names(base[k].get("result"))
+        after = set(assertion_names(new[k].get("result")))
+        for n in before:
+            if n not in after:
+                lost.append("%s/%s" % (k, n))
+    return lost
+
+
 def do_cmp(base_path, new_path, strict=False):
     base = json.load(open(base_path, encoding="utf-8"))
     new = json.load(open(new_path, encoding="utf-8"))
@@ -260,6 +337,26 @@ def do_cmp(base_path, new_path, strict=False):
     for k in new:
         if k in base and new[k].get("failed") and not base[k].get("failed"):
             print("REGRESSION: %s now failing" % k)
+
+    # assertion-collapse gate: losing an assertion keeps the suite green while
+    # quietly shrinking what it guarantees. Growth is fine (new coverage).
+    base_counts = count_assertions(base)
+    new_counts = count_assertions(new)
+    collapsed = []
+    for k in sorted(base_counts):
+        if k == "total" or k not in new_counts:
+            continue
+        if new_counts[k] < base_counts[k]:
+            collapsed.append((k, base_counts[k], new_counts[k]))
+    if collapsed:
+        print("ASSERTION COLLAPSE (%d probe(s)):" % len(collapsed))
+        for k, before, after in collapsed:
+            print("  %s: %d -> %d assertions" % (k, before, after))
+        print("  total: %d -> %d" % (base_counts["total"], new_counts["total"]))
+        if _lost_names(base, new):
+            print("  lost: " + ", ".join(_lost_names(base, new)))
+        return 2
+
     return 0 if not diff and not only else 2
 
 
@@ -285,6 +382,11 @@ def main():
             return 2
         strict = "--strict" in sys.argv
         return do_cmp(sys.argv[2], sys.argv[3], strict)
+    if mode == "count":
+        if len(sys.argv) < 3:
+            print(__doc__)
+            return 2
+        return do_count(sys.argv[2], "--json" in sys.argv)
     print(__doc__)
     return 2
 

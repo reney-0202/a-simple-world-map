@@ -62,7 +62,15 @@ jobs:
       - name: Run all headless probes (assertions)
         run: python tools/probe_runner.py run out tools/probe-results.json
 
+      - name: Report assertion coverage per probe
+        # Informational + auditable: this table is how you see, at a glance,
+        # that a refactor did not quietly shrink what the suite guarantees.
+        run: python tools/probe_runner.py count tools/probe-results.json
+
       - name: Compare against the committed baseline (regression gate)
+        # Also fails when any probe carries FEWER assertions than the baseline
+        # (printed as "ASSERTION COLLAPSE"). Growth is allowed: new coverage is
+        # normal, losing coverage is how a green suite silently stops testing.
         run: python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json
 
       - name: Upload probe results

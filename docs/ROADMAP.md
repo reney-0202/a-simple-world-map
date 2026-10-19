@@ -32,7 +32,7 @@
 
 ---
 
-## 二、已交付阶段回顾（A–L）
+## 二、已交付阶段回顾（A–M）
 
 | 阶段 | 主题 | 关键成果 |
 | --- | --- | --- |
@@ -46,7 +46,8 @@
 | **I** | 工具链 | 校验器拆成可单测模块 + `--json`/`--report`；效果词表运行期双保险；54 实体覆盖矩阵 |
 | **J** | 平台化 | 存档 v2→v3 迁移链；GitHub Pages + PWA（预缓存 87 项）；产物 3.516 → 3.127 MiB |
 | **K** | 玩法深度 | JPN/FRA/GBR 专属内政 + 三步议程树；门控统一为数据声明式 `domestic_faction`；删 `has_capital`（−59,827 B） |
-| **L** | 参与感与灵活性 | 政治资本行动预算（月度结算、动作扣费、不足即拒绝且零副作用）；47 个通用实体获得 3 条施政路线；施政方针三选一（均衡/强硬/改革）改变成本与漂移；面板预算条 + 成本角标 + 禁用态 |
+| **L** | 参与感与灵活性 | 政治资本行动预算（月度结算、动作扣费、不足即拒绝且零副作用）；47 个通用实体获得 3 条施政路线；施政方针三选一（均衡/强硬/改革）改变成本与漂移；面板预算条 + 成本角标 + 禁用态；国家战略指令板（6 选 2 跨年度目标） |
+| **M** | 卫生与闸门 | `07-domestic.js` 2995 → 1273 行（拆成 domestic / agency / agenda / crisis 四模块）；`08-covert.js` 1074 → 845；两个 UI 卡片归位到 `11-shell.js`；新增 `probe_runner.py count` 与**断言塌缩自动门**（丢一条断言即失败） |
 
 ### 当前玩法骨架（七大国全覆盖）
 
@@ -115,7 +116,6 @@
 ## 四、后续路线（Phase L–O）
 
 ### Phase L — 参与感与战略灵活性（✅ 已交付）
-
 > 目标：让「选择」真的成为选择。此前七大国各有 2 个内政动作且**零代价、可无限点击**，
 > 47/54 个实体（所有非大国）面板里**一个可点的按钮都没有** —— 这是可玩性与参与感的最大缺口。
 > 本轮不新增数值系统，而是给已有系统加一层「稀缺性 + 自主路线」。
@@ -135,17 +135,60 @@
 **面板占用实测**（新增 UI 不能把侧栏撑爆）：SUN 419px / CHN 470px / ITA 436px，
 无横向溢出；三国均正确渲染 3 个方针按钮与 6 个指令候选。这是「可玩性」不只是「功能存在」的验收线。
 
-### Phase M — 卫生与闸门（低风险，0.5–1 天）
+### Phase M — 卫生与闸门（✅ M1 + M4 已交付；M2/M3 待办）
 
-> 全部**不改变任何仿真数值**，是后续所有改动的干净地基。
-> 对应发现：M1→S-1/S-2 · M2→S-3 · M3→S-6 · M4→S-4
+> 目标：把最大的单文件拆成按域的内聚模块，并给「断言塌缩」加一道自动门。
+> **本轮改动对仿真数值零影响** —— 验收标准就是 `cmp` 仍 `identical:25`。
+
+**M1 — 拆 `07-domestic.js`（2995 → 1273 行，−57%）**
+
+纯搬运，逐行切分、零逻辑改动。按域拆成四个模块 + 三个探针模块：
+
+| 新文件 | 行数 | 内容 |
+| --- | --- | --- |
+| `app/07-domestic.js` | 1273 | 内政核心：状态初始化/清洗、七国月度推进器、外部压力评估、施政动作、八套面板构建器 |
+| `app/07a-agency.js` | 398 | Phase L 玩家能动性层：政治资本、施政方针、国家战略指令 |
+| `app/07b-agenda.js` | 469 | 国家议程核心：状态、加成结算、门控求值、月度推进、面板 |
+| `app/07c-crisis.js` | 234 | 危机抉择卡：状态、弹窗、结算、月度触发 |
+| `app/probes/08a-agenda.js` | 418 | 议程全链路探针（7 个函数） |
+| `app/probes/08b-crisis.js` | 108 | 危机探针 |
+| `app/probes/08c-sound-assets.js` | 231 | 音效与美术资源探针（原在 `08-covert.js`） |
+
+另两处搬运：
+- `refreshLeaderCard` / `refreshOverviewCard`（领袖肖像卡与概览卡）从 domestic 文件头部移到 `app/11-shell.js` ——
+  它们是被 `06-ai` / `11-shell` / `08-covert` 调用的 UI，此前错放在内政模块。
+- `08-covert.js` 的音效/资源探针移出后由 **1074 → 845 行**，回到「谍战 + 阿富汗」两个内聚子系统。
+
+**M4 — 断言塌缩自动门**
+
+`probe_runner.py` 新增 `count` 子命令与 `cmp` 的塌缩判定：
+- `count <results.json> [--json]`：输出每个探针的断言条数与总数（当前 25 探针 / **854 条**）。
+- `cmp` 在任一探针断言数**减少**时退出 2，并打印塌缩的探针、前后条数与**丢失的断言名**：
+
+```
+ASSERTION COLLAPSE (1 probe(s)):
+  domestic: 116 -> 115 assertions
+  total: 854 -> 853
+  lost: domestic/initDomesticStateExists
+```
+
+断言**增加**不算失败。CI 增加一个 `count` 步骤（把覆盖表打进日志），`cmp` 步骤自动获得塌缩门。
+
+**验收（已达成）**：`cmp` 仍 `identical:25`；`07-domestic.js` 1273 < 1500；`08-covert.js` 845 < 850；
+146 个函数与 13 个顶层声明**全部保留且无重复**；CDP 真浏览器 9 步面板检查全 PASS；
+故意删掉一条断言 → `cmp` 必须退出 2（已实测）。
+
+**踩到的坑（值得记住）**：`probes/09-debug-hook.js` 在**加载时**就用对象字面量求值
+`runSoundProbe` / `runAssetsProbe` / `runAgendaProbe` / `runCrisisProbe` / `refreshLeaderCard`，
+所以这些函数所在的脚本必须排在它**之前**。第一次拆分把音效探针排在 debug-hook 之后 →
+`selftest` 立刻报 `runSoundProbe is not defined`。`cmp` 一眼抓住，改名到 `08c-` 前缀后恢复 identical。
+
+### Phase M 剩余（M2 / M3，未做）
 
 | 项 | 内容 | 验收标准 |
 | --- | --- | --- |
-| **M1** | 三处纯搬运：① `07-domestic.js` 的 crisis 区 → `app/07a-crisis.js`；② `refreshLeaderCard` / `refreshOverviewCard` → `11-shell.js`；③ `08-covert.js` 的 sound / assets 探针 → `probes/`。`index.html` 脚本顺序同步 | **`cmp` 仍 identical:25**（纯搬运的最终判据）；`07-domestic.js` < 1500 行、`08-covert.js` < 850 行（均按物理行计；Phase L 已让 `07-domestic.js` 增至 2660 行，拆分更紧迫） |
 | **M2** | 探针注册收敛：`13-boot.js` 导出 `PROBE_PARAMS` 常量数组，`CR.probeMode` 改为 `some()`；runner 增加「PROBES 键 vs PROBE_PARAMS」自检 | 新增/改名探针只改一处；两者不同步时 runner 报错 |
 | **M3** | 清死代码：删引擎里数据侧零引用的 `domestic_reform_lead` / `domestic_detente` 两个 handler；`validate_data.js` 增「未知 condition 判失败」 | 基线 identical；故意写一个未注册 condition 必须让 CI 失败 |
-| **M4** | 断言塌缩自动门：`probe_runner.py count` 输出每探针断言数，`cmp` 在断言数**减少**时判失败（增加不算失败） | 删掉一条断言 → `cmp` 必须退出非 0。**本轮断言数已从 614 增至 649，正是需要这道门的时候** |
 
 ### Phase N — 契约一致性（中风险，1 天）
 
@@ -169,15 +212,16 @@
 
 ```mermaid
 graph LR
-  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门]
+  L[Phase L 参与感与灵活性 ✅] --> M[Phase M 卫生与闸门 ✅ M1+M4]
   M --> N[Phase N 契约一致性]
   N --> O[Phase O 平台与生成物]
   L -.->|默认方针中性| B1[既有数值零漂移]
   M -.->|M4 塌缩自动门| B2[后续改动有护栏]
 ```
 
-- **L 已完成**：新增了玩家行动预算与治理路线，`07-domestic.js` 随之变长，因此 M1 的拆分从「建议」升级为「应尽快做」。
-- **M 必须早做**：M1 拆文件让后续改动有干净边界，M4 的塌缩自动门保护已增至 649 条的断言集。
+- **L 已完成**：新增了玩家行动预算与治理路线。
+- **M1+M4 已完成**：单文件从 2995 行降到 1273 行，且 `cmp` 仍 `identical:25` —— 纯搬运的最终判据达成；
+  断言塌缩自动门已上线并被实测证明会失败。M2/M3 仍未做。
 - **N 改引擎**：N1 真正改 `updateMonthlyAgendas` 的分派逻辑，必须在 M 的护栏之后。
 - **O 可穿插**：纯平台层，风险最低。
 

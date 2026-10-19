@@ -71,6 +71,10 @@ node tools/validate.test.js
 # 跑全部探针，任一失败即非零退出
 python tools/probe_runner.py run out tools/probe-results.json
 
+# 每个探针携带多少条断言（可审计的覆盖表）
+python tools/probe_runner.py count tools/probe-results.json
+python tools/probe_runner.py count tools/probe-results.json --json
+
 # 与仓库内基线逐值比对（时间类字段与画布哈希除外）
 python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json
 ```
@@ -82,7 +86,20 @@ python tools/probe_runner.py run out tools/probe-results.json simprobe saveprobe
 ```
 
 退出码：`run` 为 0 表示全部通过、1 表示有失败/缺失/异常；`cmp` 为 0 表示一致、
-2 表示存在差异。
+2 表示存在差异或**断言数减少**；`count` 恒为 0（只报告）。
+
+**断言塌缩自动门**：`cmp` 除了逐值比对，还会比较每个探针的**断言条数**。
+删掉一条断言（哪怕整个探针仍然 "绿"）会让 `cmp` 退出 2 并打印：
+
+```
+ASSERTION COLLAPSE (1 probe(s)):
+  domestic: 116 -> 115 assertions
+  total: 854 -> 853
+  lost: domestic/initDomesticStateExists
+```
+
+这是因为「跑绿」不等于「还在测原来的东西」——重构时静默丢一条断言，套件依然全绿，
+但保证已经缩小。断言**增加**不算失败（新覆盖是常态）。当前总量：25 个探针 / 854 条断言。
 
 **基线维护**：`tools/baseline-probes.json` 是回归基准。有意改变仿真数值时，
 先确认探针全绿，再用新结果覆盖基线并一并提交：
@@ -153,7 +170,7 @@ Service Worker 仅在**地址无查询参数**时注册（或显式 `?sw=1` 强�
 | 阶段 | 主题 | 风险 | 内容 |
 | --- | --- | --- | --- |
 | **L** ✅ | 参与感与战略灵活性 | — | **已交付**：政治资本行动预算（稀缺化所有施政动作）+ 47 个通用实体获得 3 条施政路线 + 施政方针三选一（均衡/强硬/改革）+ 国家战略指令板（6 选 2 的跨年度目标） |
-| **M** | 卫生与闸门 | 低 | 拆 `07-domestic.js`（2660 行）；探针注册收敛；清死代码；断言塌缩自动门 |
+| **M** | 卫生与闸门 | 低 | 拆 `07-domestic.js`（2995 行 → 1273）；探针注册收敛；清死代码；断言塌缩自动门 |
 | **N** | 契约一致性 | 中 | 议程完成回馈数据声明式；备份仓 pipeline 双写收敛 |
 | **O** | 平台与生成物 | 低 | PWA 深链注册修复；`sw.js` 预缓存清单自动生成 |
 

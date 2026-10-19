@@ -1046,3 +1046,102 @@ function fillHelp() {
     " > 中国 " + A("CHN").toFixed(2) + " / 美国 " + A("USA").toFixed(2) + " > 巴西 " + A("BRA").toFixed(2) +
     " > 澳大利亚 " + A("AUS").toFixed(2) + " 百万 km²";
 }
+
+// ---- R14: 钢铁雄心4风格大国领袖肖像与执政理念卡片 ----
+function refreshLeaderCard(selKey) {
+  const card = $("p-leader-card");
+  if (!card) return;
+  if (!selKey || !window.W1980_ASSETS) {
+    card.style.display = "none";
+    card.innerHTML = "";
+    return;
+  }
+  const actualKey = resolvePlayableKey(selKey);
+  const curY = SIM.S ? SIM.S.year : 1980;
+  const leader = window.W1980_ASSETS.getLeader(actualKey, curY);
+
+  if (!leader) {
+    card.style.display = "none";
+    card.innerHTML = "";
+    return;
+  }
+
+  card.style.display = "flex";
+  let html = '<div class="p-leader-frame">' +
+    '<img src="' + leader.photo + '" alt="' + leader.name + '" onerror="this.style.display=\'none\'">' +
+    '</div>' +
+    '<div class="p-leader-info">' +
+    '<div class="p-leader-name"><span>' + leader.name + '</span><span class="p-leader-en">' + (leader.en || "") + '</span></div>' +
+    '<div class="p-leader-title">' + leader.title + '</div>' +
+    '<div class="p-leader-ideology">' + leader.ideology + '</div>' +
+    (leader.quote ? '<div class="p-leader-quote">' + leader.quote + '</div>' : '') +
+    '</div>';
+
+  card.innerHTML = html;
+}
+
+function refreshOverviewCard(selKey) {
+  const card = $("p-overview-card");
+  if (!card) return;
+  if (!selKey) { card.innerHTML = ""; return; }
+  const actualKey = resolvePlayableKey(selKey);
+  const c = CM.countries[actualKey] || {};
+  const isMine = !!ST.player && actualKey === ST.player;
+
+  let h = '<div class="poc-title"><span>🏛️ 态势综述</span>' +
+    '<span class="poc-tag ' + (isMine ? 'mine' : 'other') + '">' +
+    (isMine ? '★ 本国直辖' : (ST.player ? '外邦实体' : '世界实体')) + '</span></div>';
+
+  let desc = "";
+  if (isMine) {
+    desc = "本国处于最高统帅直辖状态。通过各治理模块可调节防务军费、审定战略物资储备及阵营归属。";
+  } else if (!ST.player) {
+    desc = "当前处于旁观者观察模式。可将该国设为本国以执掌其军政大权与外交走向。";
+  } else {
+    desc = "该国为外部地缘实体。可通过对外制裁或军援施加影响，亦可在外交面板查看其 AI 战略性格。";
+  }
+  h += '<div class="poc-desc">' + desc + '</div>';
+
+  // 快捷直达导航
+  h += '<div class="poc-navs">' +
+    '<button class="poc-nav-btn" data-go="defense"><span>⚖️ 防务与干预</span><span class="arr">▸</span></button>' +
+    '<button class="poc-nav-btn" data-go="economy"><span>🚢 经贸与储备</span><span class="arr">▸</span></button>' +
+    '<button class="poc-nav-btn" data-go="diplomacy"><span>🌐 外交与阵营</span><span class="arr">▸</span></button>' +
+    (!isMine ? '<button class="poc-nav-btn" data-go="setmine"><span style="color:var(--gold2)">★ 设为本国</span><span class="arr">▸</span></button>' :
+               '<button class="poc-nav-btn" data-go="defense"><span style="color:#7bc67e">✓ 统帅执政中</span><span class="arr">▸</span></button>') +
+    '</div>';
+
+  // 预警汇总
+  const alerts = [];
+  const now = SIM.S ? SIM.S.year * 12 + Math.max(1, SIM.S.month) : 1980 * 12 + 1;
+  const isIranIraqActive = now >= (1980 * 12 + 9) && now <= (1988 * 12 + 8) && !(CR.deny && CR.deny.has("iran_iraq_war"));
+  const isFalklandsActive = now >= (1982 * 12 + 4) && now <= (1983 * 12 + 6);
+  const isGulfActive = now >= (1990 * 12 + 8) && now <= (1991 * 12 + 12);
+  if ((isIranIraqActive && (actualKey === "IRQ" || actualKey === "IRN")) ||
+      (isFalklandsActive && (actualKey === "GBR" || actualKey === "ARG")) ||
+      (isGulfActive && (actualKey === "IRQ" || actualKey === "KWT" || actualKey === "USA"))) {
+    alerts.push('<div class="poc-alert-item war">⚔️ 卷入局部热点交战，前线推演中</div>');
+  }
+  const rdata = (window.W1980_RESOURCES && window.W1980_RESOURCES.get(actualKey)) || null;
+  if (rdata && rdata.summary && rdata.summary.securityScore < 0) {
+    alerts.push('<div class="poc-alert-item warn">⚠️ 战略资源安全度评级处于逆差受制区间</div>');
+  }
+  if (alerts.length > 0) {
+    h += '<div class="poc-alerts">' + alerts.join("") + '</div>';
+  }
+
+  card.innerHTML = h;
+
+  // 绑定快捷跳转按钮
+  card.querySelectorAll(".poc-nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const go = btn.dataset.go;
+      if (go === "setmine") {
+        setPlayer(actualKey);
+        setPanelTab("defense");
+      } else if (go) {
+        setPanelTab(go);
+      }
+    });
+  });
+}
