@@ -289,6 +289,7 @@ load().then(() => {
     tradeprobe: runTradeProbe,
     embargoprobe: runEmbargoProbe,
     aiprobe: runAIProbe,
+    econai: runEconAIProbe,
     summitprobe: runSummitProbe,
     unscprobe: runUNSCProbe,
     panelprobe: runPanelProbe,

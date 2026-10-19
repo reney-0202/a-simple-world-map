@@ -37,19 +37,26 @@ function updateAIDecisions(y, m, silent) {
     sanctions: ST.sanctions || [],
     aid: ST.aid || []
   };
+  // P2（AI 睁眼）：全体实体的只读经济读数。建一次，供两个 worldState 共用 ——
+  // 每国循环里各自算一遍会让 54 个实体 × 每次 AI 推进的代价翻倍。
+  // 无执政者时 AI 根本不跑（isAIActive 要求 ST.player），所以这段永不进入史实路径。
+  const econWorld = (typeof polEconWorldSnapshot === "function") ? polEconWorldSnapshot() : {};
   const worldState = {
     countries: CM.countries,
     year: curY,
     month: curM,
     frontlines: ST.frontlines,
-    treaties: ST.ai.treaties || []
+    treaties: ST.ai.treaties || [],
+    econ: econWorld,
+    playerKey: ST.player
   };
 
   const newDecisions = {};
   const newTensions = {};
 
   // G（收尾评审）：两个回路抽为独立函数（见下方 ai*），本函数只负责编排。
-  const ctx = { curY: curY, curM: curM, silent: silent, playerDecisions: playerDecisions, worldState: worldState };
+  const ctx = { curY: curY, curM: curM, silent: silent, playerDecisions: playerDecisions,
+    worldState: worldState, econWorld: econWorld };
   aiComputeDecisions(newDecisions, newTensions, ctx);
   aiEnforceTreatyCompliance(playerDecisions, newDecisions, ctx);
 
@@ -64,6 +71,7 @@ function updateAIDecisions(y, m, silent) {
 function aiComputeDecisions(newDecisions, newTensions, ctx) {
   const curY = ctx.curY, curM = ctx.curM, silent = ctx.silent;
   const playerDecisions = ctx.playerDecisions, worldState = ctx.worldState;
+  const econWorld = ctx.econWorld || worldState.econ || {};
 for (const k in CM.countries) {
   if (k === ST.player) continue;
   const att = window.W1980_AI.calcAttitude(k, ST.player, playerDecisions, worldState);
@@ -85,11 +93,17 @@ for (const k in CM.countries) {
         warActive: !!(ST.frontlines && Object.keys(ST.frontlines).length),
         peace: false, playerKey: ST.player,
         playerMil: (playerDecisions && typeof playerDecisions.mil === "number") ? playerDecisions.mil : 0,
-        treatyCount: (ST.ai && Array.isArray(ST.ai.treaties)) ? ST.ai.treaties.filter((t) => t && t.status === "active").length : 0
+        treatyCount: (ST.ai && Array.isArray(ST.ai.treaties)) ? ST.ai.treaties.filter((t) => t && t.status === "active").length : 0,
+        econ: econWorld            // P2：AI 第一次能看见经济（全体实体只读快照）
       };
       const act = window.W1980_AI.objectivesToActions(k, ow);
       objectives = act.objectives || [];
       if (act.milDelta > 0) mil = Math.max(mil, react.mil + act.milDelta);
+      // P2：负向军费目标（枪炮 vs 黄油）此前是**死代码** ——
+      // `if (d > act.milDelta)` 里 act.milDelta 从 0 起算，负的 delta 永远超不过 0，
+      // 所以 chn_sez_growth(-0.4) / deu_detente(-0.5) / jpn_economic_security(-0.2)
+      // 从来没有真正削减过任何军费。现在走独立的 milCut 通道，并夹在 [0, 12]。
+      if (act.milCut < 0) mil = clamp(mil + act.milCut, 0, 12);
       const doc = window.W1980_AI.getDoctrine(k, CM.countries[k]);
       const maxAid = doc.maxAid || 1;
       for (const a of act.aid) {

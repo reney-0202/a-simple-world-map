@@ -268,6 +268,60 @@ function updatePoliticalEconomy(y, m, silent) {
   return polEconSnapshot();
 }
 
+// ---- P2（AI 睁眼）：经济快照 ------------------------------------------------
+// AI 此前对世界经济完全失明：worldState 只有 1980 静态元数据 + 张力/年份/战争标志。
+// 于是「援助一个快破产的盟友」「对一个破产的对手趁火打劫」「经济吃紧就削减军费」
+// 这些真实战略选择对 AI 根本不存在。这里给它一副只读的眼睛。
+//
+// 只读是硬约束：不创建任何内政对象、不消费 RNG、不写 pmods/gdp。
+function polEconStrainOf(k) {
+  const T = polEconTable();
+  if (!T) return 0;
+  const S = T.STRAIN;
+  let strain = 0;
+
+  // 渠道一：增长低于史实常态多少
+  const actual = growthOf(entKeys(k));
+  if (actual !== null) {
+    const anchor = (T.ANCHOR && T.ANCHOR[k]) || T.ANCHOR.DEFAULT;
+    const gap = anchor[0] - actual;                 // 正 = 比历史常态差
+    strain = Math.max(strain, clamp(gap / S.GROWTH_FLOOR, 0, 1));
+  }
+
+  // 渠道二：外汇储备见底（已在 polEconReserveMonths 里过掉「相对 GDP 不显著」）
+  const rm = polEconReserveMonths(k);
+  if (rm !== null) strain = Math.max(strain, clamp((S.RESERVE_WARN - rm) / S.RESERVE_WARN, 0, 1));
+
+  // 渠道三：社会动荡
+  const dom = domesticStateOf(k) || T.DEFAULT_STATE;
+  const unrest = typeof dom.unrest === "number" ? dom.unrest : 0;
+  strain = Math.max(strain, clamp((unrest - S.UNREST_BASE) / S.UNREST_SPAN, 0, 1));
+
+  return strain;
+}
+
+// 逐实体的只读经济读数：{growth, gdp, reserveMonths, unrest, strain}
+function polEconReadOf(k) {
+  const T = polEconTable();
+  const g = growthOf(entKeys(k));
+  const dom = (T && domesticStateOf(k)) || (T && T.DEFAULT_STATE) || { unrest: 0 };
+  return {
+    growth: g === null ? null : +g.toFixed(2),
+    gdp: +simVal(k).gdp_bn.toFixed(1),
+    reserveMonths: polEconReserveMonths(k),
+    unrest: typeof dom.unrest === "number" ? +dom.unrest.toFixed(1) : 0,
+    strain: +polEconStrainOf(k).toFixed(3)
+  };
+}
+
+// 一次性为全体实体建快照（月度调用一次，不在每国循环里重复算）
+function polEconWorldSnapshot() {
+  const out = {};
+  if (!CM || !CM.countries) return out;
+  for (const k in CM.countries) out[k] = polEconReadOf(k);
+  return out;
+}
+
 // 只读快照：UI 与探针共用一份口径，避免各写一遍算术
 function polEconSnapshot() {
   const p = ST.polEcon;

@@ -340,17 +340,38 @@ function checkStrategicObjectives(ctx) {
   const problems = [];
   const OBJ = (ctx.data.W1980_AI || {}).STRATEGIC_OBJECTIVES;
   if (!OBJ) return { problems: ['ai.js: no STRATEGIC_OBJECTIVES'], notes };
-  let objBad = 0, objN = 0;
+  let objBad = 0, objN = 0, dynN = 0;
   for (const k of Object.keys(OBJ)) {
     if (!ctx.resolves(k)) { problems.push(`ai.js: STRATEGIC_OBJECTIVES 属主 "${k}" 不可解析`); objBad++; }
     for (const o of OBJ[k]) {
       objN++;
       if (o.target && !ctx.resolves(o.target)) { problems.push(`ai.js: ${k}/${o.id}.target = "${o.target}" 不可解析`); objBad++; }
       if (o.kind === 'mil' && typeof o.delta !== 'number') { problems.push(`ai.js: ${k}/${o.id} kind=mil 缺 delta`); objBad++; }
+      // P2：aid / sanction 目标可以是静态 target，也可以是评估期解析的 `pick`。
+      // 两者都没有 = AI 会宣称一个自己无法执行的目标（面板上写着「援助某国」却没有某国）。
+      if (o.kind === 'aid' || o.kind === 'sanction') {
+        const hasStatic = typeof o.target === 'string' && o.target;
+        const hasPick = typeof o.pick === 'function';
+        if (hasPick) dynN++;
+        if (!hasStatic && !hasPick) {
+          problems.push(`ai.js: ${k}/${o.id} kind=${o.kind} 既无 target 也无 pick（目标无处落地）`);
+          objBad++;
+        }
+        if (hasStatic && hasPick) {
+          problems.push(`ai.js: ${k}/${o.id} 同时给了 target 与 pick（pick 会覆盖 target，意图不清）`);
+          objBad++;
+        }
+      }
+      // 负向军费目标必须真的为负；为 0 就是「宣称裁军但什么都不做」
+      if (o.kind === 'mil' && typeof o.delta === 'number' && o.delta === 0) {
+        problems.push(`ai.js: ${k}/${o.id} kind=mil 的 delta 为 0（不产生任何效果）`);
+        objBad++;
+      }
     }
   }
-  notes.push(`ai strategic objectives: ${objN} entries across ${Object.keys(OBJ).length} countries, ${objBad} bad`);
-  return { problems, notes, stats: { objectives: objN, countries: Object.keys(OBJ).length, bad: objBad } };
+  notes.push(`ai strategic objectives: ${objN} entries across ${Object.keys(OBJ).length} countries, `
+    + `${dynN} dynamically targeted, ${objBad} bad`);
+  return { problems, notes, stats: { objectives: objN, countries: Object.keys(OBJ).length, dynamic: dynN, bad: objBad } };
 }
 
 // ---- registry ------------------------------------------------------------------
@@ -548,6 +569,10 @@ const BUNDLE_BUDGET_MIB = 3.2;
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
 const PROVINCE_FIELDS = ['polity', 'area_km2', 'cx', 'cy', 'bbox', 'name'];
+// A city row is a positional tuple: [name, x, y, pop]. The old 5th element was a
+// capital flag nothing read (the capital star is drawn from countries.capital_px),
+// i.e. 1856 dead bytes-pairs of the same failure mode as `px`.
+const CITY_ARITY = 4;
 
 function dirSizeBytes(dir) {
   const fs = require('fs');
@@ -583,6 +608,17 @@ function checkBundleHygiene(ctx) {
     let missing = 0;
     for (const pid of Object.keys(PM)) if (!(f in (PM[pid] || {}))) missing++;
     if (missing) problems.push(`provinces.js: ${missing} 条记录缺少字段 "${f}"`);
+  }
+
+  // (1b) city rows are positional tuples — an extra element is dead weight
+  const CT = ctx.data.W1980_CITIES || [];
+  const badW = [];
+  for (let i = 0; i < CT.length; i++) {
+    if (!Array.isArray(CT[i]) || CT[i].length !== CITY_ARITY) badW.push(i);
+  }
+  if (badW.length) {
+    problems.push(`cities.js: ${badW.length}/${CT.length} 条记录不是 ${CITY_ARITY} 元组`
+      + `（[name, x, y, pop]；多出来的元素没有任何代码读取）`);
   }
 
   // (2) shipped size budget
@@ -711,6 +747,7 @@ module.exports = {
   checkPolEcon,
   checkBundleHygiene,
   PROVINCE_FIELDS,
+  CITY_ARITY,
   BUNDLE_BUDGET_MIB,
   probeParamToken,
   checkAgendaConditions,

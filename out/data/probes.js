@@ -25,6 +25,7 @@ window.W1980_PROBES={
   "tradeprobe",
   "embargoprobe",
   "aiprobe",
+  "econai",
   "summitprobe",
   "unscprobe",
   "panelprobe",
@@ -115,6 +116,12 @@ window.W1980_PROBES={
   "aiprobe": {
    "qs": "aiprobe=1",
    "marker": "AIPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "econai": {
+   "qs": "econai=1",
+   "marker": "ECONAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   },

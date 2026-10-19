@@ -3,7 +3,8 @@
 
 // ---- R3/R5C'/R7A：玩家决策（实体选择 + 军费占比 + 制裁/军援名单 + 阵营经贸网络）----
 function isAIActive() {
-  return !!(ST.ai && ST.ai.enabled && ST.player && (!CR.probeMode || /[?&](aiprobe|summitprobe|unscprobe)=1/.test(location.search)));
+  return !!(ST.ai && ST.ai.enabled && ST.player && (!CR.probeMode ||
+    /[?&](aiprobe|summitprobe|unscprobe|econai)=1/.test(location.search)));
 }
 // 全部走引擎 P.pmods 玩家决策层（与事件层 P.mods 分离 → 不会互相覆盖，这是 R3 的关键设计）。
 // R5C'（tasks/015）：applyPlayerMil 扩展为 applyPlayerDecisions —— **先全清再重挂**（幂等，与现状逐字同构）：

@@ -604,6 +604,15 @@ test('the declared field list is exactly the six live fields', () => {
   assert.deepStrictEqual(checks.PROVINCE_FIELDS.slice().sort(),
     ['area_km2', 'bbox', 'cx', 'cy', 'name', 'polity']);
 });
+test('a city row with an extra element is caught', () => {
+  // The 5th element used to be a capital flag nothing read.
+  const d = withProvinces(GOOD_PROVINCE);
+  d.W1980_CITIES = [['Tokyo', 1, 2, 3000000]];
+  assert.deepStrictEqual(checks.checkBundleHygiene(makeCtx(d, { outDir: __dirname })).problems, []);
+  d.W1980_CITIES.push(['Osaka', 1, 2, 2000000, 1]);
+  const p = checks.checkBundleHygiene(makeCtx(d, { outDir: __dirname })).problems;
+  assert.ok(p.some((x) => /cities\.js: 1\/2 条记录不是 4 元组/.test(x)), '应报出多余元素：' + p.join(' | '));
+});
 test('the size budget is enforced, not just reported', () => {
   // Build a tree just over the budget in a temp dir and confirm it fails.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'w1980-bundle-'));

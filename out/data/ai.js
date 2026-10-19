@@ -639,6 +639,34 @@
   function rampYear(lo, thr) { return (w) => rampLin(w.year, lo, thr); }
   const OBJ_MIN_INTENSITY = 0.02;
 
+  // ---- P2（AI 睁眼）：经济读数与目标选择 -------------------------------------
+  // `w.econ` 是 app/06-ai.js 传进来的全体实体只读快照；缺少它（旧调用方、
+  // 单测夹具）时一律读作 0 压力 —— 于是经济类目标全部静默不成立，
+  // 既有数值逐位不变（这是 aiprobe 的 `actSunHi.milDelta === 0.8` 仍成立的原因）。
+  function econOf(w, k) {
+    const e = w && w.econ && k ? w.econ[k] : null;
+    return e || null;
+  }
+  function strainOf(w, k) {
+    const e = econOf(w, k);
+    return e && typeof e.strain === "number" && isFinite(e.strain) ? e.strain : 0;
+  }
+  function econRamp(base, span) { return (w) => rampLin(strainOf(w, w.key), base, base + span); }
+
+  // 在候选集合里挑「压力最大」的那个（压力低于 minStrain 则返回 null）。
+  // 这就是 AI 的「看见经济」落到实处：援助快破产的盟友、对快破产的对手趁火打劫。
+  function pickStrained(w, keys, minStrain, excludeKeys) {
+    let best = null, bestStrain = minStrain;
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (excludeKeys && excludeKeys.indexOf(k) >= 0) continue;
+      if (!econOf(w, k)) continue;
+      const s = strainOf(w, k);
+      if (s > bestStrain) { best = k; bestStrain = s; }
+    }
+    return best;
+  }
+
   const STRATEGIC_OBJECTIVES = {
     USA: [
       { id: "usa_frontline_deterrence", kind: "mil", delta: +0.6, weight: 8,
@@ -649,7 +677,21 @@
         note: "潘兴/中导部署后强化对西德安全承诺" },
       { id: "usa_gulf_oil", kind: "aid", target: "SAU", l: 1, weight: 6,
         zh: "海湾石油线", cond: (w) => !w.peace, ramp: rampYear(1978, 1981),
-        note: "两伊开战后保障沙特油线与地区存在" }
+        note: "两伊开战后保障沙特油线与地区存在" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "usa_bailout_ally", kind: "aid", l: 1, weight: 6,
+        zh: "盟友纾困",
+        pick: (w) => pickStrained(w, ["DEU", "GBR", "FRA", "JPN", "KOR", "ARA"], 0.5),
+        note: "北约/西约同盟出现经济危机时出手纾困，避免同盟内爆" },
+      { id: "usa_squeeze_broke_rival", kind: "sanction", l: 1, weight: 5,
+        zh: "趁火打劫",
+        pick: (w) => pickStrained(w, ["SUN"], 0.55),
+        note: "主要对手陷入经济困境时加码技术封锁与经济施压" },
+      { id: "usa_guns_butter_cut", kind: "mil", delta: -0.45, weight: 7,
+        zh: "枪炮与黄油",
+        cond: (w) => strainOf(w, "USA") >= 0.6,
+        ramp: econRamp(0.6, 0.3),
+        note: "本国经济吃紧时被迫压缩防务投入，把预算让给民生" }
     ],
     SUN: [
       { id: "sun_parity", kind: "mil", delta: +0.8, weight: 9,
@@ -660,7 +702,17 @@
         note: "以经援/军援维系波兰团结工会危机后的阵营" },
       { id: "sun_third_world", kind: "aid", target: "LEV", l: 1, weight: 4,
         zh: "第三世界支点", ramp: rampYear(1979, 1982),
-        note: "在地中海东岸维持苏联海军与顾问存在" }
+        note: "在地中海东岸维持苏联海军与顾问存在" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "sun_bailout_client", kind: "aid", l: 1, weight: 5,
+        zh: "阵营纾困",
+        pick: (w) => pickStrained(w, ["POL", "DDR", "CSK", "HUN", "ROU", "BGR"], 0.5),
+        note: "卫星国经济告急时输血维稳，防止阵营从内部瓦解" },
+      { id: "sun_guns_butter_cut", kind: "mil", delta: -0.55, weight: 7,
+        zh: "短缺优先",
+        cond: (w) => strainOf(w, "SUN") >= 0.6,
+        ramp: econRamp(0.6, 0.3),
+        note: "国内短缺与动荡压顶时被迫削减军费，转向轻工业与民生" }
     ],
     CHN: [
       { id: "chn_sez_growth", kind: "mil", delta: -0.4, weight: 7,
@@ -671,7 +723,21 @@
         note: "南北对峙升温时维持对朝安全承诺" },
       { id: "chn_pak_balance", kind: "aid", target: "PAK", l: 1, weight: 5,
         zh: "南亚制衡", ramp: rampYear(1979, 1982),
-        note: "苏联入侵阿富汗后深化中巴战略协作" }
+        note: "苏联入侵阿富汗后深化中巴战略协作" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "chn_opportunist_aid", kind: "aid", l: 1, weight: 5,
+        zh: "邻国纾困",
+        pick: (w) => pickStrained(w, ["PRK", "PAK", "IRN", "AFG"], 0.5),
+        note: "周边国家陷入经济困境时以低阶经援换取影响力" },
+      { id: "chn_squeeze_broke_rival", kind: "sanction", l: 1, weight: 4,
+        zh: "北疆施压",
+        pick: (w) => pickStrained(w, ["SUN"], 0.6),
+        note: "北方邻国自顾不暇时在边境与外交上加码施压" },
+      { id: "chn_guns_butter_cut", kind: "mil", delta: -0.5, weight: 8,
+        zh: "治理整顿让路",
+        cond: (w) => strainOf(w, "CHN") >= 0.7,
+        ramp: econRamp(0.7, 0.3),
+        note: "双轨物价与动荡失控时进一步压减军费，把资源全部让给稳物价" }
     ],
     DEU: [
       { id: "deu_detente", kind: "mil", delta: -0.5, weight: 7,
@@ -682,7 +748,13 @@
         note: "以经贸纽带换取能源供应与缓和红利（低档往来）" },
       { id: "deu_atlantic_bond", kind: "cohesion", weight: 5,
         zh: "大西洋纽带", ramp: rampTension(30, 45),
-        note: "对抗升级时向西约同盟靠拢" }
+        note: "对抗升级时向西约同盟靠拢" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "deu_energy_diversify", kind: "aid", l: 0, weight: 5,
+        zh: "能源多元",
+        cond: (w) => strainOf(w, "DEU") >= 0.3,
+        pick: (w) => pickStrained(w, ["SAU", "IRN", "LBY"], 0.45),
+        note: "对苏能源杠杆过重、本国承压时转向其他产油国分散风险" }
     ],
     GBR: [
       { id: "gbr_special_relationship", kind: "aid", target: "USA", l: 1, weight: 6,
@@ -690,7 +762,13 @@
         note: "马岛胜利后强化对美协调" },
       { id: "gbr_falklands_vigil", kind: "mil", delta: +0.3, weight: 5,
         zh: "远海警戒", cond: (w) => w.year <= 1984, ramp: rampYear(1980, 1982),
-        note: "马岛战后维持远海投送能力" }
+        note: "马岛战后维持远海投送能力" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "gbr_guns_butter_cut", kind: "mil", delta: -0.35, weight: 6,
+        zh: "通胀优先",
+        cond: (w) => strainOf(w, "GBR") >= 0.6,
+        ramp: econRamp(0.6, 0.3),
+        note: "通胀与金融城竞争力恶化时削减防务开支以稳住货币" }
     ],
     FRA: [
       { id: "fra_independence", kind: "mil", delta: +0.4, weight: 6,
@@ -698,7 +776,13 @@
         note: "对抗升级时强化独立核威慑与常规力量" },
       { id: "fra_africa_sway", kind: "aid", target: "LBY", l: 1, weight: 4,
         zh: "非洲影响", ramp: rampYear(1980, 1983),
-        note: "在乍得/非洲之角维系法语区影响" }
+        note: "在乍得/非洲之角维系法语区影响" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "fra_guns_butter_cut", kind: "mil", delta: -0.3, weight: 6,
+        zh: "紧缩让路",
+        cond: (w) => strainOf(w, "FRA") >= 0.6,
+        ramp: econRamp(0.6, 0.3),
+        note: "法郎平价与外部压力吃紧时压缩防务，优先守住货币" }
     ],
     JPN: [
       { id: "jpn_economic_security", kind: "mil", delta: -0.2, weight: 5,
@@ -706,7 +790,17 @@
         note: "贸易立国，压低军费占比" },
       { id: "jpn_sea_lane", kind: "aid", target: "KOR", l: 1, weight: 6,
         zh: "海上生命线", ramp: rampYear(1980, 1983),
-        note: "保障对马海峡—波斯湾航线安全" }
+        note: "保障对马海峡—波斯湾航线安全" },
+      // ---- P2（AI 睁眼）：经济目标 ----
+      { id: "jpn_energy_hedge", kind: "aid", l: 0, weight: 5,
+        zh: "能源对冲",
+        pick: (w) => pickStrained(w, ["SAU", "IRN", "LBY"], 0.45),
+        note: "产油国出现动荡或财政危机时以经贸往来锁定供应" },
+      { id: "jpn_guns_butter_cut", kind: "mil", delta: -0.35, weight: 6,
+        zh: "内需转向",
+        cond: (w) => strainOf(w, "JPN") >= 0.6,
+        ramp: econRamp(0.6, 0.3),
+        note: "贸易摩擦与出口受阻叠加时进一步压减防务，转向扩大内需" }
     ],
     IRN: [
       { id: "irn_revolution_export", kind: "aid", target: "LEV", l: 1, weight: 6,
@@ -734,6 +828,9 @@
     const list = STRATEGIC_OBJECTIVES[aiKey];
     if (!list || !worldState) return [];
     const w = {
+      key: aiKey,                       // P2：econRamp 需要一个稳定的自我引用
+      econ: worldState.econ || null,    // P2：全体实体只读经济快照（缺省 → 经济目标全部不成立）
+      playerKey: worldState.playerKey || null,
       tension: typeof worldState.tension === "number" ? worldState.tension : 20,
       year: worldState.year || 1980,
       month: worldState.month || 1,
@@ -747,6 +844,13 @@
       let gate = true;
       if (typeof o.cond === "function") { try { gate = o.cond(w); } catch (e) { gate = false; } }
       if (!gate) continue;
+      // P2：动态目标必须在**评估期**解析成功，否则 AI 会在面板上宣称一个
+      // 自己没法执行的目标（"援助某国" 但没有某国）。解析失败 = 目标不成立。
+      let resolved = o.target;
+      if (typeof o.pick === "function") {
+        try { resolved = o.pick(w); } catch (e) { resolved = null; }
+        if (!resolved) continue;
+      }
       let inten = 1;
       if (typeof o.ramp === "function") { try { inten = o.ramp(w); } catch (e) { inten = 1; } }
       if (typeof inten !== "number" || !isFinite(inten)) inten = 1;
@@ -755,7 +859,7 @@
       out.push({
         id: o.id, zh: o.zh, kind: o.kind, note: o.note || "",
         delta: typeof o.delta === "number" ? o.delta : 0,
-        target: o.target, l: o.l, weight: o.weight || 0,
+        target: resolved, l: o.l, weight: o.weight || 0,
         intensity: inten, effWeight: (o.weight || 0) * inten, progress: inten
       });
     }
@@ -774,12 +878,18 @@
   function objectivesToActions(aiKey, worldState) {
     const doc = getDoctrine(aiKey, worldState && worldState.countries ? worldState.countries[aiKey] : null);
     const objs = evaluateObjectives(aiKey, worldState);
-    const act = { milDelta: 0, aid: [], sanctions: [], objectives: objs };
+    // milDelta = **正向**通道（扩军），milCut = **负向**通道（裁军，<= 0）。
+    // P2 之前负向目标全是死代码：`if (d > act.milDelta)` 里 act.milDelta 从 0 起算，
+    // 负的 delta 永远超不过 0 —— chn_sez_growth(-0.4) / deu_detente(-0.5) /
+    // jpn_economic_security(-0.2) 从来没有真正削减过任何国家的军费。
+    // 拆成两个通道后，「枪炮 vs 黄油」才第一次能被执行。
+    const act = { milDelta: 0, milCut: 0, aid: [], sanctions: [], objectives: objs };
     let aidN = 0, sanN = 0;
     for (const o of objs) {
       if (o.kind === "mil") {
         const d = o.delta * o.intensity;
-        if (d > act.milDelta) act.milDelta = d;
+        if (d > 0) { if (d > act.milDelta) act.milDelta = d; }
+        else if (d < 0) { if (d < act.milCut) act.milCut = d; }
       } else if (o.kind === "aid") {
         if (aidN >= (doc.maxAid || 1)) continue;
         if (!o.target || o.target === worldState.playerKey) continue;

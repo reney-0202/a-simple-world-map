@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 59,
-    "pop": 56,
-    "ind": 55,
-    "province": 56,
-    "delta": 74,
-    "resource": 80
+    "bloc": 49,
+    "pop": 48,
+    "ind": 52,
+    "province": 51,
+    "delta": 54,
+    "resource": 54
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1629
+   "totalMs": 1462
   },
   "failed": false
  },
@@ -601,6 +601,49 @@
     "spectatorZeroPmods": true
    },
    "errors": []
+  },
+  "failed": false
+ },
+ "econai": {
+  "marker": "ECONAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "aiModuleLoaded": "PASS",
+    "poleconApiPresent": "PASS",
+    "snapshotCoversEveryEntity": "PASS",
+    "snapshotIsReadOnlyNoGeneralsCreated": "PASS",
+    "snapshotConsumesNoRng": "PASS",
+    "snapshotWritesNoPmods": "PASS",
+    "snapshotShapeWellFormed": "PASS",
+    "strainTablePresent": "PASS",
+    "strainBaselineLow": "PASS",
+    "strainTracksUnrest": "PASS",
+    "strainUnrestCappedAtOne": "PASS",
+    "strainTracksReserves": "PASS",
+    "noEconNoEconomicObjectives": "PASS",
+    "noEconMilDeltaUnchanged": "PASS",
+    "noEconNoMilCut": "PASS",
+    "negativeMilObjectiveIsLive": "PASS",
+    "positiveAndNegativeChannelsSeparate": "PASS",
+    "bailoutFiresForStrainedAlly": "PASS",
+    "bailoutPicksTheStrainedCountry": "PASS",
+    "bailoutSilentWhenHealthy": "PASS",
+    "squeezeFiresForStrainedRival": "PASS",
+    "squeezeTargetsTheRival": "PASS",
+    "gunsButterCutFires": "PASS",
+    "gunsButterProducesNegativeCut": "PASS",
+    "gunsButterGradedByStrain": "PASS",
+    "everyMajorReactsToItsOwnEconomy": "PASS",
+    "condTrueButPickEmptyDropsObjective": "PASS",
+    "condTrueAndPickFoundKeepsObjective": "PASS",
+    "everyEmittedAidHasTarget": "PASS",
+    "aiDecisionsCarryObjectives": "PASS",
+    "aiDecisionMilIsFinite": "PASS",
+    "econSnapshotNotPersisted": "PASS"
+   }
   },
   "failed": false
  },
