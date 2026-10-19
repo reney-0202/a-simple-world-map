@@ -349,16 +349,20 @@ function updatePrestigeRace(y, m, silent) {
   return prestigeSnapshot();
 }
 
-// 声望榜 UI：按分数降序，只列有分数的实体（里程碑会把它们逐个点亮）
+// 声望榜 UI：只列**真的动过**的实体（分数离开基准），外加玩家与对手。
+// 否则开局会列出六个停在 50.0 的国家，把面板变成噪声 ——
+// 榜单要回答的是「谁在赢」，不是「谁存在」。
 function prestigeBoardHtml(limit) {
   const T = prestigeTable();
   if (!T) return "";
   const p = initPrestigeState();
+  const base = T.PARAMS.SCORE_START;
+  const mine = ST.player ? [ST.player, prestigeRivalOf(ST.player)] : [];
   const rows = Object.keys(p.scores)
     .map((k) => ({ k: k, v: p.scores[k] }))
-    .filter((r) => isFinite(r.v))
+    .filter((r) => isFinite(r.v) && (Math.abs(r.v - base) >= 0.5 || mine.indexOf(r.k) >= 0))
     .sort((a, b) => b.v - a.v)
-    .slice(0, limit || 6);
+    .slice(0, limit || 5);
   let h = '<div class="pdb-prestige"><div class="pdb-meter-row"><span class="pdb-meter-lbl">🏅 威望竞赛</span>';
   if (ST.player) {
     const rv = prestigeRivalOf(ST.player);

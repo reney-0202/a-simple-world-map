@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 51,
-    "pop": 46,
-    "ind": 48,
-    "province": 49,
-    "delta": 52,
-    "resource": 57
+    "bloc": 46,
+    "pop": 41,
+    "ind": 45,
+    "province": 41,
+    "delta": 46,
+    "resource": 46
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1455
+   "totalMs": 1266
   },
   "failed": false
  },
@@ -1346,6 +1346,7 @@
     "sanitizeCapsActive": "PASS",
     "boardRenders": "PASS",
     "boardShowsGap": "PASS",
+    "boardHidesUntouchedEntities": "PASS",
     "programsRender": "PASS",
     "topbarPrestigeReadout": "PASS",
     "endToEndMilestonesFired": "PASS",

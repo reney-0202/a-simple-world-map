@@ -295,6 +295,14 @@ function runPrestigeProbe() {
     assert("boardRenders", typeof board === "string" && board.indexOf("威望竞赛") >= 0,
       "面板应渲染威望榜");
     assert("boardShowsGap", /vs/.test(board), "玩家模式下应显示与对手的对比");
+    assert("boardHidesUntouchedEntities", (() => {
+      // 开局时所有实体都停在基准分；榜单不该列出六个 50.0 的国家。
+      initPrestigeState(true);
+      ST.player = "SUN";
+      const html = prestigeBoardHtml();
+      const rows = (html.match(/pdb-prestige-row/g) || []).length;
+      return rows <= 2;       // 只有玩家与对手两行
+    })(), "未动过的实体不得出现在榜单里（否则面板是噪声）");
     const progHtml = prestigeProgramsHtml();
     assert("programsRender", progHtml.indexOf("威望工程") >= 0 && /data-prog="/.test(progHtml),
       "面板应渲染工程按钮");
