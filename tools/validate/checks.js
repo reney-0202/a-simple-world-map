@@ -380,6 +380,7 @@ function checkProbeRegistry(ctx) {
 
   const claimed = {};
   const markers = {};
+  const classes = { history: [], mechanics: [] };
   for (const key of Object.keys(entries)) {
     const e = entries[key] || {};
     if (typeof e.qs !== 'string' || !e.qs) { problems.push(`probes.js: entries.${key}.qs 必须是非空字符串`); continue; }
@@ -389,6 +390,13 @@ function checkProbeRegistry(ctx) {
     if (typeof e.budget !== 'number' || !(e.budget > 0)) {
       problems.push(`probes.js: entries.${key}.budget 必须是正数`);
     }
+    // P0：探针分两类，`cmp --class=history` 是 CI 硬门，所以 class 必须是
+    // 登记过的两个值之一 —— 写错一个字母就会让那个探针悄悄退出硬门。
+    if (e.class !== 'history' && e.class !== 'mechanics') {
+      problems.push(`probes.js: entries.${key}.class 必须是 history 或 mechanics，实为 ${JSON.stringify(e.class)}`);
+    } else {
+      classes[e.class].push(key);
+    }
     if (markers[e.marker]) problems.push(`probes.js: marker ${e.marker} 被 ${markers[e.marker]} 与 ${key} 同时使用`);
     markers[e.marker] = key;
     const tok = probeParamToken(e.qs);
@@ -396,13 +404,29 @@ function checkProbeRegistry(ctx) {
     claimed[tok] = key;
   }
 
+  // 硬门空转比没有硬门更糟：history 一个都没有时，`cmp --class=history` 会
+  // 永远绿，而「历史不漂移」的承诺已经失效。
+  if (!classes.history.length) {
+    problems.push('probes.js: 没有 class="history" 的探针，cmp --class=history 硬门会空转');
+  }
+  if (!classes.mechanics.length) {
+    problems.push('probes.js: 没有 class="mechanics" 的探针');
+  }
+
   const onlyParams = params.filter((p) => !claimed[p]);
   const onlyEntries = Object.keys(claimed).filter((t) => params.indexOf(t) < 0);
   if (onlyParams.length) problems.push(`probes.js: params 里登记但没有对应 entries：${onlyParams.join(', ')}`);
   if (onlyEntries.length) problems.push(`probes.js: entries 用了未登记的参数：${onlyEntries.join(', ')}`);
 
-  notes.push(`probe registry: ${Object.keys(entries).length} probes, ${params.length} url params, ${problems.length} problem(s)`);
-  return { problems, notes, stats: { probes: Object.keys(entries).length, params: params.length } };
+  notes.push(`probe registry: ${Object.keys(entries).length} probes, ${params.length} url params, `
+    + `${classes.history.length} history / ${classes.mechanics.length} mechanics, ${problems.length} problem(s)`);
+  return {
+    problems, notes,
+    stats: {
+      probes: Object.keys(entries).length, params: params.length,
+      history: classes.history.length, mechanics: classes.mechanics.length,
+    },
+  };
 }
 
 // ---- 2j. agenda condition vocabulary -----------------------------------------

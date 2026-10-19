@@ -77,10 +77,19 @@ jobs:
         # that a refactor did not quietly shrink what the suite guarantees.
         run: python tools/probe_runner.py count tools/probe-results.json
 
-      - name: Compare against the committed baseline (regression gate)
-        # Also fails when any probe carries FEWER assertions than the baseline
-        # (printed as "ASSERTION COLLAPSE"). Growth is allowed: new coverage is
-        # normal, losing coverage is how a green suite silently stops testing.
+      - name: Compare against the committed baseline — HISTORY HARD GATE
+        # P0：探针分两类。`history` 类（selftest / simprobe / endprobe）是无玩家
+        # 旁观跑 1980→1991 的史实轨迹，绝不允许漂移 —— 这一步失败即红灯。
+        # 其余 22 个是 `mechanics`：它们主动设玩家、篡改状态来验证某个机制，
+        # 机制被有意改变时**应当**变。把两者混为一谈的代价是：任何真玩法改动
+        # 都必须默认关闭，于是玩家默认体验永远不能变好。
+        run: python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json --class=history
+
+      - name: Compare against the committed baseline — full review (non-blocking)
+        # 全量对比仍然跑，仍然打印每一处差异，但不再阻塞：差异必须逐条写进提交
+        # 信息并接受 review。断言塌缩门（ASSERTION COLLAPSE）在这两步里都生效 ——
+        # 覆盖可以增长，但任何探针都不许悄悄少断言。
+        continue-on-error: true
         run: python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json
 
       - name: Upload probe results

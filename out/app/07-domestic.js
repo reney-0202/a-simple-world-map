@@ -246,10 +246,10 @@ function updateDomesticSun(dom, y, m, silent) {
     }
 
     // 短缺指数引发社会动荡
+    // （P0：原先还有一档 `shortage > 80 → +0.75`，但前面 `> 65` 已经拦住，
+    //   那一档永远不可达 —— 删掉是零数值改动的死代码清理。）
     if (sun.shortage > 65) {
       sun.unrest = clamp(sun.unrest + 0.45, 0, 100);
-    } else if (sun.shortage > 80) {
-      sun.unrest = clamp(sun.unrest + 0.75, 0, 100);
     } else if (sun.shortage < 40) {
       sun.unrest = clamp(sun.unrest - 0.40, 0, 100);
     }

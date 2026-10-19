@@ -109,8 +109,8 @@ node tools/validate.test.js
 | --- | --- |
 | `app/10-events-save.js` | `CR.probeMode`（探针会话判定）用 `params` |
 | `app/13-boot.js` | 18 个普通探针走「令牌 → 运行函数」分派表；启动时自检令牌已登记 |
-| `tools/probe_runner.py` | 用 `entries` 驱动 25 个探针；启动前自检 `params` 与 `entries` 自洽 |
-| `tools/validate/checks.js` | `checkProbeRegistry` 在 CI 里校验注册表内部一致性 |
+| `tools/probe_runner.py` | 用 `entries` 驱动 25 个探针；启动前自检 `params` 与 `entries` 自洽；`cmp --class=…` 按类别设门 |
+| `tools/validate/checks.js` | `checkProbeRegistry` 在 CI 里校验注册表内部一致性（含 `class` 合法性） |
 
 于是**新增一个普通探针只需两处**：`data/probes.js` 加一条 + `13-boot.js` 分派表加一行。
 参数不对会立刻失败，而不是静默不跑：
@@ -131,6 +131,9 @@ python tools/probe_runner.py count tools/probe-results.json --json
 
 # 与仓库内基线逐值比对（时间类字段与画布哈希除外）
 python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json
+
+# 只看「史实轨迹」这一类（CI 硬门，必须 identical）
+python tools/probe_runner.py cmp tools/baseline-probes.json tools/probe-results.json --class=history
 ```
 
 只跑指定探针：
@@ -142,13 +145,25 @@ python tools/probe_runner.py run out tools/probe-results.json simprobe saveprobe
 退出码：`run` 为 0 表示全部通过、1 表示有失败/缺失/异常；`cmp` 为 0 表示一致、
 2 表示存在差异或**断言数减少**；`count` 恒为 0（只报告）。
 
+**探针分两类**（`data/probes.js` 每个 entry 的 `class` 字段），因为它们语义不同：
+
+| 类别 | 探针 | 语义 | 允许变吗 |
+| --- | --- | --- | --- |
+| `history` | `selftest`、`simprobe`、`endprobe` | 无玩家、旁观跑 1980→1991 的史实轨迹 | **绝不**。`cmp --class=history` 是 CI 硬门 |
+| `mechanics` | 其余 22 个（含 `saveprobe`） | 主动设玩家、篡改状态来验证某个子系统 | **应当**，当机制被有意改变时 |
+
+混为一谈的代价很具体：任何真玩法改动都只能默认关闭，于是玩家默认体验永远不能变好。
+所以 CI 跑两道门 —— `--class=history` **必须 identical**（红灯即阻塞），
+全量 `cmp` 打印每一处差异供 review（`continue-on-error`，不阻塞）。
+断言塌缩门在两道门里都生效，覆盖不放松。
+
 **断言塌缩自动门**：`cmp` 除了逐值比对，还会比较每个探针的**断言条数**。
 删掉一条断言（哪怕整个探针仍然 "绿"）会让 `cmp` 退出 2 并打印：
 
 ```
 ASSERTION COLLAPSE (1 probe(s)):
   domestic: 116 -> 115 assertions
-  total: 854 -> 853
+  total (all probes): 854 -> 853
   lost: domestic/initDomesticStateExists
 ```
 
@@ -161,6 +176,10 @@ ASSERTION COLLAPSE (1 probe(s)):
 ```bash
 python tools/probe_runner.py run out tools/baseline-probes.json
 ```
+
+注意：`mechanics` 类探针的差异**不一定要更新基线** —— 先在提交信息里逐条解释，
+再决定是「这次改动是对的，更新基线」还是「这是漂移，回退」。`history` 类的差异
+永远只有一种解释：这是 bug。
 
 ## 发布包体积
 

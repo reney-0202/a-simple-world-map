@@ -42,127 +42,152 @@ window.W1980_PROBES={
   "selftest": {
    "qs": "selftest=1",
    "marker": "SELFTEST",
-   "budget": 30000
+   "budget": 30000,
+   "class": "history"
   },
   "simprobe": {
    "qs": "simprobe=1",
    "marker": "SIMPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "history"
   },
   "saveprobe": {
    "qs": "saveprobe=1",
    "marker": "SAVEPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "endprobe": {
    "qs": "end=1&t=1991-12",
    "marker": "ENDPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "history"
   },
   "sanprobe": {
    "qs": "sanprobe=1&player=SUN&mil=3.5",
    "marker": "SANPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "decprobe": {
    "qs": "decprobe=1&player=USA",
    "marker": "DECPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "blocprobe": {
    "qs": "bloc=WP&player=DEU",
    "marker": "BLOCPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "flprobe": {
    "qs": "flprobe=1",
    "marker": "FLPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "warprobe": {
    "qs": "warprobe=1",
    "marker": "WARPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "resprobe": {
    "qs": "resprobe=1",
    "marker": "RESPROBE",
-   "budget": 30000
+   "budget": 30000,
+   "class": "mechanics"
   },
   "tradeprobe": {
    "qs": "tradeprobe=1",
    "marker": "TRADEPROBE",
-   "budget": 30000
+   "budget": 30000,
+   "class": "mechanics"
   },
   "embargo": {
    "qs": "embargoprobe=1",
    "marker": "EMBARGOPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "aiprobe": {
    "qs": "aiprobe=1",
    "marker": "AIPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "summitprobe": {
    "qs": "summitprobe=1",
    "marker": "SUMMITPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "unscprobe": {
    "qs": "unscprobe=1",
    "marker": "UNSCPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "panelprobe": {
    "qs": "panelprobe=1",
    "marker": "PANELPROBE",
-   "budget": 30000
+   "budget": 30000,
+   "class": "mechanics"
   },
   "newsprobe": {
    "qs": "newsprobe=1",
    "marker": "NEWSPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "chronicle": {
    "qs": "chronicleprobe=1",
    "marker": "CHRONICLEPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "domestic": {
    "qs": "domesticprobe=1",
    "marker": "DOMESTICPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "agenda": {
    "qs": "agendaprobe=1",
    "marker": "AGENDAPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "crisis": {
    "qs": "crisisprobe=1",
    "marker": "CRISISPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "intel": {
    "qs": "intelprobe=1",
    "marker": "INTELPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "afghan": {
    "qs": "afghanprobe=1",
    "marker": "AFGHANPROBE",
-   "budget": 60000
+   "budget": 60000,
+   "class": "mechanics"
   },
   "soundprobe": {
    "qs": "soundprobe=1",
    "marker": "SOUNDPROBE",
-   "budget": 30000
+   "budget": 30000,
+   "class": "mechanics"
   },
   "assetsprobe": {
    "qs": "assetsprobe=1",
    "marker": "ASSETSPROBE",
-   "budget": 30000
+   "budget": 30000,
+   "class": "mechanics"
   }
  }
-};
+};

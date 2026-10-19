@@ -94,8 +94,8 @@ function cleanData() {
     W1980_PROBES: {
       params: ['demo', 'end'],
       entries: {
-        demo: { qs: 'demo=1', marker: 'DEMOPROBE', budget: 30000 },
-        endprobe: { qs: 'end=1&t=1991-12', marker: 'ENDPROBE', budget: 60000 },
+        demo: { qs: 'demo=1', marker: 'DEMOPROBE', budget: 30000, class: 'mechanics' },
+        endprobe: { qs: 'end=1&t=1991-12', marker: 'ENDPROBE', budget: 60000, class: 'history' },
       },
     },
   };
@@ -425,7 +425,7 @@ test('a param with no entry is caught', () => {
 });
 test('an entry missing from params is caught', () => {
   const d = cleanData();
-  d.W1980_PROBES.entries.extra = { qs: 'extra=1', marker: 'EXTRAPROBE', budget: 1000 };
+  d.W1980_PROBES.entries.extra = { qs: 'extra=1', marker: 'EXTRAPROBE', budget: 1000, class: 'mechanics' };
   assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /entries 用了未登记的参数：extra/);
 });
 test('duplicate params are caught', () => {
@@ -434,13 +434,13 @@ test('duplicate params are caught', () => {
 });
 test('two probes claiming the same url param is caught', () => {
   const d = cleanData();
-  d.W1980_PROBES.entries.clone = { qs: 'demo=2', marker: 'CLONEPROBE', budget: 1000 };
+  d.W1980_PROBES.entries.clone = { qs: 'demo=2', marker: 'CLONEPROBE', budget: 1000, class: 'mechanics' };
   assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /参数 demo 被 demo 与 clone 同时占用/);
 });
 test('duplicate DOM markers are caught', () => {
   const d = cleanData();
   d.W1980_PROBES.params.push('other');
-  d.W1980_PROBES.entries.other = { qs: 'other=1', marker: 'DEMOPROBE', budget: 1000 };
+  d.W1980_PROBES.entries.other = { qs: 'other=1', marker: 'DEMOPROBE', budget: 1000, class: 'mechanics' };
   assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /marker DEMOPROBE 被 demo 与 other 同时使用/);
 });
 test('a non-positive budget is caught', () => {
@@ -454,6 +454,21 @@ test('a lowercase marker is caught', () => {
 test('a missing registry is reported, not thrown', () => {
   const d = cleanData(); delete d.W1980_PROBES;
   assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /未定义 W1980_PROBES/);
+});
+// P0：探针分类决定 `cmp --class=history` 硬门覆盖谁。class 写错（或漏写）
+// 会让那个探针悄悄退出硬门，所以构建期就要失败。
+test('an unknown probe class is caught', () => {
+  const d = cleanData(); d.W1980_PROBES.entries.demo.class = 'mecanics';
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /class 必须是 history 或 mechanics/);
+});
+test('a missing probe class is caught', () => {
+  const d = cleanData(); delete d.W1980_PROBES.entries.demo.class;
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /class 必须是 history 或 mechanics/);
+});
+test('a registry with no history probe is caught', () => {
+  // The hard gate would compare nothing and stay green forever.
+  const d = cleanData(); d.W1980_PROBES.entries.endprobe.class = 'mechanics';
+  assert.match(checks.checkProbeRegistry(makeCtx(d)).problems[0], /cmp --class=history 硬门会空转/);
 });
 test('probeParamToken reads the token, not the probe key', () => {
   // `end=1&t=1991-12` is the endprobe query: its parameter token is `end`.
