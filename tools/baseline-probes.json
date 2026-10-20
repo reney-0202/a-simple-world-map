@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 48,
-    "pop": 45,
-    "ind": 43,
+    "bloc": 47,
+    "pop": 42,
+    "ind": 44,
     "province": 46,
-    "delta": 44,
-    "resource": 50
+    "delta": 45,
+    "resource": 48
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1260
+   "totalMs": 1201
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143938,
+   "saveBytes": 143966,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -1878,6 +1878,56 @@
     "spectatorNoDomesticWrites": "PASS",
     "endToEndStateSane": "PASS",
     "endToEndPanelEstimates": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "f2": {
+  "marker": "PRESTIGEAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyThresholdsOrdered": "PASS",
+    "pickTiersReal": "PASS",
+    "pickTiersOrderedByCost": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInF2Probe": "PASS",
+    "ruleCatchupStarts": "PASS",
+    "ruleCatchupPicksHighTier": "PASS",
+    "ruleCoastStopsAll": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleFullStopsAdding": "PASS",
+    "ruleNeutralDoesNothing": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleMidTierUnderStrain": "PASS",
+    "ruleLoTierUnderStrain": "PASS",
+    "ruleStrainCutsDearest": "PASS",
+    "monthlyStartsCatchup": "PASS",
+    "monthlyGainAccrues": "PASS",
+    "monthlyFailureCostsPrestige": "PASS",
+    "monthlyFailureLogged": "PASS",
+    "dragIsNegative": "PASS",
+    "dragEntersPmods": "PASS",
+    "dragReleasedOnStop": "PASS",
+    "dragGatedOffWithoutPlayer": "PASS",
+    "reverseDriftHappens": "PASS",
+    "reverseDriftGoesToRivalBloc": "PASS",
+    "reverseDriftRespectsTotalCap": "PASS",
+    "snapshotExposesRivalActive": "PASS",
+    "boardShowsRivalPrograms": "PASS",
+    "roundTripKeepsAi": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoAiPrograms": "PASS",
+    "spectatorNoRng": "PASS",
+    "spectatorNoBlocDrift": "PASS",
+    "endToEndStateSane": "PASS",
+    "endToEndBoardRenders": "PASS"
    }
   },
   "failed": false

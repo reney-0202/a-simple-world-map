@@ -28,7 +28,11 @@ function prestigeBlank() {
     drift: [],       // 已发生漂移的实体键
     leadMonths: 0,   // 连续领先对手的月数（漂移的前置条件）
     log: [],         // 最近发生的事（UI / 终局年鉴）
-    lastGap: null    // 最近一次「我方 − 对手」的落差
+    lastGap: null,   // 最近一次「我方 − 对手」的落差
+    // F2（威望的 AI 侧）：各选手的工程 { 实体键: { active: [], since: {} } }
+    // 与反向漂移计数（对手领先 → 第三世界倒向对手阵营）
+    ai: {},
+    rivalLeadMonths: 0
   };
 }
 
@@ -42,7 +46,18 @@ function initPrestigeState(force) {
   if (!Array.isArray(p.drift)) p.drift = [];
   if (!Array.isArray(p.log)) p.log = [];
   if (typeof p.leadMonths !== "number" || !isFinite(p.leadMonths)) p.leadMonths = 0;
+  if (!p.ai || typeof p.ai !== "object") p.ai = {};
+  if (typeof p.rivalLeadMonths !== "number" || !isFinite(p.rivalLeadMonths)) p.rivalLeadMonths = 0;
   return p;
+}
+
+// F2：某选手的工程槽（惰性建档，缺省即空仓）
+function aiPrestigeSlotOf(k) {
+  const p = initPrestigeState();
+  if (!p.ai[k] || typeof p.ai[k] !== "object") p.ai[k] = { active: [], since: {} };
+  if (!Array.isArray(p.ai[k].active)) p.ai[k].active = [];
+  if (!p.ai[k].since || typeof p.ai[k].since !== "object") p.ai[k].since = {};
+  return p.ai[k];
 }
 
 // 纯函数：只吃 d、只吐新状态（与 sanitizePolEcon 同一约定）
@@ -78,6 +93,30 @@ function sanitizePrestigeState(d) {
   }
   if (typeof d.leadMonths === "number" && isFinite(d.leadMonths)) p.leadMonths = Math.max(0, Math.round(d.leadMonths));
   if (typeof d.lastGap === "number" && isFinite(d.lastGap)) p.lastGap = d.lastGap;
+  // F2：各选手的工程与反向漂移计数（旧档缺该项 → 空状态）
+  if (d.ai && typeof d.ai === "object") {
+    const aiKnown = T ? T.PROGRAMS : {};
+    const aiMax = T ? T.PARAMS.MAX_ACTIVE : 2;
+    for (const k in d.ai) {
+      if (!CM.countries[k]) continue;                 // 幽灵选手直接丢弃
+      const slot = d.ai[k];
+      if (!slot || typeof slot !== "object") continue;
+      const act = Array.isArray(slot.active)
+        ? slot.active.filter((id) => typeof id === "string" && !!aiKnown[id]).slice(0, aiMax)
+        : [];
+      const since = {};
+      if (slot.since && typeof slot.since === "object") {
+        for (const id of act) {
+          const v = slot.since[id];
+          if (typeof v === "number" && isFinite(v)) since[id] = v;
+        }
+      }
+      p.ai[k] = { active: act, since: since };
+    }
+  }
+  if (typeof d.rivalLeadMonths === "number" && isFinite(d.rivalLeadMonths)) {
+    p.rivalLeadMonths = Math.max(0, Math.round(d.rivalLeadMonths));
+  }
   return p;
 }
 
@@ -142,6 +181,106 @@ function prestigeProgramDrag() {
   return -drag;      // 负值：工程挤占的是经济增长
 }
 
+// ---- F2（威望的 AI 侧）：对手也下棋 -----------------------------------------
+// 玩家能跑工程，对手此前只会被动吃里程碑+衰减 —— 竞赛是单方面的。
+// 与 D2 / C2 同族的白名单门控：探针会话默认关闭（既有探针逐位不变），
+// 只有 ?f2probe=1 或真实游戏才打开；旁观模式永远关闭。
+function prestigeAiActive() {
+  return !!ST.player && (!CR.probeMode || /[?&]f2probe=1/.test(location.search));
+}
+
+// 对手的对手：玩家的对手盯玩家，其余选手盯各自的对手（美苏互盯）
+function aiPrestigeOpponentOf(k) {
+  const player = ST.player;
+  if (player && prestigeRivalOf(player) === k) return player;
+  return prestigeRivalOf(k);
+}
+
+// F2 的选手集合：玩家的对手 + 美苏（竞赛的核心是超级大国之争与「你 vs 你的对手」）。
+// 53 国全跑工程是噪声 —— 威望榜单要回答的是「谁在赢」。
+// 旁观者没有竞赛（与 prestigeAiActive 同一个门）。
+function prestigeAiActors() {
+  const player = ST.player;
+  if (!player) return [];
+  const out = [];
+  const push = (k) => { if (k && k !== player && CM.countries[k] && out.indexOf(k) < 0) out.push(k); };
+  if (player) push(prestigeRivalOf(player));
+  push("USA");
+  push("SUN");
+  return out;
+}
+
+// 确定性选棋（零 RNG）：落后追赶 / 领先收手 / 养不起就砍最贵的 / 粘性防翻烧饼。
+// 输入只有三个真实读数：对位落差、经济压力、在跑工程。规则表见 data/prestige.js。
+// (y, m) 显式传入（与 updatePrestigeRace 同一结算月）—— 否则探针与引擎会用
+// 不同的日期算粘性窗口，测试就是漂的。
+function aiPickPrestigeProgram(k, y, m) {
+  const T = prestigeTable();
+  if (!T || !T.AI_POLICY) return null;
+  const P = T.AI_POLICY;
+  const slot = aiPrestigeSlotOf(k);
+  const opp = aiPrestigeOpponentOf(k);
+  if (!opp) return null;
+  const gap = prestigeOf(k) - prestigeOf(opp);          // 正 = k 领先
+  const strain = (typeof polEconStrainOf === "function") ? polEconStrainOf(k) : 0;
+  const active = slot.active;
+
+  // 1. 领先够多 → 全部收手（威望会衰减回来，GDP 省下来是真钱）
+  if (gap >= P.COAST_GAP && active.length) return { stopAll: true, reason: "coast", gap: gap };
+  // 2. 养不起 → 停掉拖累最大的一项
+  if (strain >= P.STRAIN_MAX && active.length) {
+    let worst = active[0];
+    for (const id of active) {
+      const a = T.PROGRAMS[id], b = T.PROGRAMS[worst];
+      if (a && b && a.drag > b.drag) worst = id;
+    }
+    return { stop: worst, reason: "strain", gap: gap };
+  }
+  // 3. 满仓 / 粘性窗口（最近一项工程不满 MIN_MONTHS 月 → 不再加新的）
+  if (active.length >= (T.PARAMS.MAX_ACTIVE || 2)) return null;
+  const yy = (y !== undefined) ? y : (SIM.S ? SIM.S.year : 1980);
+  const mm = (m !== undefined) ? m : (SIM.S ? Math.max(1, SIM.S.month) : 1);
+  const ym = yy * 12 + mm;
+  for (const id of active) {
+    const since = slot.since[id];
+    if (typeof since === "number" && ym - since < P.MIN_MONTHS) return null;
+  }
+  // 4. 落后够多 → 按经济压力挑档开工程（档内取第一个未在跑的）
+  if (gap <= -P.CATCHUP_GAP) {
+    const tier = strain < P.PICK_HI_STRAIN ? "hi" : (strain < P.PICK_MID_STRAIN ? "mid" : "lo");
+    for (const id of (P.PICK[tier] || [])) {
+      if (active.indexOf(id) < 0 && T.PROGRAMS[id]) return { start: id, reason: "catchup", gap: gap, tier: tier };
+    }
+  }
+  return null;
+}
+
+// AI 停一项工程（收手 / 砍预算）。确定性，不回滚已得威望 —— 已经表演过的就是历史。
+function aiStopPrestigeProgram(k, id) {
+  const slot = aiPrestigeSlotOf(k);
+  const i = slot.active.indexOf(id);
+  if (i < 0) return false;
+  slot.active.splice(i, 1);
+  delete slot.since[id];
+  return true;
+}
+
+// AI 工程的 GDP 拖累：走既有 pmods 累加链（applyPlayerDecisions 是唯一写者）。
+// 真实消费者：拖累 → polEconStrainOf 升 → P2 经济目标与 D2 战争 AI 都看得见 ——
+// 「为威望烧钱」对 AI 也是真实的取舍。
+function aiPrestigeDragFor(k) {
+  const T = prestigeTable();
+  if (!T || !prestigeAiActive()) return 0;
+  const p = ST.prestige;
+  if (!p || !p.ai || !p.ai[k]) return 0;
+  let drag = 0;
+  for (const id of p.ai[k].active) {
+    const def = T.PROGRAMS[id];
+    if (def) drag += def.drag;
+  }
+  return -drag;
+}
+
 function startPrestigeProgram(id) {
   const T = prestigeTable();
   if (!T || !ST.player) return { ok: false, reason: "no-player" };
@@ -198,6 +337,8 @@ function prestigeSnapshot() {
     rivalScore: rival ? +prestigeOf(rival).toFixed(2) : null,
     gap: (player && rival) ? +(prestigeOf(player) - prestigeOf(rival)).toFixed(2) : null,
     active: p.active.slice(),
+    // F2：对手在跑的工程（公开情报 —— 载人航天上天是藏不住的）
+    rivalActive: (rival && p.ai && p.ai[rival]) ? p.ai[rival].active.slice() : [],
     drag: +prestigeProgramDrag().toFixed(3),
     leadMonths: p.leadMonths,
     drifted: p.drift.length,
@@ -260,7 +401,6 @@ function updatePrestigeRace(y, m, silent) {
 
   const player = ST.player;
   const rival = player ? prestigeRivalOf(player) : null;
-
   // 玩家工程：产威望、掷失败、烧预算（预算通过 playerSelfDelta 的 drag 进入 pmods）
   if (player) {
     for (const id of p.active.slice()) {
@@ -277,6 +417,50 @@ function updatePrestigeRace(y, m, silent) {
           EV.unread++;
           renderInbox();
           toast(item);
+        }
+      }
+    }
+  }
+
+  // F2（威望的 AI 侧）：选手们也跑工程 —— 选棋、执行、产威望、掷失败。
+  // 走与玩家完全相同的口径（prestigeAdd + prestigeRoll，零引擎 RNG），
+  // 但不花政治资本（那是玩家的节流阀）—— 拖累进 pmods 由 accPrestigeAiDrag 结算。
+  if (prestigeAiActive()) {
+    for (const k of prestigeAiActors()) {
+      const slot = aiPrestigeSlotOf(k);
+      const pick = aiPickPrestigeProgram(k, y, m);
+      if (pick && pick.stopAll) {
+        for (const id of slot.active.slice()) aiStopPrestigeProgram(k, id);
+      } else if (pick && pick.stop) {
+        aiStopPrestigeProgram(k, pick.stop);
+      } else if (pick && pick.start) {
+        slot.active.push(pick.start);
+        slot.since[pick.start] = y * 12 + m;
+        if (!silent) {
+          const item = { y: y, m: m, zh: "【威望竞赛】" + (CM.countries[k] || {}).zh + "启动" + T.PROGRAMS[pick.start].zh,
+            note: "对手不再满足于守成 —— 竞赛的另一侧开始行动了。" };
+          EV.items.push(item);
+          EV.unread++;
+          renderInbox();
+          toast(item);
+        }
+      }
+      // 在跑工程：产威望、掷失败（与玩家同一套哈希口径）
+      for (const id of slot.active.slice()) {
+        const def = T.PROGRAMS[id];
+        if (!def) continue;
+        prestigeAdd(k, def.gain, null);
+        if (prestigeRoll(y, m, id + ":" + k) < def.risk) {
+          prestigeAdd(k, -def.failLoss, "【" + def.zh + "】当众失败");
+          p.log.push({ y: y, m: m, k: k, d: -def.failLoss, zh: def.zh + " 失败", fail: id });
+          if (!silent) {
+            const item = { y: y, m: m, zh: "【威望工程受挫】" + (CM.countries[k] || {}).zh + "的" + def.zh + "发生公开事故",
+              note: "对手的失败就是你的机会 —— 威望是位置性的，此消即彼长。" };
+            EV.items.push(item);
+            EV.unread++;
+            renderInbox();
+            toast(item);
+          }
         }
       }
     }
@@ -318,6 +502,39 @@ function updatePrestigeRace(y, m, silent) {
   const lead = prestigeLeaderOf([player, rival]);
   if (gap > 0 && lead.k === player) p.leadMonths += 1;
   else p.leadMonths = 0;
+
+  // F2：反向漂移 —— 对手领先同样会拉走第三世界。竞赛是双向的：
+  // 你不跑工程，对手跑，世界就朝对手那边漂。共用 DRIFT_TOTAL 总额。
+  if (prestigeAiActive()) {
+    if (gap < 0 && lead.k === rival) p.rivalLeadMonths += 1;
+    else p.rivalLeadMonths = 0;
+    if (p.rivalLeadMonths >= T.PARAMS.DRIFT_MONTHS && -gap >= T.PARAMS.DRIFT_GAP &&
+        p.drift.length < T.PARAMS.DRIFT_TOTAL) {
+      const rivalBloc = (typeof blocOf === "function") ? blocOf(rival) : null;
+      const eligible = Object.keys(CM.countries)
+        .filter((k) => k !== player && k !== rival && !ST.blocOverride[k] &&
+          T.PARAMS.DRIFT_ELIGIBLE.indexOf(CM.countries[k].bloc) >= 0)
+        .sort();
+      if (eligible.length && rivalBloc) {
+        const pick = eligible[(y * 12 + m) % eligible.length];
+        ST.blocOverride[pick] = rivalBloc;
+        p.drift.push(pick);
+        p.rivalLeadMonths = 0;
+        p.log.push({ y: y, m: m, k: pick, d: 0, zh: "倒向" + (BLOC_ZH[rivalBloc] || rivalBloc), drift: rivalBloc });
+        if (typeof rebuildBlocTable === "function") rebuildBlocTable();
+        if (typeof select === "function" && ST.sel) select(ST.sel);
+        if (!silent) {
+          const c = CM.countries[pick];
+          const item = { y: y, m: m, zh: "【威望漂移】" + c.zh + "倒向" + (BLOC_ZH[rivalBloc] || rivalBloc),
+            note: "对手的持续威望优势开始改变第三世界的选择 —— 竞赛的输赢不只在榜单上。" };
+          EV.items.push(item);
+          EV.unread++;
+          renderInbox();
+          toast(item);
+        }
+      }
+    }
+  }
 
   if (p.leadMonths >= T.PARAMS.DRIFT_MONTHS && gap >= T.PARAMS.DRIFT_GAP &&
       p.drift.length < T.PARAMS.DRIFT_TOTAL) {
@@ -395,6 +612,13 @@ function prestigeBoardHtml(limit) {
   if (ST.player) {
     h += '<div class="pdb-prestige-row"><span>工程（最多 ' + T.PARAMS.MAX_ACTIVE + ' 项）</span><b>' +
       (p.active.length ? p.active.map((id) => T.PROGRAMS[id].icon).join("") : "—") + '</b></div>';
+    // F2：对手在跑的工程 —— 竞赛是双向的，你必须看得见对方在表演什么
+    const rvK = prestigeRivalOf(ST.player);
+    const rvSlot = (rvK && p.ai && p.ai[rvK]) ? p.ai[rvK].active : [];
+    if (rvSlot && rvSlot.length) {
+      h += '<div class="pdb-prestige-row"><span>对手工程</span><b style="color:#f87171">' +
+        rvSlot.map((id) => T.PROGRAMS[id].icon).join("") + '</b></div>';
+    }
     if (p.active.length) {
       h += '<div class="pdb-prestige-note">每月威望 +' +
         p.active.reduce((s, id) => s + T.PROGRAMS[id].gain, 0).toFixed(2) +

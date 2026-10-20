@@ -112,6 +112,33 @@
     LOG_MAX: 40
   };
 
+  // F2：威望竞赛的 AI 侧（确定性规则，零 RNG，与 D2 的 AI_POLICY 同一模式）。
+  // 玩家能跑工程，而对手此前只会被动吃里程碑+衰减 —— 竞赛是单方面的。
+  // 本表让对手也下棋：落后就追赶、领先就收手、经济吃紧就先停最贵的。
+  //
+  //   CATCHUP_GAP  落后玩家多少分 → 启动追赶工程
+  //   COAST_GAP    领先玩家多少分 → 全部收手（省 GDP，威望会衰减回来）
+  //   STRAIN_MAX   经济压力（polEconStrainOf）到此值 → 养不起，停最贵的
+  //   MIN_MONTHS   新工程的粘性窗口：最近一项不满此月数 → 不再加新的（防逐月翻烧饼）
+  //   PICK_*_STRAIN  压力分档阈值：压力越低越敢上大工程
+  //   PICK         三档候选（档内按 gain 降序，取第一个未在跑的）—— 全确定性
+  //
+  // AI 不花政治资本（那是玩家的节流阀），但照常付 GDP 拖累、照常当众失败 ——
+  // 「耗得起吗」对两边都成立。
+  const AI_POLICY = {
+    CATCHUP_GAP: 6,
+    COAST_GAP: 10,
+    STRAIN_MAX: 0.7,
+    MIN_MONTHS: 6,
+    PICK_HI_STRAIN: 0.3,
+    PICK_MID_STRAIN: 0.55,
+    PICK: {
+      hi: ["space_station", "manned_first"],
+      mid: ["tech_showcase", "olympic_bid"],
+      lo: ["ideology_export", "cultural_expo"]
+    }
+  };
+
   // 供事件层（crisis / agenda）写入威望的效果键。
   // 注意：这里只声明语义，合法性由 data/effects.js 的词表登记；
   // 引擎侧的落点是 applyCrisisEffects / prestigeAdd。
@@ -123,6 +150,7 @@
     MILESTONES: MILESTONES,
     PROGRAMS: PROGRAMS,
     PARAMS: PARAMS,
+    AI_POLICY: AI_POLICY,
     CRISIS_HINT: CRISIS_HINT
   };
 })(typeof window !== "undefined" ? window : globalThis);

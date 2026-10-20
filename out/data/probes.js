@@ -46,7 +46,8 @@ window.W1980_PROBES={
   "poleconprobe",
   "soundprobe",
   "assetsprobe",
-  "c2probe"
+  "c2probe",
+  "f2probe"
  ],
  "entries": {
   "selftest": {
@@ -256,6 +257,12 @@ window.W1980_PROBES={
   "c2": {
    "qs": "c2probe=1",
    "marker": "DISINFOPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "f2": {
+   "qs": "f2probe=1",
+   "marker": "PRESTIGEAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

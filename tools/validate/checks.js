@@ -734,6 +734,49 @@ function checkPrestige(ctx) {
     if (!ctx.resolves(P.BLOC_LEADER[b])) problems.push(`prestige.js: BLOC_LEADER["${b}"] 不可解析`);
   }
 
+  // F2（威望的 AI 侧）：对手的决策规则。静默病灶：阈值错序（追赶比收手还难触发）、
+  // 档位指向幽灵工程（AI 永远选不出棋）、无粘性（逐月翻烧饼）。
+  const AI = PR.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('prestige.js: 缺 AI_POLICY（F2：对手没有竞赛决策规则）');
+  } else {
+    if (!(typeof AI.CATCHUP_GAP === 'number' && AI.CATCHUP_GAP > 0)) {
+      problems.push('prestige.js: AI_POLICY.CATCHUP_GAP 必须是正数');
+    }
+    if (!(typeof AI.COAST_GAP === 'number' && AI.COAST_GAP > 0)) {
+      problems.push('prestige.js: AI_POLICY.COAST_GAP 必须是正数');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('prestige.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('prestige.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.PICK_HI_STRAIN === 'number' && typeof AI.PICK_MID_STRAIN === 'number' &&
+          AI.PICK_HI_STRAIN > 0 && AI.PICK_HI_STRAIN < AI.PICK_MID_STRAIN &&
+          AI.PICK_MID_STRAIN < AI.STRAIN_MAX)) {
+      problems.push('prestige.js: AI_POLICY 压力分档必须满足 0 < PICK_HI_STRAIN < PICK_MID_STRAIN < STRAIN_MAX');
+    }
+    const tiers = AI.PICK || {};
+    for (const t of ['hi', 'mid', 'lo']) {
+      const list = tiers[t];
+      if (!Array.isArray(list) || !list.length) {
+        problems.push(`prestige.js: AI_POLICY.PICK.${t} 必须是非空数组（档位空 = 该压力档下 AI 无棋可下）`);
+        continue;
+      }
+      for (const id of list) {
+        if (!PG[id]) problems.push(`prestige.js: AI_POLICY.PICK.${t} 的 "${id}" 不是真实工程（幽灵棋）`);
+      }
+    }
+    // 档位必须按拖累分层：压力越大越不敢上大工程，否则「按压力挑档」是假的
+    const tierMaxDrag = (t) => Math.max(...(tiers[t] || []).map((id) => (PG[id] ? PG[id].drag : 0)));
+    if (Array.isArray(tiers.hi) && Array.isArray(tiers.mid) && Array.isArray(tiers.lo) &&
+        tiers.hi.length && tiers.mid.length && tiers.lo.length &&
+        !(tierMaxDrag('hi') > tierMaxDrag('mid') && tierMaxDrag('mid') > tierMaxDrag('lo'))) {
+      problems.push('prestige.js: AI_POLICY.PICK 三档必须按 drag 严格递减（hi > mid > lo）');
+    }
+  }
+
   notes.push(`prestige: ${MS.length} milestones (${pos}+ / ${neg}-), ${Object.keys(PG).length} programs, `
     + `${problems.length} problem(s)`);
   return { problems, notes, stats: { milestones: MS.length, programs: Object.keys(PG).length } };

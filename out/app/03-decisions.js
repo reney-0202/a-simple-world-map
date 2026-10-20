@@ -27,8 +27,25 @@ function applyPlayerDecisions() {
   // D（地面战争）：只对**偏离史实的那部分**消耗计费。
   // 历史总代价已在校准曲线里，重复收费会变成对史实的双重扣款。
   if (typeof accWarAttrition === "function") accWarAttrition(acc);
+  // F2（威望的 AI 侧）：对手工程的 GDP 拖累 —— 与玩家工程同一口径。
+  // 真实消费者：拖累 → polEconStrainOf 升 → P2 经济目标 / D2 战争 AI 读得到。
+  if (typeof accPrestigeAiDrag === "function") accPrestigeAiDrag(acc);
   for (const k in acc) {
     if (acc[k] !== 0) W1980_SIM.setPMod(SIM.S, k, acc[k]);
+  }
+}
+
+// F2：把各选手威望工程的拖累挂进 pmods（唯一写者仍是 applyPlayerDecisions）
+function accPrestigeAiDrag(acc) {
+  if (typeof aiPrestigeDragFor !== "function" || typeof prestigeAiActive !== "function") return;
+  if (!prestigeAiActive()) return;
+  const p = ST.prestige;
+  if (!p || !p.ai) return;
+  for (const k in p.ai) {
+    const drag = aiPrestigeDragFor(k);
+    if (!drag) continue;
+    const ek = entKeys(k);
+    for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + drag;
   }
 }
 

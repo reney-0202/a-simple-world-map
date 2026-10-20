@@ -208,11 +208,17 @@ function cleanData() {
       PROGRAMS: {
         p1: { zh: 'p', cost: 10, drag: 0.1, gain: 0.5, risk: 0.01, failLoss: 2 },
         p2: { zh: 'q', cost: 20, drag: 0.3, gain: 1.1, risk: 0.02, failLoss: 6 },
+        p3: { zh: 'r', cost: 5, drag: 0.05, gain: 0.3, risk: 0.005, failLoss: 1 },
       },
       PARAMS: {
         SCORE_MIN: 0, SCORE_MAX: 100, SCORE_START: 50, DECAY: 0.025, MAX_ACTIVE: 1,
         RIVAL: { AAA: 'BBB' }, BLOC_LEADER: { NATO: 'AAA' },
         DRIFT_GAP: 12, DRIFT_MONTHS: 6, DRIFT_TOTAL: 6, DRIFT_ELIGIBLE: ['NA'],
+      },
+      AI_POLICY: {
+        CATCHUP_GAP: 6, COAST_GAP: 10, STRAIN_MAX: 0.7, MIN_MONTHS: 6,
+        PICK_HI_STRAIN: 0.3, PICK_MID_STRAIN: 0.55,
+        PICK: { hi: ['p2'], mid: ['p1'], lo: ['p3'] },
       },
     },
     W1980_POLECON: {
@@ -815,7 +821,7 @@ test('a risk outside [0,1] is caught', () => {
 });
 test('MAX_ACTIVE covering every programme is caught', () => {
   // If you can run everything at once there is no trade-off to make.
-  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.MAX_ACTIVE = 2;
+  const d = cleanData(); d.W1980_PRESTIGE.PARAMS.MAX_ACTIVE = 3;
   assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /MAX_ACTIVE 必须 >=1 且严格小于工程总数/);
 });
 test('a zero decay is caught', () => {
@@ -830,6 +836,51 @@ test('a rival mapping pointing at itself is caught', () => {
 test('an empty drift eligibility list is caught', () => {
   const d = cleanData(); d.W1980_PRESTIGE.PARAMS.DRIFT_ELIGIBLE = [];
   assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /DRIFT_ELIGIBLE 必须是非空数组/);
+});
+
+// ---- 8g2. prestige AI policy (F2) --------------------------------------------
+// The opponent now plays. The silent failures: thresholds that never fire, a
+// tier table pointing at ghost programmes (the AI can never pick a move), and
+// no stickiness (the AI churns its programmes every month).
+test('a missing AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_PRESTIGE.AI_POLICY;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('a zero catch-up gap is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.AI_POLICY.CATCHUP_GAP = 0;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /CATCHUP_GAP 必须是正数/);
+});
+test('a strain cap outside (0,1] is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.AI_POLICY.STRAIN_MAX = 1.5;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /STRAIN_MAX 必须落在 \(0,1\]/);
+});
+test('no stickiness window is caught', () => {
+  // MIN_MONTHS 0 = the AI swaps programmes every month.
+  const d = cleanData(); d.W1980_PRESTIGE.AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('disordered pressure tiers are caught', () => {
+  const d = cleanData();
+  d.W1980_PRESTIGE.AI_POLICY.PICK_HI_STRAIN = 0.6;
+  d.W1980_PRESTIGE.AI_POLICY.PICK_MID_STRAIN = 0.4;
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /压力分档必须满足/.test(x)), '应报出分档错序：' + p.join(' | '));
+});
+test('a ghost programme in a tier is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.AI_POLICY.PICK.hi = ['nope'];
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /"nope" 不是真实工程（幽灵棋）/);
+});
+test('an empty tier is caught', () => {
+  const d = cleanData(); d.W1980_PRESTIGE.AI_POLICY.PICK.lo = [];
+  assert.match(checks.checkPrestige(makeCtx(d)).problems[0], /PICK\.lo 必须是非空数组/);
+});
+test('tiers not ordered by drag are caught', () => {
+  // "Bigger programmes under less strain" is a lie unless the tiers really differ.
+  const d = cleanData();
+  d.W1980_PRESTIGE.AI_POLICY.PICK.hi = ['p3'];
+  d.W1980_PRESTIGE.AI_POLICY.PICK.lo = ['p2'];
+  const p = checks.checkPrestige(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /三档必须按 drag 严格递减/.test(x)), '应报出档位未分层：' + p.join(' | '));
 });
 
 // ---- 8h. ground-war table (D) ------------------------------------------------
