@@ -47,7 +47,8 @@ window.W1980_PROBES={
   "soundprobe",
   "assetsprobe",
   "c2probe",
-  "f2probe"
+  "f2probe",
+  "endstoryprobe"
  ],
  "entries": {
   "selftest": {
@@ -263,6 +264,12 @@ window.W1980_PROBES={
   "f2": {
    "qs": "f2probe=1",
    "marker": "PRESTIGEAIPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "endstory": {
+   "qs": "endstoryprobe=1",
+   "marker": "ENDSTORYPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

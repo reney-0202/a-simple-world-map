@@ -313,6 +313,11 @@ function generateEpilogue(st) {
   } else {
     epilogueSpectatorVolumes(res, st, topBloc, dShare);
   }
+  // 终局叙事升级：把七条轴的裁决织成一篇连贯的「历史怎么写的你」——
+  // 插在全部卷之后作「史笔」压轴卷（chronicleprobe 对卷数是下界断言，加卷安全）。
+  if (typeof epilogueEndStorySection === "function") {
+    res.sections.push(epilogueEndStorySection(st));
+  }
   return res;
 }
 
@@ -880,6 +885,9 @@ function renderEnd(st) {
     '国防适度 = 15×max(0, 1−|军费−4%|/6)（军费 ≈4% 满分，过度穷兵黩武或不设防均扣分）；' +
     '地缘战略 = 25分（阵营份额消长分 10分 + 战略作为分 15分；和平专注内政享 8分基准红利，' +
     '对外有效制裁敌国与扶植盟友可获取高额战略作为分，平衡自身经济代价；见 REPORT_R6A）。</div>';
+  // 终局叙事升级：七条轴的裁决行是并列的仪表盘 —— 史笔把它们织成一篇
+  // 连贯的「历史怎么写的你」（连接词跟着状态走：双丰收/双失/赢面子输里子）。
+  if (typeof endStoryHtml === "function") h += endStoryHtml(st);
   h += "<h4>世界格局 · 阵营 GDP 占比（1980 → " + st.date + "）</h4>" +
     '<table><tr><td>阵营</td><td class="v">1980</td><td class="v">末期</td><td class="v">Δpp</td></tr>';
   for (const b of st.blocs.slice().sort((a, b) => (b.gdpShare || 0) - (a.gdpShare || 0)))

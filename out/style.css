@@ -568,6 +568,13 @@ button,input{font:inherit;color:inherit}
 .epilogue-sec-title{font-size:11.5px;color:var(--gold);font-weight:600;margin-bottom:6px;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
 .epilogue-sec-body{font-size:11.5px;color:#cbd3db;line-height:1.75;text-align:justify}
 .epilogue-quote{font-style:italic;color:#a8b3be;border-top:1px solid #23282d;margin-top:8px;padding-top:6px;font-size:11px}
+/* 终局叙事升级：史笔 · 七轴合评（四幕连贯叙事） */
+.endstory{margin:12px 0 4px;padding:10px 12px;background:#16141f;border:1px solid #2c2637;border-radius:3px}
+.endstory-title{font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px}
+.endstory-sub{margin-left:8px;font-size:9.5px;font-weight:400;color:#8b949e}
+.endstory-act{margin-top:8px}
+.endstory-act-title{font-size:10.5px;font-weight:700;color:#c9c2d4;margin-bottom:3px}
+.endstory-act-body{font-size:10.5px;line-height:1.75;color:#b8c2cc;text-align:justify}
 
 /* R11C: 时代大事记编年史垂直时间轴 */
 .chronicle-timeline{position:relative;padding:8px 4px 8px 18px}

@@ -578,10 +578,12 @@ function checkPolEcon(ctx) {
 // bloat (an unoptimised image, a duplicated data file), not to ration features:
 // a gate that trips on every deliberate addition is a gate people learn to skip.
 // Phase F (prestige race) grew the tree by ~30 kB, a whole subsystem, so the
-// budget moved 3.2 -> 3.5 MiB in the same commit that added it (F), and
-// 3.5 -> 3.55 MiB with C2 (disinformation: data table + engine + probe ~= 36 KB,
-// same shape as the E-phase fuse files it mirrors).
-const BUNDLE_BUDGET_MIB = 3.55;
+// budget moved 3.2 -> 3.5 MiB in the same commit that added it (F),
+// 3.5 -> 3.55 MiB with C2 (disinformation: data table + engine + probe ~= 36 KB),
+// and 3.55 -> 3.58 MiB with the end-story upgrade (narrative engine + probe
+// ~= 16 KB plus wiring). Same reasoning every time: the guard catches
+// accidental bloat, it does not ration features.
+const BUNDLE_BUDGET_MIB = 3.58;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.

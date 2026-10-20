@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 47,
-    "pop": 42,
-    "ind": 44,
-    "province": 46,
+    "bloc": 62,
+    "pop": 51,
+    "ind": 47,
+    "province": 41,
     "delta": 45,
-    "resource": 48
+    "resource": 46
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1201
+   "totalMs": 1399
   },
   "failed": false
  },
@@ -1928,6 +1928,44 @@
     "spectatorNoBlocDrift": "PASS",
     "endToEndStateSane": "PASS",
     "endToEndBoardRenders": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "endstory": {
+  "marker": "ENDSTORYPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "apiPresent": "PASS",
+    "fourActs": "PASS",
+    "actTitles": "PASS",
+    "actsHaveBody": "PASS",
+    "titleSaysHistory": "PASS",
+    "verdictWinWin": "PASS",
+    "verdictWinFaceLoseSubstance": "PASS",
+    "verdictWinSubstanceLoseFace": "PASS",
+    "verdictLoseLose": "PASS",
+    "verdictDoomsday": "PASS",
+    "verdictNeutral": "PASS",
+    "spectatorStoryComplete": "PASS",
+    "spectatorVerdict": "PASS",
+    "degradesWithoutSnapshots": "PASS",
+    "weavesPrestigeNumber": "PASS",
+    "weavesEconNumbers": "PASS",
+    "nukeActMentionsDefcon": "PASS",
+    "ideologyActPresent": "PASS",
+    "deterministic": "PASS",
+    "consumesNoRng": "PASS",
+    "zeroWrites": "PASS",
+    "htmlRendersActs": "PASS",
+    "epilogueSectionShape": "PASS",
+    "epilogueHasEndStory": "PASS",
+    "epilogueSectionsGrewOrEqual5": "PASS",
+    "endToEndSane": "PASS",
+    "endToEndHtmlRenders": "PASS"
    }
   },
   "failed": false
