@@ -91,6 +91,24 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_IDEOLOGY: {
+      SYSTEMS: {
+        AAA: { zh: '自由', base: 52, note: 'a claim' },
+        BBB: { zh: '平等', base: 50, note: 'b claim' },
+        DEFAULT: { zh: '独立', base: 50, note: 'default claim' },
+      },
+      PROGRAMS: {
+        p1: { zh: '文化输出', icon: 'x', cost: 12, drag: 0.12, gain: 0.9, risk: 0.01, failLoss: 5 },
+        p2: { zh: '广播战', icon: 'y', cost: 14, drag: 0.16, gain: 1.1, risk: 0.02, failLoss: 7 },
+        p3: { zh: '学术交流', icon: 'z', cost: 10, drag: 0.08, gain: 0.7, risk: 0.006, failLoss: 3 },
+      },
+      PARAMS: {
+        APPEAL_MIN: 0, APPEAL_MAX: 100, APPEAL_START: 50, DECAY: 0.03,
+        DELIVERY_GAIN: 1.2, DELIVERY_DIV: 3, DELIVERY_CAP: 1.2, LEGIT_GAIN: 0.3,
+        MAX_ACTIVE: 2, PRESTIGE_PER_MONTH: 0.45, LEGIT_FEEDBACK: 0.22, UNREST_FEEDBACK: 0.3,
+        DRIFT_GAP: 14, DRIFT_MONTHS: 6, DRIFT_TOTAL: 4, DRIFT_ELIGIBLE: ['NA'], LOG_MAX: 24,
+      },
+    },
     W1980_ESTIMATES: {
       FIELDS: {
         prestige: { base: 6, lo: 0, hi: 100, zh: '威望', consumer: 'board' },
@@ -963,6 +981,63 @@ test('a full strength cut is caught', () => {
 test('a negative attrition penalty is caught', () => {
   const d = cleanData(); d.W1980_ESTIMATES.PARAMS.OP_ATTR_PENALTY = -1;
   assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /OP_ATTR_PENALTY 不能为负/);
+});
+
+// ---- 8k. ideology resource table (S-17) --------------------------------------
+// Ideology was a caption under a leader portrait. Turning it into an exportable
+// claim creates silent failure modes: free soft power (no cost), an appeal floor
+// with no decay (win once, rest forever), unreachable drift thresholds (the
+// third world never moves), and a claim nobody can articulate (no note).
+section('checkIdeology');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkIdeology(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_IDEOLOGY;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /未定义 W1980_IDEOLOGY/);
+});
+test('a system with no narrative is caught', () => {
+  const d = cleanData(); delete d.W1980_IDEOLOGY.SYSTEMS.AAA.note;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /主张 AAA 缺 note/);
+});
+test('an unresolvable system key is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.SYSTEMS.ZZZ = { zh: 'x', base: 50, note: 'y' };
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /主张 ZZZ 不是实体键/);
+});
+test('a base appeal outside [0,100] is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.SYSTEMS.AAA.base = 120;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /\.base 必须落在 \[0,100\]/);
+});
+test('a programme with no cost is caught', () => {
+  // Free soft power means everyone exports everything.
+  const d = cleanData(); d.W1980_IDEOLOGY.PROGRAMS.p1.cost = 0;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /免费软实力 = 白送/);
+});
+test('a programme with no drag is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.PROGRAMS.p2.drag = 0;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /的 drag 必须是正数/);
+});
+test('a zero failLoss is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.PROGRAMS.p3.failLoss = 0;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /failLoss 必须是正数（翻车要痛）/);
+});
+test('zero decay is caught', () => {
+  // A claim nobody can forget is a claim you win once and coast on.
+  const d = cleanData(); d.W1980_IDEOLOGY.PARAMS.DECAY = 0;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /DECAY 必须落在 \(0,1\]/);
+});
+test('MAX_ACTIVE covering every programme is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.PARAMS.MAX_ACTIVE = 3;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /MAX_ACTIVE 必须 >=1 且严格小于工程总数/);
+});
+test('an unreachable drift gap is caught', () => {
+  // A gap of 100 can never be reached on a 0..100 scale.
+  const d = cleanData(); d.W1980_IDEOLOGY.PARAMS.DRIFT_GAP = 100;
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /DRIFT_GAP 必须落在 \(0,100\)/);
+});
+test('an empty drift eligibility list is caught', () => {
+  const d = cleanData(); d.W1980_IDEOLOGY.PARAMS.DRIFT_ELIGIBLE = [];
+  assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /DRIFT_ELIGIBLE 必须是非空数组/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

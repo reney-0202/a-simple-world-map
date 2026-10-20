@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 46,
-    "pop": 44,
-    "ind": 42,
-    "province": 45,
-    "delta": 44,
-    "resource": 48
+    "bloc": 44,
+    "pop": 47,
+    "ind": 45,
+    "province": 47,
+    "delta": 43,
+    "resource": 47
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1209
+   "totalMs": 1253
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143715,
+   "saveBytes": 143831,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -166,7 +166,7 @@
     }
    ],
    "crDenyAfterLoad": [],
-   "pmodSUNAfter": -8.094668082381279,
+   "pmodSUNAfter": -8.10276448563452,
    "__polecon": {
     "player": "SUN",
     "actual": -7.408,
@@ -182,12 +182,12 @@
     "goodBills": 0,
     "bopAlerts": 0,
     "anchor": -4.76,
-    "unrest": 48.93,
+    "unrest": 50.55,
     "touched": [
      "conservative"
     ]
    },
-   "__unrestSUN": 48.93,
+   "__unrestSUN": 50.55,
    "__shortageSUN": 54.4,
    "__billsSUN": "bad",
    "histLenAfterLoad": 66,
@@ -1612,6 +1612,63 @@
     "spectatorConsumesNoRng": "PASS",
     "endToEndAiMoves": "PASS",
     "endToEndBounded": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "ideo": {
+  "marker": "IDEOLOGYPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "systemsHaveNarrative": "PASS",
+    "programsCarryRealCost": "PASS",
+    "failLossIsPainful": "PASS",
+    "maxActiveIsBinding": "PASS",
+    "decayExists": "PASS",
+    "driftGapReachable": "PASS",
+    "programStarts": "PASS",
+    "programCostsPoliticalCapital": "PASS",
+    "programRejectsUnknown": "PASS",
+    "programDragIsReal": "PASS",
+    "maxActiveEnforced": "PASS",
+    "insufficientCapitalRejected": "PASS",
+    "rejectedStartLeavesNoTrace": "PASS",
+    "noPlayerCannotFund": "PASS",
+    "appealDecays": "PASS",
+    "decayIsGradual": "PASS",
+    "programYieldsAppeal": "PASS",
+    "deliveryFeedsAppeal": "PASS",
+    "missedDeliveryHurts": "PASS",
+    "rollDeterministic": "PASS",
+    "rollInRange": "PASS",
+    "failCostsAppeal": "PASS",
+    "appealConvertsToPrestige": "PASS",
+    "domesticSinkAvailable": "PASS",
+    "appealLeadCalmsUnrest": "PASS",
+    "appealLagRaisesUnrest": "PASS",
+    "appealDriftHappens": "PASS",
+    "appealDriftWritesBloc": "PASS",
+    "appealDriftedIsThirdWorld": "PASS",
+    "appealDriftRespectsCap": "PASS",
+    "noDriftWhenLagging": "PASS",
+    "spectatorNoDomesticWrites": "PASS",
+    "spectatorNoBlocDrift": "PASS",
+    "spectatorNoRng": "PASS",
+    "spectatorNoPmodWrites": "PASS",
+    "roundTripKeepsState": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "panelRenders": "PASS",
+    "panelShowsPrograms": "PASS",
+    "panelShowsNarrative": "PASS",
+    "endToEndSnapshot": "PASS",
+    "endToEndBounded": "PASS",
+    "endToEndGapConsistent": "PASS"
    }
   },
   "failed": false

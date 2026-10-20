@@ -809,7 +809,8 @@ function refreshDomesticBox(selKey) {
   // P1：紧随其后插入「经济账单」条 —— 落差与储备必须随时可见，
   // 不可见的机制等于不存在的机制。
   if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + prestigeBoardHtml()
-    + (typeof nukePanelHtml === "function" ? nukePanelHtml() : "") + h;
+    + (typeof nukePanelHtml === "function" ? nukePanelHtml() : "")
+    + (typeof ideologyPanelHtml === "function" ? ideologyPanelHtml() : "") + h;
   box.innerHTML = h;
 
   // 绑定动作按钮事件：标出成本、预算不足时禁用（禁用态不绑 click，杜绝绕过）
@@ -854,6 +855,18 @@ function refreshDomesticBox(selKey) {
   box.querySelectorAll(".nk-opt-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       resolveNukeIncident(btn.dataset.nkopt);
+      refreshDomesticBox(ST.sel);
+    });
+  });
+
+  // S-17（意识形态资源化）：主张输出工程按钮 —— 与内政/威望/作战抢同一份政治资本
+  box.querySelectorAll(".id-prog-btn").forEach((btn) => {
+    if (btn.disabled) return;
+    const id = btn.dataset.idprog;
+    const on = ST.ideology && Array.isArray(ST.ideology.active) && ST.ideology.active.indexOf(id) >= 0;
+    btn.addEventListener("click", () => {
+      if (on) stopIdeologyProgram(id);
+      else startIdeologyProgram(id);
       refreshDomesticBox(ST.sel);
     });
   });

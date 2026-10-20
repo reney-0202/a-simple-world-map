@@ -99,6 +99,10 @@ function evRun(y, m, silent) {
   // 放在最后是刻意的：它读的是上面刚算完的内政字段（动荡/合法性），
   // 并且它的漂移会改 ST.blocOverride，随后 refreshAIBox/地图重烘会反映出来。
   updatePrestigeRace(y, m, silent);
+  // S-17（意识形态资源化）：感召力的产出/衰减/变现/漂移。
+  // 紧跟威望之后：它把软实力**汇入**威望（prestigeAdd），且读 P1 的增长落差
+  // 与合法性。无执政者时工程与回流全部跳过，只剩衰减（纯派生量，零回写）。
+  updateIdeology(y, m, silent);
   // R10B：历史首脑峰会事件窗口照会通知
   if (isAIActive() && window.W1980_AI && Array.isArray(window.W1980_AI.SUMMIT_PRESETS)) {
     const p = window.W1980_AI.SUMMIT_PRESETS.find((sp) => sp.year === y && sp.month === m);
@@ -322,6 +326,7 @@ function simSave(slot) {
     wars: ST.wars ? JSON.parse(JSON.stringify(ST.wars)) : null, // D：地面战争（战线优势/消耗/厌战/结局）
     nuke: ST.nuke ? JSON.parse(JSON.stringify(ST.nuke)) : null, // N1：核风险（升级/可信度/DEFCON/待裁决事故）
     estimates: ST.estimates ? JSON.parse(JSON.stringify(ST.estimates)) : null, // C：情报估算（专项评估/审计）
+    ideology: ST.ideology ? JSON.parse(JSON.stringify(ST.ideology)) : null, // S-17：意识形态（感召力/输出工程/漂移）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -495,6 +500,8 @@ function loadSocietyStates(d) {
   ST.nuke = sanitizeNukeState(d.nuke);
   // C：还原情报估算（专项评估进行中/审计日志）。旧档缺该项 → 空状态。
   ST.estimates = sanitizeEstimateState(d.estimates);
+  // S-17：还原意识形态（感召力/输出工程/漂移记录）。旧档缺该项 → 空状态。
+  ST.ideology = sanitizeIdeologyState(d.ideology);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

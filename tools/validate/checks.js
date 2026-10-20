@@ -1012,6 +1012,82 @@ function checkEstimates(ctx) {
   return { problems, notes, stats: { fields: Object.keys(F).length, qualityCap: P.QUALITY_CAP } };
 }
 
+// ---- 2q. ideology resource table (S-17) -------------------------------------
+// The ideology table turned a caption under a leader portrait into an
+// exportable claim. Silent failure modes: a programme with no cost (free soft
+// power), an appeal floor of 0 with no decay (once won, won forever), a rival
+// that cannot be resolved (the competition is against nobody), and drift
+// thresholds that can never be reached (the third world never moves).
+function checkIdeology(ctx) {
+  const notes = [];
+  const problems = [];
+  const ID = ctx.data.W1980_IDEOLOGY;
+  if (!ID) return { problems: ['ideology.js: 未定义 W1980_IDEOLOGY'], notes };
+  const SY = ID.SYSTEMS, PG = ID.PROGRAMS, P = ID.PARAMS;
+  if (!SY || typeof SY !== 'object' || !Object.keys(SY).length) {
+    return { problems: ['ideology.js: SYSTEMS 必须是非空对象'], notes };
+  }
+  if (!PG || typeof PG !== 'object' || !Object.keys(PG).length) {
+    return { problems: ['ideology.js: PROGRAMS 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['ideology.js: PARAMS 缺失'], notes };
+
+  // 主张：每国一份，必须有口号与叙事
+  for (const k of Object.keys(SY)) {
+    const s = SY[k] || {};
+    const tag = `ideology.js: 主张 ${k}`;
+    if (k !== 'DEFAULT' && !ctx.resolves(k)) problems.push(`${tag} 不是实体键`);
+    if (!s.zh) problems.push(`${tag} 缺 zh`);
+    if (!s.note) problems.push(`${tag} 缺 note（主张必须能被讲出来）`);
+    if (!(typeof s.base === 'number' && isFinite(s.base) && s.base >= 0 && s.base <= 100)) {
+      problems.push(`${tag}.base 必须落在 [0,100]`);
+    }
+  }
+  if (!SY.DEFAULT) problems.push('ideology.js: SYSTEMS 缺 DEFAULT 兜底');
+
+  // 输出工程：必须真的有代价（免费的软实力 = 白送）
+  let costed = 0;
+  for (const id of Object.keys(PG)) {
+    const d = PG[id] || {};
+    const tag = `ideology.js: 工程 ${id}`;
+    if (!d.zh) problems.push(`${tag} 缺 zh`);
+    if (!(typeof d.cost === 'number' && d.cost > 0)) problems.push(`${tag} 的 cost 必须是正数（免费软实力 = 白送）`);
+    if (!(typeof d.drag === 'number' && d.drag > 0)) problems.push(`${tag} 的 drag 必须是正数（没有机会成本）`);
+    if (!(typeof d.gain === 'number' && d.gain > 0)) problems.push(`${tag} 的 gain 必须是正数`);
+    if (!(typeof d.risk === 'number' && d.risk >= 0 && d.risk <= 1)) problems.push(`${tag} 的 risk 必须落在 [0,1]`);
+    if (!(typeof d.failLoss === 'number' && d.failLoss > 0)) problems.push(`${tag} 的 failLoss 必须是正数（翻车要痛）`);
+    if (typeof d.cost === 'number' && typeof d.drag === 'number' && d.cost > 0 && d.drag > 0) costed++;
+  }
+  if (costed !== Object.keys(PG).length) {
+    problems.push(`ideology.js: ${Object.keys(PG).length - costed} 项工程缺 cost/drag —— 「取舍」不成立`);
+  }
+
+  // 参数自洽
+  if (!(typeof P.DECAY === 'number' && P.DECAY > 0 && P.DECAY <= 1)) {
+    problems.push('ideology.js: DECAY 必须落在 (0,1]（0 = 主张永不被遗忘，赢一次躺一辈子）');
+  }
+  if (!(typeof P.MAX_ACTIVE === 'number' && P.MAX_ACTIVE >= 1 && P.MAX_ACTIVE < Object.keys(PG).length)) {
+    problems.push('ideology.js: MAX_ACTIVE 必须 >=1 且严格小于工程总数（否则没有取舍）');
+  }
+  if (!(typeof P.DELIVERY_CAP === 'number' && P.DELIVERY_CAP > 0)) problems.push('ideology.js: DELIVERY_CAP 必须是正数');
+  if (!(typeof P.PRESTIGE_PER_MONTH === 'number' && P.PRESTIGE_PER_MONTH > 0)) {
+    problems.push('ideology.js: PRESTIGE_PER_MONTH 必须是正数（感召力必须能变现）');
+  }
+  // 漂移门槛必须可达：落差上限 100，门槛必须 < 100
+  if (!(typeof P.DRIFT_GAP === 'number' && P.DRIFT_GAP > 0 && P.DRIFT_GAP < 100)) {
+    problems.push('ideology.js: DRIFT_GAP 必须落在 (0,100)（>=100 则漂移永远不可能）');
+  }
+  if (!(typeof P.DRIFT_MONTHS === 'number' && P.DRIFT_MONTHS >= 1)) problems.push('ideology.js: DRIFT_MONTHS 必须 >= 1');
+  if (!(typeof P.DRIFT_TOTAL === 'number' && P.DRIFT_TOTAL >= 1)) problems.push('ideology.js: DRIFT_TOTAL 必须 >= 1');
+  if (!Array.isArray(P.DRIFT_ELIGIBLE) || !P.DRIFT_ELIGIBLE.length) {
+    problems.push('ideology.js: DRIFT_ELIGIBLE 必须是非空数组（漂移候选的阵营）');
+  }
+
+  notes.push(`ideology: ${Object.keys(SY).length} systems, ${Object.keys(PG).length} programs, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { systems: Object.keys(SY).length, programs: Object.keys(PG).length } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1104,6 +1180,7 @@ const CHECKS = [
   { id: 'wars', label: '地面战争表（可争夺战局）', run: checkWars },
   { id: 'nuke', label: '核风险轴（DEFCON/事故）', run: checkNuke },
   { id: 'estimates', label: '情报估算表（雾与误差）', run: checkEstimates },
+  { id: 'ideology', label: '意识形态资源表（感召力）', run: checkIdeology },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1129,6 +1206,7 @@ module.exports = {
   checkWars,
   checkNuke,
   checkEstimates,
+  checkIdeology,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,
