@@ -89,6 +89,10 @@ function evRun(y, m, silent) {
   updateMonthlyCrises(y, m, silent);        // R12C：中局突发危机抉择卡与升级阶梯月度检测
   updateMonthlyIntel(y, m, silent);         // R13A：隐蔽行动与全球谍战沙盒月度演进
   updateMonthlyAfghan(y, m, silent);        // R13B：阿富汗战区态势与帝国失血槽月度结算
+  // N1（核风险轴）：升级 / 可信度 / 误判 / DEFCON。
+  // 放在战争与威望之后 —— 它要读这两者的当期结果（进行中的战争、威望落差）。
+  // 无执政者时它只做只读计算：不掷骰、不触发事故、不写内政。
+  updateNukeRisk(y, m, silent);
   // F（威望竞赛）：史实威望梯子 + 玩家工程 + 第三世界漂移。
   // 放在最后是刻意的：它读的是上面刚算完的内政字段（动荡/合法性），
   // 并且它的漂移会改 ST.blocOverride，随后 refreshAIBox/地图重烘会反映出来。
@@ -314,6 +318,7 @@ function simSave(slot) {
     polEcon: ST.polEcon ? JSON.parse(JSON.stringify(ST.polEcon)) : null, // P1：经济账单（期望锚/连续计数/已入账）
     prestige: ST.prestige ? JSON.parse(JSON.stringify(ST.prestige)) : null, // F：威望竞赛（分数/工程/漂移/里程碑）
     wars: ST.wars ? JSON.parse(JSON.stringify(ST.wars)) : null, // D：地面战争（战线优势/消耗/厌战/结局）
+    nuke: ST.nuke ? JSON.parse(JSON.stringify(ST.nuke)) : null, // N1：核风险（升级/可信度/DEFCON/待裁决事故）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -483,6 +488,8 @@ function loadSocietyStates(d) {
   ST.prestige = sanitizePrestigeState(d.prestige);
   // D：还原地面战争（战线优势 / 消耗 / 厌战 / 结局）。旧档缺该项 → 空战局。
   ST.wars = sanitizeGroundWarState(d.wars);
+  // N1：还原核风险轴。旧档缺该项 → 空状态（DEFCON 5）。
+  ST.nuke = sanitizeNukeState(d.nuke);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

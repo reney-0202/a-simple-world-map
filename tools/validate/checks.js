@@ -838,6 +838,95 @@ function checkWars(ctx) {
   return { problems, notes, stats: { wars: Object.keys(WARS).length, phases, operations: ops } };
 }
 
+// ---- 2o. nuclear risk table (N1) --------------------------------------------
+// data/nuke.js is what turned six display-only effect keys into a real axis.
+// Silent failure modes: a DEFCON ladder with a hole (a level that can never be
+// reached), an incident with no options (a modal the player cannot dismiss), an
+// option that makes things strictly better (then there is no dilemma), or a
+// doomsday counter that can never be reached (the tail risk is decorative).
+function checkNuke(ctx) {
+  const notes = [];
+  const problems = [];
+  const NK = ctx.data.W1980_NUKE;
+  if (!NK) return { problems: ['nuke.js: 未定义 W1980_NUKE'], notes };
+  const D = NK.DEFCON, INC = NK.INCIDENTS, P = NK.PARAMS;
+  if (!Array.isArray(D) || !D.length) return { problems: ['nuke.js: DEFCON 必须是非空数组'], notes };
+  if (!Array.isArray(INC) || !INC.length) return { problems: ['nuke.js: INCIDENTS 必须是非空数组'], notes };
+  if (!P || typeof P !== 'object') return { problems: ['nuke.js: PARAMS 缺失'], notes };
+
+  // DEFCON 阶梯：必须从 5 覆盖到 1，阈值递增，最低一档从 0 起
+  const levels = D.map((d) => d && d.level);
+  for (let i = 0; i < 5; i++) {
+    if (levels.indexOf(i + 1) < 0) problems.push(`nuke.js: DEFCON 缺少第 ${i + 1} 级`);
+  }
+  if (new Set(levels).size !== levels.length) problems.push('nuke.js: DEFCON 等级有重复');
+  const sorted = D.slice().sort((a, b) => a.level - b.level);   // 1 → 5
+  for (let i = 1; i < sorted.length; i++) {
+    if (!(sorted[i].from < sorted[i - 1].from)) {
+      problems.push(`nuke.js: DEFCON 阈值必须随危险降低而升高（第 ${sorted[i].level} 级 ` +
+        `from=${sorted[i].from} 应小于第 ${sorted[i - 1].level} 级 ${sorted[i - 1].from}）`);
+    }
+  }
+  const lvl5 = D.filter((d) => d.level === 5)[0];
+  if (!lvl5 || lvl5.from !== 0) problems.push('nuke.js: 第 5 级必须从 0 起（否则低升级段无定义）');
+  const lvl1 = D.filter((d) => d.level === 1)[0];
+  if (lvl1 && !(lvl1.from > 0 && lvl1.from <= P.ESC_MAX)) {
+    problems.push('nuke.js: 第 1 级的阈值必须落在 (0, ESC_MAX]');
+  }
+  for (const d of D) {
+    if (!d.zh) problems.push(`nuke.js: DEFCON ${d.level} 缺 zh`);
+    if (typeof d.from !== 'number' || !isFinite(d.from)) problems.push(`nuke.js: DEFCON ${d.level}.from 必须是有限数`);
+  }
+
+  // 事故：必须有选项，且每个选项都必须真的在「安全 vs 面子」之间做取舍
+  let opts = 0;
+  for (const inc of INC) {
+    const tag = `nuke.js: 事故 ${inc.id}`;
+    if (!inc.id || !inc.zh) problems.push('nuke.js: 事故缺 id 或 zh');
+    if (!Array.isArray(inc.options) || !inc.options.length) {
+      problems.push(`${tag} 必须有至少一个处置选项（否则弹窗无法关闭）`);
+      continue;
+    }
+    let hasDeescalate = false, hasHawk = false;
+    for (const o of inc.options) {
+      opts++;
+      if (!o.id || !o.zh) problems.push(`${tag} 的选项缺 id 或 zh`);
+      if (typeof o.esc !== 'number' || !isFinite(o.esc)) problems.push(`${tag}/${o.id}.esc 必须是有限数`);
+      if (typeof o.cred !== 'number' || !isFinite(o.cred)) problems.push(`${tag}/${o.id}.cred 必须是有限数`);
+      // 降级 = 压低升级，但要付威慑代价（否则「降温」是免费的，就没有两难）
+      if (o.esc < 0 && o.cred < 0) hasDeescalate = true;
+      // 强硬 = 抬高升级，换来威慑收益（否则强硬毫无吸引力）
+      if (o.esc > 0 && o.cred > 0) hasHawk = true;
+    }
+    if (!hasDeescalate) problems.push(`${tag} 没有「降温但丢面子」的选项（esc<0 且 cred<0；否则只剩一个理性答案）`);
+    if (!hasHawk) problems.push(`${tag} 没有「强硬且有收益」的选项（esc>0 且 cred>0；否则强硬毫无吸引力）`);
+  }
+
+  // 参数自洽
+  if (!(typeof P.ESC_MAX === 'number' && P.ESC_MAX > 0)) problems.push('nuke.js: ESC_MAX 必须是正数');
+  if (!(typeof P.RISK_BASE === 'number' && P.RISK_BASE > 0)) problems.push('nuke.js: RISK_BASE 必须是正数');
+  if (!(typeof P.RISK_CAP === 'number' && P.RISK_CAP > 0 && P.RISK_CAP <= 0.5)) {
+    problems.push('nuke.js: RISK_CAP 必须落在 (0, 0.5]（再高就成了掷骰游戏）');
+  }
+  if (!(typeof P.DOOMSDAY_MONTHS === 'number' && P.DOOMSDAY_MONTHS >= 1)) {
+    problems.push('nuke.js: DOOMSDAY_MONTHS 必须 >= 1');
+  }
+  if (lvl1 && P.ESC_MAX < lvl1.from) {
+    problems.push('nuke.js: ESC_MAX 低于第 1 级阈值，最高级永远不可能达到');
+  }
+  if (!Array.isArray(P.TIER_ESC) || P.TIER_ESC.length < 2) {
+    problems.push('nuke.js: TIER_ESC 必须是长度 >= 2 的数组（按危机阶梯索引）');
+  } else if (P.TIER_ESC.some((v) => typeof v !== 'number' || !isFinite(v))) {
+    problems.push('nuke.js: TIER_ESC 必须全部是有限数');
+  } else if (!(P.TIER_ESC[P.TIER_ESC.length - 1] > P.TIER_ESC[0])) {
+    problems.push('nuke.js: TIER_ESC 最后一档必须大于第一档（否则「强硬」不推升级）');
+  }
+
+  notes.push(`nuke: ${D.length} DEFCON bands, ${INC.length} incidents / ${opts} options, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { defcon: D.length, incidents: INC.length, options: opts } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -928,6 +1017,7 @@ const CHECKS = [
   { id: 'polEcon', label: '政治经济学表（经济→政治）', run: checkPolEcon },
   { id: 'prestige', label: '威望竞赛表（位置性威望）', run: checkPrestige },
   { id: 'wars', label: '地面战争表（可争夺战局）', run: checkWars },
+  { id: 'nuke', label: '核风险轴（DEFCON/事故）', run: checkNuke },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -951,6 +1041,7 @@ module.exports = {
   checkPolEcon,
   checkPrestige,
   checkWars,
+  checkNuke,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

@@ -204,6 +204,19 @@ button,input{font:inherit;color:inherit}
 #panel .p-domestic-box .pdb-prog-btn:hover:not(.disabled){border-color:var(--gold);color:var(--gold2)}
 #panel .p-domestic-box .pdb-prog-btn.active{border-color:var(--gold);color:var(--gold2);background:#242b33}
 #panel .p-domestic-box .pdb-prog-btn.disabled{opacity:.42;cursor:not-allowed}
+/* N1：核风险轴面板 —— 与政治资本/经济账单同一块视觉语言，但用「危险」的语气 */
+#panel .p-domestic-box .nk-panel{margin:0 0 6px;padding:4px 5px;background:#1a1416;border:1px solid #3a2a2a;border-radius:2px}
+#panel .p-domestic-box .nk-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#c9d4df}
+#panel .p-domestic-box .nk-row b{font-size:11px;font-variant-numeric:tabular-nums}
+#panel .p-domestic-box .nk-bar{height:6px;background:#161a1f;border:1px solid #2f2426;border-radius:2px;overflow:hidden;margin-top:3px}
+#panel .p-domestic-box .nk-bar i{display:block;height:100%;border-radius:2px;transition:width .2s ease}
+#panel .p-domestic-box .nk-note{margin-top:3px;font-size:8.5px;line-height:1.45;color:#8b949e}
+#panel .p-domestic-box .nk-note b{color:#c9d4df;font-variant-numeric:tabular-nums}
+#panel .p-domestic-box .nk-alert{margin-top:4px;padding:4px 6px;background:#261214;border:1px solid #7f1d1d;color:#fca5a5;border-radius:2px;font-size:9.5px;line-height:1.35}
+#panel .p-domestic-box .nk-opts{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+#panel .p-domestic-box .nk-opt-btn{padding:3px 5px;background:#1b2026;border:1px solid #4a3236;border-radius:2px;color:#d8c8c8;font-size:9px;cursor:pointer;text-align:left;transition:all .12s}
+#panel .p-domestic-box .nk-opt-btn i{font-style:normal;color:#e0a35a;font-variant-numeric:tabular-nums;opacity:.85;font-size:8px}
+#panel .p-domestic-box .nk-opt-btn:hover{border-color:#f87171;color:#fff}
 /* D：地面战争 —— 战线优势条 + 作战方针按钮（与战局面板同址） */
 #panel .warbox .gw-block{margin-top:6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
 #panel .warbox .gw-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:var(--dim)}

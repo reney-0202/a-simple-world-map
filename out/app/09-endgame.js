@@ -205,10 +205,10 @@ function endStats() {
     const pctl = growthPctl(pk);
     const rank0 = gdpRankOf(pk, false), rank1 = gdpRankOf(pk, true), dr = rank0 - rank1;
     // R6A 战略评分 Rubric 2.0（tasks/016）：E(40) + R(20) + M(15) + G(25) = 100
-    const E = 40 * (pctl === null ? 0.5 : pctl);          // 经济表现：末期同比的世界分位（0→满分 40）
-    const R = 20 * clamp(0.5 + dr / 8, 0, 1);             // 国力位次：上升 4 名满分 / 下降 4 名归零（0→满分 20）
+    let E = 40 * (pctl === null ? 0.5 : pctl);          // 经济表现：末期同比的世界分位（0→满分 40）
+    let R = 20 * clamp(0.5 + dr / 8, 0, 1);             // 国力位次：上升 4 名满分 / 下降 4 名归零（0→满分 20）
     // 国防适度（tasks/012 方案 A，0→满分 15）：军费 ≈4% 满分，0% 与 ≥10% 归零
-    const M = 15 * Math.max(0, 1 - Math.abs(ST.mil - 4) / 6);
+    let M = 15 * Math.max(0, 1 - Math.abs(ST.mil - 4) / 6);
 
     // 地缘战略分 G（tasks/016，0→满分 25）：阵营消长分 G_bloc (10分) + 战略作为分 G_act (15分)
     // (1) 阵营消长分：本国阵营 global GDP 份额变动（Δs >= +3pp 满分10，Δs=0 得5分，<= -3pp 归零）
@@ -244,7 +244,7 @@ function endStats() {
       }
       G_act = clamp(gSan + gAid, 0, 15);
     }
-    const G = clamp(G_bloc + G_act, 0, 25);
+    let G = clamp(G_bloc + G_act, 0, 25);
     const total = E + R + M + G;
 
     // F（威望竞赛）：威望**不进**满分 100 的评分（那套是物质记分卡，已校准并有文档）。
@@ -264,12 +264,30 @@ function endStats() {
       }
     }
 
-    out.player = { k: pk, zh: c.zh, mil: ST.mil,
-      gdp: v.gdp_bn, gdp0: c.gdp_bn, gdpDelta: c.gdp_bn ? (v.gdp_bn / c.gdp_bn - 1) * 100 : 0,
+    // N1（核风险轴）：DEFCON 终局裁决。不进满分 100 的记分卡（那是物质面），
+    // 但它是唯一一条**能提前结束整局**的失败路径，所以必须显式呈现。
+    let nuke = null;
+    if (typeof nukeSnapshot === "function") {
+      const ns = nukeSnapshot();
+      if (ns) {
+        nuke = {
+          esc: ns.esc, cred: ns.cred, defcon: ns.defcon, defconZh: ns.defconZh,
+          fired: ns.fired, over: ns.over,
+          verdict: ns.over === "doomsday" ? "核战争"
+            : ns.defcon <= 2 ? "威慑濒临失效"
+            : ns.defcon === 3 ? "高危对峙"
+            : "威慑维持"
+        };
+        // 核战争抹掉物质评分：一场核交换之后，「GDP 第几名」这种问题没有意义。
+        if (ns.over === "doomsday") { E = 0; R = 0; M = 0; G = 0; }
+      }
+    }
+
+    out.player = { k: pk, zh: c.zh, mil: ST.mil,      gdp: v.gdp_bn, gdp0: c.gdp_bn, gdpDelta: c.gdp_bn ? (v.gdp_bn / c.gdp_bn - 1) * 100 : 0,
       pop: v.pop_m, pop0: c.pop_m, popDelta: c.pop_m ? (v.pop_m / c.pop_m - 1) * 100 : 0,
       gSelf: gSelf, gWorld: gWorld, pctl: pctl, rank0: rank0, rank1: rank1, dr: dr,
       E: E, R: R, M: M, G: G, G_bloc: G_bloc, G_act: G_act, total: total,
-      prestige: pres };
+      prestige: pres, nuke: nuke };
   }
   return out;
 }
@@ -827,6 +845,17 @@ function renderEnd(st) {
         (pr.drag !== 0 ? "在建工程牺牲 GDP 增速 " + pr.drag.toFixed(2) + "pp/年。" : "") +
         "威望不进满分 100 的物质评分 —— 它是另一把尺子；它的作用通过阵营份额与执政合法性体现。</div>";
     }
+    // N1（核风险轴）裁决：唯一一条能提前结束整局的失败路径
+    if (p.nuke) {
+      const nk = p.nuke;
+      const ncol = nk.defcon <= 2 ? "#f87171" : nk.defcon === 3 ? "#fbbf24" : "#7ba4d9";
+      h += '<div class="note"><b>☢️ 核风险裁决：' + nk.verdict + "</b>　DEFCON <b style=\"color:" + ncol +
+        '">' + nk.defcon + " " + nk.defconZh + "</b>（升级 " + nk.esc.toFixed(0) + " / 100，威慑可信度 " +
+        nk.cred.toFixed(0) + "）。累计处置核危机 " + nk.fired + " 次。" +
+        (nk.over === "doomsday"
+          ? " <b>核交换已经发生：物质评分全部归零。</b>"
+          : "威慑是一条持续的线 —— 不选强硬不会赢，只选强硬会输。") + "</div>";
+    }
     // R5C'/R6A：对外干预叙事行（含地缘战略分说明）
     if (ST.sanctions.length || ST.aid.length) {
       const yrs = (e, kind) => Math.max(0, curMonthIdx() - (e.since || 0)) / 12;
@@ -978,6 +1007,7 @@ function simReset() {
   initPolEcon(true);                                                                         // P1：重置经济账单（期望锚/连续计数/已入账记录）
   initPrestigeState(true);                                                                   // F：重置威望竞赛（分数/工程/漂移/里程碑）
   initGroundWarState(true);                                                                  // D：重置地面战争（战线优势/消耗/厌战/结局）
+  initNukeState(true);                                                                       // N1：重置核风险轴（升级/可信度/DEFCON/事故）
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initDirectiveState(true);                                                                   // L：重置国家战略指令板

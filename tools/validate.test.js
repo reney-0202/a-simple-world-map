@@ -91,6 +91,27 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_NUKE: {
+      DEFCON: [
+        { level: 1, from: 80, zh: '一号', note: '' },
+        { level: 2, from: 60, zh: '二号', note: '' },
+        { level: 3, from: 40, zh: '三号', note: '' },
+        { level: 4, from: 20, zh: '四号', note: '' },
+        { level: 5, from: 0, zh: '五号', note: '' },
+      ],
+      INCIDENTS: [
+        { id: 'inc1', zh: '虚警', icon: '📡', note: 'x', options: [
+          { id: 'dove', zh: '降温', esc: -6, cred: -3, note: '' },
+          { id: 'hawk', zh: '强硬', esc: +14, cred: +6, note: '' },
+        ] },
+      ],
+      PARAMS: {
+        ESC_MIN: 0, ESC_MAX: 100, CRED_MIN: 5, CRED_MAX: 95, CRED_START: 50,
+        TIER_ESC: [0, 3, 8, 18], TENSION_ESC: 4, WAR_ESC: 3, TREATY_ESC: -2, DECAY: 1.2,
+        CRED_MIL: 6, CRED_PRESTIGE: 0.4, CRED_COHESION: 0.35,
+        RISK_BASE: 0.004, RISK_CAP: 0.02, DOOMSDAY_MONTHS: 3, LOG_MAX: 24,
+      },
+    },
     W1980_WARS: {
       WARS: {
         w1: {
@@ -803,6 +824,65 @@ test('a war table with no exit operation is caught', () => {
 test('DECISIVE_DEV above DEVIATION_CLAMP is caught', () => {
   const d = cleanData(); d.W1980_WARS.PARAMS.DECISIVE_DEV = 60;
   assert.match(checks.checkWars(makeCtx(d)).problems[0], /DECISIVE_DEV\(60\) 高于 DEVIATION_CLAMP\(45\)/);
+});
+
+// ---- 8i. nuclear risk table (N1) ---------------------------------------------
+// Six display-only effect keys became a real axis here. The silent failures: a
+// DEFCON ladder with an unreachable level, an incident with no options (a modal
+// the player cannot dismiss), and an option set with only one rational answer
+// (the dilemma is then fake).
+section('checkNuke');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkNuke(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_NUKE;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /未定义 W1980_NUKE/);
+});
+test('a DEFCON ladder missing a level is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.DEFCON = d.W1980_NUKE.DEFCON.filter((x) => x.level !== 3);
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /DEFCON 缺少第 3 级/);
+});
+test('non-monotonic DEFCON thresholds are caught', () => {
+  const d = cleanData(); d.W1980_NUKE.DEFCON.find((x) => x.level === 2).from = 90;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /DEFCON 阈值必须随危险降低而升高/);
+});
+test('level 5 not starting at zero is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.DEFCON.find((x) => x.level === 5).from = 5;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /第 5 级必须从 0 起/);
+});
+test('an incident with no options is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.INCIDENTS[0].options = [];
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /必须有至少一个处置选项/);
+});
+test('an incident with no de-escalation option is caught', () => {
+  // Only hawks available => there is no dilemma, just a button.
+  const d = cleanData();
+  d.W1980_NUKE.INCIDENTS[0].options = [{ id: 'hawk', zh: '强硬', esc: 14, cred: 6 }];
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /没有「降温但丢面子」的选项/);
+});
+test('an incident with no hawk option is caught', () => {
+  const d = cleanData();
+  d.W1980_NUKE.INCIDENTS[0].options = [{ id: 'dove', zh: '降温', esc: -6, cred: -3 }];
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /没有「强硬且有收益」的选项/);
+});
+test('a risk cap above 0.5 is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.PARAMS.RISK_CAP = 0.8;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /RISK_CAP 必须落在 \(0, 0\.5\]/);
+});
+test('a flat tier ladder is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.PARAMS.TIER_ESC = [5, 5];
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /TIER_ESC 最后一档必须大于第一档/);
+});
+test('ESC_MAX below the level-1 threshold is caught', () => {
+  const d = cleanData();
+  d.W1980_NUKE.DEFCON.find((x) => x.level === 1).from = 120;
+  const p = checks.checkNuke(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /第 1 级的阈值必须落在 \(0, ESC_MAX\]/.test(x)), '应报出越界阈值：' + p.join(' | '));
+});
+test('a zero doomsday window is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.PARAMS.DOOMSDAY_MONTHS = 0;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /DOOMSDAY_MONTHS 必须 >= 1/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

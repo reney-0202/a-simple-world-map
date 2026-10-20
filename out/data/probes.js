@@ -38,6 +38,7 @@ window.W1980_PROBES={
   "intelprobe",
   "afghanprobe",
   "prestigeprobe",
+  "nukeprobe",
   "poleconprobe",
   "soundprobe",
   "assetsprobe"
@@ -202,6 +203,12 @@ window.W1980_PROBES={
   "prestige": {
    "qs": "prestigeprobe=1",
    "marker": "PRESTIGEPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "nuke": {
+   "qs": "nukeprobe=1",
+   "marker": "NUKEPROBE",
    "budget": 60000,
    "class": "mechanics"
   },

@@ -303,6 +303,7 @@ load().then(() => {
     afghanprobe: runAfghanProbe,
     poleconprobe: runPolEconProbe,
     prestigeprobe: runPrestigeProbe,
+    nukeprobe: runNukeProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

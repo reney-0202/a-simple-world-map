@@ -808,8 +808,8 @@ function refreshDomesticBox(selKey) {
   // 无需改动 8 个分支构建器；非执政国不显示（资本只属于玩家）。
   // P1：紧随其后插入「经济账单」条 —— 落差与储备必须随时可见，
   // 不可见的机制等于不存在的机制。
-  if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + prestigeBoardHtml() + h;
-
+  if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + prestigeBoardHtml()
+    + (typeof nukePanelHtml === "function" ? nukePanelHtml() : "") + h;
   box.innerHTML = h;
 
   // 绑定动作按钮事件：标出成本、预算不足时禁用（禁用态不绑 click，杜绝绕过）
@@ -846,6 +846,14 @@ function refreshDomesticBox(selKey) {
     btn.addEventListener("click", () => {
       if (on) stopPrestigeProgram(id);
       else startPrestigeProgram(id);
+      refreshDomesticBox(ST.sel);
+    });
+  });
+
+  // N1（核风险轴）：事故处置按钮 —— 三选一，没有「安全」的选项
+  box.querySelectorAll(".nk-opt-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      resolveNukeIncident(btn.dataset.nkopt);
       refreshDomesticBox(ST.sel);
     });
   });
