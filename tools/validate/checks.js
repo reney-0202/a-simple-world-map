@@ -1088,6 +1088,76 @@ function checkIdeology(ctx) {
   return { problems, notes, stats: { systems: Object.keys(SY).length, programs: Object.keys(PG).length } };
 }
 
+// ---- 2r. long-fuse table (E) ------------------------------------------------
+// Long fuses fill the 44-year game with decisions the player INITIATES. The
+// silent failure modes: a "long" fuse that is actually short (MIN_MONTHS), a
+// fuse with no burn cost (free long-term payoff), a win-only outcome table
+// (detonation that can never hurt), and outcome thresholds that are never
+// reachable (the gamble is decoration).
+function checkFuses(ctx) {
+  const notes = [];
+  const problems = [];
+  const FU = ctx.data.W1980_FUSES;
+  if (!FU) return { problems: ['fuse.js: 未定义 W1980_FUSES'], notes };
+  const F = FU.FUSES, P = FU.PARAMS;
+  if (!F || typeof F !== 'object' || !Object.keys(F).length) {
+    return { problems: ['fuse.js: FUSES 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['fuse.js: PARAMS 缺失'], notes };
+  const minMonths = (typeof P.MIN_MONTHS === 'number' && P.MIN_MONTHS > 0) ? P.MIN_MONTHS : 24;
+
+  for (const id of Object.keys(F)) {
+    const d = F[id] || {};
+    const tag = `fuse.js: 引信 ${id}`;
+    if (!d.zh) problems.push(`${tag} 缺 zh`);
+    if (!d.note) problems.push(`${tag} 缺 note（引信的取舍必须能被讲出来）`);
+    // 「长引信」的定义：短于此不配叫长引信（校验器强制语义，不靠自觉）
+    if (!(typeof d.months === 'number' && d.months >= minMonths)) {
+      problems.push(`${tag} 的 months 必须 >= ${minMonths}（短于此不配叫长引信）`);
+    }
+    // 点火必须有代价，燃烧必须有机会成本
+    if (!(typeof d.cost === 'number' && d.cost > 0)) problems.push(`${tag} 的 cost 必须是正数（免费点火 = 全民开工）`);
+    if (!(typeof d.drag === 'number' && d.drag > 0)) problems.push(`${tag} 的 drag 必须是正数（燃烧期没有机会成本）`);
+    // 结局表必须两侧都有：赢不了的赌局没人玩，输不了的赌局人人梭哈
+    const g = d.good || {}, b = d.bad || {};
+    const gKeys = Object.keys(g).filter((k) => typeof g[k] === 'number' && g[k] !== 0);
+    const bKeys = Object.keys(b).filter((k) => typeof b[k] === 'number' && b[k] !== 0);
+    if (!gKeys.length) problems.push(`${tag} 缺 good 效果（引爆无果可兑）`);
+    if (!bKeys.length) problems.push(`${tag} 缺 bad 效果（引爆永远不会输 —— 赌局变成白送）`);
+    // 效果键必须是引擎真实消费的字段（S-16 的教训）
+    for (const k of gKeys.concat(bKeys)) {
+      if (!['prestige', 'appeal', 'credBonus', 'legitimacy', 'unrest'].includes(k)) {
+        problems.push(`${tag} 的效果键 "${k}" 没有引擎消费者`);
+      }
+    }
+    if (d.bonus !== undefined) {
+      const bn = d.bonus;
+      if (!(typeof bn.gdpBonus === 'number' && bn.gdpBonus !== 0)) problems.push(`${tag}.bonus.gdpBonus 必须非零`);
+      if (!(typeof bn.months === 'number' && bn.months > 0)) problems.push(`${tag}.bonus.months 必须是正数`);
+    }
+  }
+
+  // 引爆判定的阈值必须可分：GOOD 必须优于 BAD，否则三档塌成一档
+  if (!(typeof P.GOOD_SURPRISE === 'number' && typeof P.BAD_SURPRISE === 'number' &&
+        P.GOOD_SURPRISE > P.BAD_SURPRISE)) {
+    problems.push('fuse.js: GOOD_SURPRISE 必须大于 BAD_SURPRISE（否则三档塌成一档）');
+  }
+  if (!(typeof P.GOOD_UNREST === 'number' && typeof P.BAD_UNREST === 'number' &&
+        P.GOOD_UNREST < P.BAD_UNREST)) {
+    problems.push('fuse.js: GOOD_UNREST 必须小于 BAD_UNREST（否则三档塌成一档）');
+  }
+  if (!(typeof P.MAX_ACTIVE === 'number' && P.MAX_ACTIVE >= 1 && P.MAX_ACTIVE < Object.keys(F).length)) {
+    problems.push('fuse.js: MAX_ACTIVE 必须 >=1 且严格小于引信总数（否则没有取舍）');
+  }
+  if (!(typeof P.PARTIAL_SCALE === 'number' && P.PARTIAL_SCALE > 0 && P.PARTIAL_SCALE < 1)) {
+    problems.push('fuse.js: PARTIAL_SCALE 必须落在 (0,1)（不了了之要真的「不了了之」）');
+  }
+
+  notes.push(`fuses: ${Object.keys(F).length} fuses (min ${minMonths} months), `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { fuses: Object.keys(F).length, minMonths } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1181,6 +1251,7 @@ const CHECKS = [
   { id: 'nuke', label: '核风险轴（DEFCON/事故）', run: checkNuke },
   { id: 'estimates', label: '情报估算表（雾与误差）', run: checkEstimates },
   { id: 'ideology', label: '意识形态资源表（感召力）', run: checkIdeology },
+  { id: 'fuses', label: '长引信表（战略工程）', run: checkFuses },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1207,6 +1278,7 @@ module.exports = {
   checkNuke,
   checkEstimates,
   checkIdeology,
+  checkFuses,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

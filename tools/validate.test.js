@@ -91,6 +91,23 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_FUSES: {
+      FUSES: {
+        f1: { zh: '武器现代化', icon: 'x', months: 48, cost: 20, drag: 0.35,
+          good: { prestige: 8, credBonus: 4 }, bad: { prestige: -6, unrest: 3 },
+          note: 'a claim' },
+        f2: { zh: '教育改革', icon: 'y', months: 60, cost: 15, drag: 0.2,
+          good: { appeal: 6, legitimacy: 4 }, bad: { prestige: -3, unrest: 4 },
+          bonus: { gdpBonus: 0.35, months: 36 }, note: 'b claim' },
+        f3: { zh: '联盟深化', icon: 'z', months: 36, cost: 12, drag: 0.15,
+          good: { credBonus: 5 }, bad: { appeal: -2 }, note: 'c claim' },
+      },
+      PARAMS: {
+        MAX_ACTIVE: 2, MIN_MONTHS: 24,
+        GOOD_SURPRISE: 1.0, GOOD_UNREST: 40, BAD_SURPRISE: -1.5, BAD_UNREST: 70,
+        PARTIAL_SCALE: 0.5, LOG_MAX: 24,
+      },
+    },
     W1980_IDEOLOGY: {
       SYSTEMS: {
         AAA: { zh: '自由', base: 52, note: 'a claim' },
@@ -1038,6 +1055,58 @@ test('an unreachable drift gap is caught', () => {
 test('an empty drift eligibility list is caught', () => {
   const d = cleanData(); d.W1980_IDEOLOGY.PARAMS.DRIFT_ELIGIBLE = [];
   assert.match(checks.checkIdeology(makeCtx(d)).problems[0], /DRIFT_ELIGIBLE 必须是非空数组/);
+});
+
+// ---- 8l. long-fuse table (E) ------------------------------------------------
+// Long fuses fill a 44-year game with player-INITIATED decisions. The silent
+// failures: a "long" fuse that is short, a fuse with no burn cost (free payoff),
+// a win-only outcome table (detonation can never hurt), and outcome thresholds
+// that collapse the three tiers into one.
+section('checkFuses');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkFuses(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_FUSES;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /未定义 W1980_FUSES/);
+});
+test('a short fuse is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.FUSES.f1.months = 6;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /短于此不配叫长引信/);
+});
+test('a fuse with no burn cost is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.FUSES.f2.drag = 0;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /燃烧期没有机会成本/);
+});
+test('a fuse with no ignition cost is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.FUSES.f3.cost = 0;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /免费点火 = 全民开工/);
+});
+test('a win-only outcome table is caught', () => {
+  // A detonation that can never hurt is a giveaway, not a gamble.
+  const d = cleanData(); d.W1980_FUSES.FUSES.f1.bad = { prestige: 0 };
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /bad 效果（引爆永远不会输/);
+});
+test('an outcome key with no consumer is caught', () => {
+  // S-16: display-only is what this project removes.
+  const d = cleanData(); d.W1980_FUSES.FUSES.f1.good.mood = 5;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /效果键 "mood" 没有引擎消费者/);
+});
+test('collapsing the outcome tiers are caught', () => {
+  const d = cleanData(); d.W1980_FUSES.PARAMS.GOOD_SURPRISE = -2;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /GOOD_SURPRISE 必须大于 BAD_SURPRISE/);
+});
+test('inverted unrest tiers are caught', () => {
+  const d = cleanData(); d.W1980_FUSES.PARAMS.GOOD_UNREST = 80;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /GOOD_UNREST 必须小于 BAD_UNREST/);
+});
+test('MAX_ACTIVE covering every fuse is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.PARAMS.MAX_ACTIVE = 3;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /MAX_ACTIVE 必须 >=1 且严格小于引信总数/);
+});
+test('a partial scale outside (0,1) is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.PARAMS.PARTIAL_SCALE = 1;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /PARTIAL_SCALE 必须落在 \(0,1\)/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

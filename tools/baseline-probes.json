@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 44,
-    "pop": 47,
+    "bloc": 51,
+    "pop": 48,
     "ind": 45,
-    "province": 47,
-    "delta": 43,
-    "resource": 47
+    "province": 49,
+    "delta": 49,
+    "resource": 49
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1253
+   "totalMs": 1299
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143831,
+   "saveBytes": 143876,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -1669,6 +1669,61 @@
     "endToEndSnapshot": "PASS",
     "endToEndBounded": "PASS",
     "endToEndGapConsistent": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "fuse": {
+  "marker": "FUSEPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "fusesAreLong": "PASS",
+    "fusesCostOnBothPhases": "PASS",
+    "outcomesHaveTwoFaces": "PASS",
+    "fuseStarts": "PASS",
+    "fuseCostsCapital": "PASS",
+    "fuseRejectsUnknown": "PASS",
+    "fuseRejectsDuplicate": "PASS",
+    "maxActiveEnforced": "PASS",
+    "insufficientCapitalRejected": "PASS",
+    "rejectedLeavesNoTrace": "PASS",
+    "noPlayerCannotIgnite": "PASS",
+    "burnDragReal": "PASS",
+    "burnCountsDown": "PASS",
+    "noBonusYet": "PASS",
+    "triumphOnGoodClimate": "PASS",
+    "triumphPaysPrestige": "PASS",
+    "triumphPaysAppeal": "PASS",
+    "fuseIgnitedLogsOnce": "PASS",
+    "fiascoOnBadClimate": "PASS",
+    "fiascoCostsPrestige": "PASS",
+    "muddleInBetween": "PASS",
+    "outcomeDeterministic": "PASS",
+    "outcomeConsumesNoRng": "PASS",
+    "credibilityAxisReached": "PASS",
+    "growthBonusIgnites": "PASS",
+    "bonusExpires": "PASS",
+    "fuseCancelable": "PASS",
+    "cancelIsSunkenCost": "PASS",
+    "spectatorNoFuseWrites": "PASS",
+    "spectatorNoDomesticWrites": "PASS",
+    "spectatorNoPmodWrites": "PASS",
+    "spectatorNoRng": "PASS",
+    "noFuseNoDrag": "PASS",
+    "roundTripKeepsFuse": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "panelRenders": "PASS",
+    "panelShowsCountdown": "PASS",
+    "panelShowsIgnitionHint": "PASS",
+    "panelOffersFuses": "PASS",
+    "endToEndFuseDetonated": "PASS",
+    "endToEndNoLeftoverDrag": "PASS"
    }
   },
   "failed": false

@@ -307,6 +307,7 @@ load().then(() => {
     estprobe: runEstimatesProbe,
     warai: runWarAIProbe,
     ideoprobe: runIdeologyProbe,
+    fuseprobe: runFuseProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

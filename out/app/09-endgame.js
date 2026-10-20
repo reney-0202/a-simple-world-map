@@ -1010,6 +1010,7 @@ function simReset() {
   initNukeState(true);                                                                       // N1：重置核风险轴（升级/可信度/DEFCON/事故）
   initEstimateState(true);                                                                   // C：重置情报估算（专项评估/审计）
   initIdeologyState(true);                                                                   // S-17：重置意识形态（感召力/输出工程/漂移）
+  initFuseState(true);                                                                       // E：重置长引信（燃烧中/增长红利/引爆史）
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initDirectiveState(true);                                                                   // L：重置国家战略指令板

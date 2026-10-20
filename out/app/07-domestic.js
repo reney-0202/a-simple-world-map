@@ -810,7 +810,8 @@ function refreshDomesticBox(selKey) {
   // 不可见的机制等于不存在的机制。
   if (isMine) h = domesticCapitalHtml() + domesticPolEconHtml() + prestigeBoardHtml()
     + (typeof nukePanelHtml === "function" ? nukePanelHtml() : "")
-    + (typeof ideologyPanelHtml === "function" ? ideologyPanelHtml() : "") + h;
+    + (typeof ideologyPanelHtml === "function" ? ideologyPanelHtml() : "")
+    + (typeof fusePanelHtml === "function" ? fusePanelHtml() : "") + h;
   box.innerHTML = h;
 
   // 绑定动作按钮事件：标出成本、预算不足时禁用（禁用态不绑 click，杜绝绕过）
@@ -867,6 +868,18 @@ function refreshDomesticBox(selKey) {
     btn.addEventListener("click", () => {
       if (on) stopIdeologyProgram(id);
       else startIdeologyProgram(id);
+      refreshDomesticBox(ST.sel);
+    });
+  });
+
+  // E（长引信）：战略工程点火按钮 —— 点火即扣政治资本，引爆由国势决定
+  box.querySelectorAll(".fuse-btn").forEach((btn) => {
+    if (btn.disabled) return;
+    const id = btn.dataset.fuse;
+    const on = ST.fuses && ST.fuses.burning && ST.fuses.burning[id] !== undefined;
+    btn.addEventListener("click", () => {
+      if (on) cancelFuse(id);
+      else startFuse(id);
       refreshDomesticBox(ST.sel);
     });
   });

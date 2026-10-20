@@ -118,6 +118,16 @@ if (typeof groundWarSelfDrag === "function") {
   const wd = groundWarSelfDrag();
   if (wd !== 0) selfPP += wd;
 }
+// E（长引信）：燃烧期的机会成本（拖累）+ 引爆后的增长红利（bonus）。
+// 两条都走同一条 pmods 累加链 —— 存档/探针/AI 决策层看到的是同一份数字。
+if (typeof fuseProgramDrag === "function") {
+  const fd = fuseProgramDrag();
+  if (fd !== 0) selfPP += fd;
+}
+if (typeof fuseGdpBonus === "function") {
+  const fb = fuseGdpBonus();
+  if (fb !== 0) selfPP += fb;
+}
   return selfPP;
 }
 

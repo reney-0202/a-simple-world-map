@@ -42,6 +42,7 @@ window.W1980_PROBES={
   "estprobe",
   "warai",
   "ideoprobe",
+  "fuseprobe",
   "poleconprobe",
   "soundprobe",
   "assetsprobe"
@@ -230,6 +231,12 @@ window.W1980_PROBES={
   "ideo": {
    "qs": "ideoprobe=1",
    "marker": "IDEOLOGYPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "fuse": {
+   "qs": "fuseprobe=1",
+   "marker": "FUSEPROBE",
    "budget": 60000,
    "class": "mechanics"
   },
