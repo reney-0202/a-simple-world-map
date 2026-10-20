@@ -799,7 +799,12 @@ function setTop(k) {
     const ps = prestigeSnapshot();
     if (!ps) { pe.textContent = "–"; pe.style.color = ""; }
     else if (ps.player && ps.score !== null) {
-      pe.textContent = ps.score.toFixed(1) + (ps.rivalScore !== null ? " : " + ps.rivalScore.toFixed(1) : "");
+      // C（情报估算）：对手的分数是估计值（± 误差），自己的是精确的
+      const rvEst = (typeof estimateOf === "function" && ps.rival) ? estimateOf(ps.rival, "prestige") : null;
+      const rvTxt = rvEst && !rvEst.exact
+        ? ("≈" + rvEst.est.toFixed(1) + "±" + rvEst.err.toFixed(1))
+        : ps.rivalScore.toFixed(1);
+      pe.textContent = ps.score.toFixed(1) + " : " + rvTxt;
       pe.style.color = ps.gap === null ? "" : (ps.gap >= 0 ? "#8fd18f" : "#e0a35a");
     } else {
       // 旁观：显示美苏落差（正 = 苏联领先），这是世界状态的一部分

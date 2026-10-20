@@ -927,6 +927,72 @@ function checkNuke(ctx) {
   return { problems, notes, stats: { defcon: D.length, incidents: INC.length, options: opts } };
 }
 
+// ---- 2p. intelligence estimation table (C) -----------------------------------
+// The estimates table is what turned "exact enemy readings" into judgements.
+// Silent failure modes: a field with no consumer (display-only again), a quality
+// cap of 1.0 (the fog fully lifts -- uncertainty gone), a focus action that
+// costs nothing (then every player focuses everything), or an optimism band of
+// 0 (every offensive is punished regardless of intel, making intel pointless).
+function checkEstimates(ctx) {
+  const notes = [];
+  const problems = [];
+  const ES = ctx.data.W1980_ESTIMATES;
+  if (!ES) return { problems: ['estimates.js: 未定义 W1980_ESTIMATES'], notes };
+  const F = ES.FIELDS, P = ES.PARAMS;
+  if (!F || typeof F !== 'object' || !Object.keys(F).length) {
+    return { problems: ['estimates.js: FIELDS 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['estimates.js: PARAMS 缺失'], notes };
+
+  let consumed = 0;
+  for (const name of Object.keys(F)) {
+    const f = F[name] || {};
+    const tag = `estimates.js: 字段 ${name}`;
+    if (!(typeof f.base === 'number' && f.base > 0)) problems.push(`${tag} 的 base 必须是正数`);
+    if (typeof f.lo !== 'number' || typeof f.hi !== 'number' || !(f.lo < f.hi)) {
+      problems.push(`${tag} 的 [lo, hi] 必须是有序区间`);
+    }
+    if (!f.zh) problems.push(`${tag} 缺 zh`);
+    // 「展示但没人用」正是 S-16 的教训：每个被估算的量必须有真实消费者
+    if (!f.consumer || typeof f.consumer !== 'string') {
+      problems.push(`${tag} 缺 consumer（必须指明谁读这个估计值）`);
+    } else consumed++;
+  }
+  if (consumed !== Object.keys(F).length) {
+    problems.push(`estimates.js: ${Object.keys(F).length - consumed} 个字段没有消费者`);
+  }
+
+  // quality 上限必须 < 1：雾永远不可能完全散去，否则「不确定性」不存在
+  if (!(typeof P.QUALITY_CAP === 'number' && P.QUALITY_CAP > 0 && P.QUALITY_CAP < 1)) {
+    problems.push('estimates.js: QUALITY_CAP 必须落在 (0,1)（1 = 雾全散，不确定性消失）');
+  }
+  if (!(typeof P.FOCUS_Q === 'number' && P.FOCUS_Q > 0)) problems.push('estimates.js: FOCUS_Q 必须是正数');
+  if (!(typeof P.FOCUS_MONTHS === 'number' && P.FOCUS_MONTHS >= 1)) problems.push('estimates.js: FOCUS_MONTHS 必须 >= 1');
+  if (!(typeof P.FOCUS_MAX === 'number' && P.FOCUS_MAX >= 1)) problems.push('estimates.js: FOCUS_MAX 必须 >= 1');
+  // 评估必须有成本：免费的信息升级等于所有人都全知
+  if (!(typeof P.FOCUS_COST_PC === 'number' && P.FOCUS_COST_PC > 0)) {
+    problems.push('estimates.js: FOCUS_COST_PC 必须是正数（免费评估 = 全员全知）');
+  }
+  if (!(typeof P.QUARTER === 'number' && P.QUARTER >= 1)) problems.push('estimates.js: QUARTER 必须 >= 1');
+  // 冒进惩罚：band=0 → 任何攻势都受罚（情报失去意义）；cut 必须 < 1（不能完全抵消攻势）
+  if (!(typeof P.OPTIMISM_BAND === 'number' && P.OPTIMISM_BAND > 0)) {
+    problems.push('estimates.js: OPTIMISM_BAND 必须是正数（0 = 任何攻势都受罚）');
+  }
+  if (!(typeof P.OP_STRENGTH_CUT === 'number' && P.OP_STRENGTH_CUT >= 0 && P.OP_STRENGTH_CUT < 1)) {
+    problems.push('estimates.js: OP_STRENGTH_CUT 必须落在 [0,1)');
+  }
+  if (!(typeof P.OP_ATTR_PENALTY === 'number' && P.OP_ATTR_PENALTY >= 0)) {
+    problems.push('estimates.js: OP_ATTR_PENALTY 不能为负');
+  }
+  if (!(typeof P.BUDGET_Q_MAX === 'number' && P.BUDGET_Q_MAX >= 0 && P.BUDGET_Q_MAX < 1)) {
+    problems.push('estimates.js: BUDGET_Q_MAX 必须落在 [0,1)');
+  }
+
+  notes.push(`estimates: ${Object.keys(F).length} fields, quality cap ${P.QUALITY_CAP}, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes, stats: { fields: Object.keys(F).length, qualityCap: P.QUALITY_CAP } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1018,6 +1084,7 @@ const CHECKS = [
   { id: 'prestige', label: '威望竞赛表（位置性威望）', run: checkPrestige },
   { id: 'wars', label: '地面战争表（可争夺战局）', run: checkWars },
   { id: 'nuke', label: '核风险轴（DEFCON/事故）', run: checkNuke },
+  { id: 'estimates', label: '情报估算表（雾与误差）', run: checkEstimates },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1042,6 +1109,7 @@ module.exports = {
   checkPrestige,
   checkWars,
   checkNuke,
+  checkEstimates,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

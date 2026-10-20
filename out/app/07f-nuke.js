@@ -109,6 +109,8 @@ function nukeRoll(y, m, salt) {
 
 // 威慑可信度：军费落差 + 威望落差 + 同盟凝聚。
 // 这一层让「裁军」第一次有战略风险：pmods 里省钱，但可信度下降会把误判概率抬高。
+// C（情报估算）：对手的军费读**估计值**而不是真值 —— 威慑是双方的**认知**，
+// 不是上帝视角的算术。情报质量差 → 你对军备差距的判断有偏 → 可信度算错。
 function nukeCredibilityNow() {
   const T = nukeTable();
   if (!T) return 50;
@@ -116,12 +118,17 @@ function nukeCredibilityNow() {
   const s = initNukeState();
   let cred = P.CRED_START;
 
-  // 军费落差：优先读 AI 决策层（与 07-domestic.js 的既有口径一致）
+  // 军费落差：优先读 AI 决策层（与 07-domestic.js 的既有口径一致），
+  // 对手一侧改用估算（08a-estimates.js 的 estimateOf(..., "mil")）。
   const me = ST.player;
   const rival = (typeof prestigeRivalOf === "function" && me) ? prestigeRivalOf(me) : null;
   const milOf = (k) => {
     if (!k) return 4.0;
     if (k === me) return ST.mil;
+    if (typeof estimateOf === "function") {
+      const e = estimateOf(k, "mil");
+      if (e && typeof e.est === "number") return e.est;
+    }
     if (ST.ai && ST.ai.decisions && ST.ai.decisions[k] && typeof ST.ai.decisions[k].mil === "number") {
       return ST.ai.decisions[k].mil;
     }

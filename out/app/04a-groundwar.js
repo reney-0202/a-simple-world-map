@@ -331,6 +331,18 @@ function updateGroundWars(y, m, silent) {
         opEnemyAttr = op.enemyAttr;
         opSelfAttr = op.selfAttr;
         opWear = op.wear;
+        // C（情报估算）：冒进惩罚 —— 基于**过度乐观的估计**发动进攻，会一头
+        // 撞进有备之敌：推进强度被削、自身消耗加重。买情报（quality→1）就能
+        // 消掉它 —— 这是「情报评估」花钱的真正理由，而不是界面装饰。
+        if (typeof estimateWarOptimism === "function" && op.strength > 0) {
+          const optimism = estimateWarOptimism(id, playerSide);
+          const fog = (typeof estimateOpFogFactor === "function")
+            ? estimateOpFogFactor(optimism) : { cut: 0, attr: 0 };
+          if (fog.cut > 0 || fog.attr > 0) {
+            opStrength *= (1 - fog.cut);
+            opSelfAttr += fog.attr;
+          }
+        }
       }
     }
 
@@ -413,6 +425,8 @@ function groundWarSnapshot() {
 
 // ---- 面板 -------------------------------------------------------------------
 // 与既有战局面板同址渲染：避免出现「两个面板各说各话」。
+// C（情报估算）：战线优势显示**估计值**（≈ est ± err），不是真值 ——
+// 玩家在雾里做判断，而不是照着读数调参。
 function groundWarPanelHtml(selKey) {
   const T = warTable();
   if (!T || !selKey) return "";
@@ -427,15 +441,20 @@ function groundWarPanelHtml(selKey) {
   for (const id of ids) {
     const def = T.WARS[id];
     const w = warStateOf(id);
-    const control = groundWarControl(id, now);
     const mine = def.sideA === actual ? "A" : "B";
-    const myEdge = mine === "A" ? control : -control;
+    // 读数：战斗中用估计（雾），战后用定格真值（战果要准）
+    const est = (typeof estimateControlOf === "function") ? estimateControlOf(id, mine) : null;
+    const control = groundWarControl(id, now);
+    const shown = (w.outcome || !est || est.exact) ? control : est.est;
+    const band = (w.outcome || !est || est.exact) ? 0 : est.err;
+    const myEdge = mine === "A" ? shown : -shown;
     const tone = myEdge >= T.PARAMS.STALEMATE_BAND ? "#4ade80"
       : myEdge <= -T.PARAMS.STALEMATE_BAND ? "#f87171" : "#fbbf24";
     const pct = Math.round((clamp(myEdge, -100, 100) + 100) / 2);
     h += '<div class="gw-block">';
     h += '<div class="gw-row"><span>' + def.short + ' · 战线优势</span><b style="color:' + tone + '">' +
-      (myEdge >= 0 ? "+" : "") + myEdge.toFixed(0) + '</b></div>';
+      (band > 0 ? "≈ " : "") + (myEdge >= 0 ? "+" : "") + myEdge.toFixed(0) +
+      (band > 0 ? " ± " + band.toFixed(0) : "") + '</b></div>';
     h += '<div class="gw-bar"><i style="width:' + pct + '%;background:' + tone + '"></i></div>';
     if (w.outcome) {
       const win = (w.outcome === "A" && mine === "A") || (w.outcome === "B" && mine === "B");
@@ -446,6 +465,10 @@ function groundWarPanelHtml(selKey) {
       const myAttr = mine === "A" ? w.attrDevA : w.attrDevB;
       h += '<div class="gw-note">厌战 ' + myWear.toFixed(0) + ' · 额外消耗 ' + myAttr.toFixed(1) +
         '（增速拖累 ' + groundWarDragOf(myAttr).toFixed(2) + 'pp/年）</div>';
+      if (band > 0) {
+        h += '<div class="gw-note">读数为情报估计（±' + band.toFixed(0) +
+          '）：按过于乐观的估计发动攻势会撞进有备之敌。</div>';
+      }
       if (ST.player === actual) {
         h += '<div class="gw-ops">';
         for (const opId in T.OPS) {

@@ -91,6 +91,19 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_ESTIMATES: {
+      FIELDS: {
+        prestige: { base: 6, lo: 0, hi: 100, zh: '威望', consumer: 'board' },
+        control: { base: 18, lo: -100, hi: 100, zh: '战线', consumer: 'war panel' },
+        mil: { base: 1.2, lo: 0, hi: 12, zh: '军费', consumer: 'credibility' },
+      },
+      PARAMS: {
+        BUDGET_Q0: 15, BUDGET_Q_SPAN: 45, BUDGET_Q_MAX: 0.45,
+        FOCUS_Q: 0.35, FOCUS_MONTHS: 12, FOCUS_MAX: 2, FOCUS_COST_PC: 10,
+        QUARTER: 3, QUALITY_CAP: 0.85,
+        OPTIMISM_BAND: 12, OP_STRENGTH_CUT: 0.30, OP_ATTR_PENALTY: 0.35,
+      },
+    },
     W1980_NUKE: {
       DEFCON: [
         { level: 1, from: 80, zh: '一号', note: '' },
@@ -883,6 +896,55 @@ test('ESC_MAX below the level-1 threshold is caught', () => {
 test('a zero doomsday window is caught', () => {
   const d = cleanData(); d.W1980_NUKE.PARAMS.DOOMSDAY_MONTHS = 0;
   assert.match(checks.checkNuke(makeCtx(d)).problems[0], /DOOMSDAY_MONTHS 必须 >= 1/);
+});
+
+// ---- 8j. intelligence estimation table (C) -----------------------------------
+// Exact enemy readings meant information had no quality and therefore no
+// uncertainty. The silent failures: a field nobody consumes (S-16 again), a
+// quality cap of 1.0 (the fog fully lifts), a free focus action (everyone ends
+// up omniscient), and an optimism band of 0 (every offensive is punished, so
+// intel stops mattering).
+section('checkEstimates');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkEstimates(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_ESTIMATES;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /未定义 W1980_ESTIMATES/);
+});
+test('a field with no consumer is caught', () => {
+  // Display-only is exactly what S-16 taught us to reject.
+  const d = cleanData(); delete d.W1980_ESTIMATES.FIELDS.prestige.consumer;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /缺 consumer/);
+});
+test('a non-positive base error is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.FIELDS.mil.base = 0;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /字段 mil 的 base 必须是正数/);
+});
+test('a reversed interval is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.FIELDS.control.lo = 100;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /\[lo, hi\] 必须是有序区间/);
+});
+test('a quality cap of 1.0 is caught', () => {
+  // Fog that fully lifts means no uncertainty exists at all.
+  const d = cleanData(); d.W1980_ESTIMATES.PARAMS.QUALITY_CAP = 1;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /QUALITY_CAP 必须落在 \(0,1\)/);
+});
+test('a free focus action is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.PARAMS.FOCUS_COST_PC = 0;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /免费评估 = 全员全知/);
+});
+test('a zero optimism band is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.PARAMS.OPTIMISM_BAND = 0;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /OPTIMISM_BAND 必须是正数/);
+});
+test('a full strength cut is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.PARAMS.OP_STRENGTH_CUT = 1;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /OP_STRENGTH_CUT 必须落在 \[0,1\)/);
+});
+test('a negative attrition penalty is caught', () => {
+  const d = cleanData(); d.W1980_ESTIMATES.PARAMS.OP_ATTR_PENALTY = -1;
+  assert.match(checks.checkEstimates(makeCtx(d)).problems[0], /OP_ATTR_PENALTY 不能为负/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

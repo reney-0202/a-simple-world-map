@@ -227,6 +227,9 @@ function runNukeProbe() {
     assert("incidentCooldown", (() => {
       initNukeState(true);
       ST.player = "SUN";
+      ST.mil = 0;                          // 军费差距必然为负 → cred << 50 → risk 夹到 1
+      // （C 之后可信度读**估计的**对手军费：不压低 cred 就不能保证掷骰必中，
+      //   那样测的就是哈希运气而不是冷却逻辑。）
       const s = ST.nuke;
       s.lastIncidentM = 1987 * 12 + 6;
       // 强制 100% 触发：RISK_BASE 与 RISK_CAP 同时抬高（RISK_CAP 会先夹住概率）

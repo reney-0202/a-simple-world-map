@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 55,
-    "pop": 52,
-    "ind": 50,
+    "bloc": 62,
+    "pop": 55,
+    "ind": 68,
     "province": 52,
-    "delta": 60,
-    "resource": 54
+    "delta": 57,
+    "resource": 55
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1541
+   "totalMs": 1828
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143603,
+   "saveBytes": 143637,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -1504,6 +1504,65 @@
     "endToEndBounded": "PASS",
     "endToEndNoSpontaneousDoomsday": "PASS",
     "endToEndRiskNonNegative": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "est": {
+  "marker": "ESTIMATESPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "fieldsNonEmpty": "PASS",
+    "everyFieldHasConsumer": "PASS",
+    "qualityCapBelowOne": "PASS",
+    "focusCostsCapital": "PASS",
+    "focusIsBounded": "PASS",
+    "bandAlwaysCoversTruth": "PASS",
+    "ownLedgerIsExact": "PASS",
+    "estimatesAreNotTruth": "PASS",
+    "budgetNarrowsError": "PASS",
+    "errorNeverZero": "PASS",
+    "qualityCapped": "PASS",
+    "focusApplies": "PASS",
+    "focusNarrowsError": "PASS",
+    "focusRejectsSelf": "PASS",
+    "focusRejectsUnknown": "PASS",
+    "focusRejectsDuplicate": "PASS",
+    "focusEnforcesCap": "PASS",
+    "focusExpires": "PASS",
+    "estimateDeterministic": "PASS",
+    "estimateConsumesNoRng": "PASS",
+    "quarterlyRefresh": "PASS",
+    "noPenaltyAtZeroOptimism": "PASS",
+    "noPenaltyBelowBand": "PASS",
+    "penaltyAboveBand": "PASS",
+    "penaltyGraded": "PASS",
+    "penaltyCapped": "PASS",
+    "perfectIntelNeverOveroptimistic": "PASS",
+    "warOptimismSign": "PASS",
+    "warOptimismFlipsWithSide": "PASS",
+    "credibilityUsesEstimateNotTruth": "PASS",
+    "credibilityStillBounded": "PASS",
+    "panelRenders": "PASS",
+    "panelShowsEstimateNotTruth": "PASS",
+    "panelNeverShowsExactRival": "PASS",
+    "panelOffersFocus": "PASS",
+    "roundTripKeepsFocus": "PASS",
+    "roundTripKeepsLog": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoFocusWrites": "PASS",
+    "spectatorNoDomesticWrites": "PASS",
+    "spectatorNoPmodWrites": "PASS",
+    "spectatorCannotFocus": "PASS",
+    "endToEndEstimateAlive": "PASS",
+    "endToEndBandCoversTruth": "PASS",
+    "endToEndPanelEstimates": "PASS"
    }
   },
   "failed": false

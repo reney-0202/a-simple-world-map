@@ -217,6 +217,15 @@ button,input{font:inherit;color:inherit}
 #panel .p-domestic-box .nk-opt-btn{padding:3px 5px;background:#1b2026;border:1px solid #4a3236;border-radius:2px;color:#d8c8c8;font-size:9px;cursor:pointer;text-align:left;transition:all .12s}
 #panel .p-domestic-box .nk-opt-btn i{font-style:normal;color:#e0a35a;font-variant-numeric:tabular-nums;opacity:.85;font-size:8px}
 #panel .p-domestic-box .nk-opt-btn:hover{border-color:#f87171;color:#fff}
+/* C：情报估算 —— 在情报机构面板里的「带误差读数」一节 */
+#panel .covertbox .est-block{margin-top:8px;padding:5px 6px;background:#141a20;border:1px solid #262c33;border-radius:2px}
+#panel .covertbox .est-hd{font-size:10px;font-weight:700;color:#c9d4df;margin-bottom:3px}
+#panel .covertbox .est-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;padding:1px 0;color:#8b949e}
+#panel .covertbox .est-row b{font-variant-numeric:tabular-nums;color:#c9d4df}
+#panel .covertbox .est-row b.est-good{color:#4ade80}
+#panel .covertbox .est-note{margin-top:3px;font-size:8.5px;line-height:1.45;color:#8b949e}
+#panel .covertbox .est-focus-btn{padding:2px 5px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;transition:all .12s}
+#panel .covertbox .est-focus-btn:hover{border-color:var(--gold);color:var(--gold2)}
 /* D：地面战争 —— 战线优势条 + 作战方针按钮（与战局面板同址） */
 #panel .warbox .gw-block{margin-top:6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
 #panel .warbox .gw-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:var(--dim)}

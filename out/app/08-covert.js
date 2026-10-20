@@ -270,6 +270,10 @@ function refreshCovertBox(selKey) {
   }
   h += '</div>';
 
+  // C（情报估算）：把「带误差的读数」并入情报机构面板 ——
+  // 信息有质量这件事，理应出现在管情报的那块面板上。
+  if (typeof estimatesPanelHtml === "function") h += estimatesPanelHtml();
+
   // 历史战报
   if (intel.history && intel.history.length) {
     h += '<div class="covert-history-hd">📜 近期隐蔽行动档案</div>';
@@ -289,6 +293,15 @@ function refreshCovertBox(selKey) {
     btn.onclick = () => {
       const actId = btn.dataset.act;
       executeCovertAction(actId, null);
+    };
+  });
+
+  // C（情报估算）：专项评估按钮
+  box.querySelectorAll(".est-focus-btn").forEach((btn) => {
+    btn.onclick = () => {
+      focusIntelligence(btn.dataset.est);
+      refreshCovertBox(selKey);
+      if (ST.sel) refreshDomesticBox(ST.sel);
     };
   });
 }

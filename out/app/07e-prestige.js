@@ -352,12 +352,21 @@ function updatePrestigeRace(y, m, silent) {
 // 声望榜 UI：只列**真的动过**的实体（分数离开基准），外加玩家与对手。
 // 否则开局会列出六个停在 50.0 的国家，把面板变成噪声 ——
 // 榜单要回答的是「谁在赢」，不是「谁存在」。
+// C（情报估算）：对手的分数显示**估计值**（± 误差），玩家自己的分数是精确的 ——
+// 你知道自己的账本。榜单因此从「读数」变成「判断」。
 function prestigeBoardHtml(limit) {
   const T = prestigeTable();
   if (!T) return "";
   const p = initPrestigeState();
   const base = T.PARAMS.SCORE_START;
   const mine = ST.player ? [ST.player, prestigeRivalOf(ST.player)] : [];
+  const scoreText = (k) => {
+    const v = p.scores[k];
+    if (!isFinite(v)) return "—";
+    if (k === ST.player) return v.toFixed(1);
+    const e = (typeof estimateOf === "function") ? estimateOf(k, "prestige") : null;
+    return (e && !e.exact) ? ("≈ " + e.est.toFixed(1) + " ±" + e.err.toFixed(1)) : v.toFixed(1);
+  };
   const rows = Object.keys(p.scores)
     .map((k) => ({ k: k, v: p.scores[k] }))
     .filter((r) => isFinite(r.v) && (Math.abs(r.v - base) >= 0.5 || mine.indexOf(r.k) >= 0))
@@ -367,16 +376,21 @@ function prestigeBoardHtml(limit) {
   if (ST.player) {
     const rv = prestigeRivalOf(ST.player);
     const gap = rv ? prestigeOf(ST.player) - prestigeOf(rv) : 0;
+    const gapTxt = rv ? (() => {
+      const e = (typeof estimateOf === "function") ? estimateOf(rv, "prestige") : null;
+      const shown = (e && !e.exact) ? (prestigeOf(ST.player) - e.est) : gap;
+      return (shown >= 0 ? "+" : "") + shown.toFixed(1);
+    })() : "";
     const col = gap >= 0 ? "#4ade80" : "#f87171";
     h += '<span class="pdb-meter-val" style="color:' + col + '">' + prestigeOf(ST.player).toFixed(1) +
-      (rv ? " vs " + prestigeOf(rv).toFixed(1) + "（" + (gap >= 0 ? "+" : "") + gap.toFixed(1) + "）" : "") + '</span>';
+      (rv ? " vs " + scoreText(rv) + "（" + gapTxt + "）" : "") + '</span>';
   } else {
     h += '<span class="pdb-meter-val">' + (rows.length ? rows[0].v.toFixed(1) : "—") + '</span>';
   }
   h += '</div>';
   for (const r of rows) {
     const c = CM.countries[r.k] || { zh: r.k };
-    h += '<div class="pdb-prestige-row"><span>' + c.zh + '</span><b>' + r.v.toFixed(1) + '</b></div>';
+    h += '<div class="pdb-prestige-row"><span>' + c.zh + '</span><b>' + scoreText(r.k) + '</b></div>';
   }
   if (ST.player) {
     h += '<div class="pdb-prestige-row"><span>工程（最多 ' + T.PARAMS.MAX_ACTIVE + ' 项）</span><b>' +

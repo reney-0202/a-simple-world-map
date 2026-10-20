@@ -1008,6 +1008,7 @@ function simReset() {
   initPrestigeState(true);                                                                   // F：重置威望竞赛（分数/工程/漂移/里程碑）
   initGroundWarState(true);                                                                  // D：重置地面战争（战线优势/消耗/厌战/结局）
   initNukeState(true);                                                                       // N1：重置核风险轴（升级/可信度/DEFCON/事故）
+  initEstimateState(true);                                                                   // C：重置情报估算（专项评估/审计）
   initPoliticalCapital(true);                                                                 // L：重置玩家施政预算（政治资本）
   initPosture(true);                                                                          // L：重置施政方针为均衡（中性）
   initDirectiveState(true);                                                                   // L：重置国家战略指令板
