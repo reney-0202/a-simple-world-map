@@ -40,6 +40,7 @@ window.W1980_PROBES={
   "prestigeprobe",
   "nukeprobe",
   "estprobe",
+  "warai",
   "poleconprobe",
   "soundprobe",
   "assetsprobe"
@@ -216,6 +217,12 @@ window.W1980_PROBES={
   "est": {
    "qs": "estprobe=1",
    "marker": "ESTIMATESPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "warai": {
+   "qs": "warai=1",
+   "marker": "WARAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   },

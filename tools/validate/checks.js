@@ -833,6 +833,25 @@ function checkWars(ctx) {
       + '提前决胜永远不可能触发');
   }
 
+  // D2：AI 决策规则必须自洽 —— 阈值乱掉会让 AI 变成只会冲锋的疯子
+  const AI = W.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('wars.js: 缺 AI_POLICY（D2：AI 交战方没有决策规则）');
+  } else {
+    if (!(typeof AI.ADVANTAGE === 'number' && AI.ADVANTAGE > 0)) problems.push('wars.js: AI_POLICY.ADVANTAGE 必须是正数');
+    if (!(typeof AI.WEAR_SETTLE === 'number' && AI.WEAR_SETTLE > 0)) problems.push('wars.js: AI_POLICY.WEAR_SETTLE 必须是正数');
+    if (!(typeof AI.WEAR_HALF === 'number' && AI.WEAR_HALF > 0)) problems.push('wars.js: AI_POLICY.WEAR_HALF 必须是正数');
+    if (typeof AI.WEAR_HALF === 'number' && typeof AI.WEAR_SETTLE === 'number' &&
+        AI.WEAR_HALF > AI.WEAR_SETTLE) {
+      problems.push('wars.js: AI_POLICY.WEAR_HALF 不得高于 WEAR_SETTLE（止损阈值应是更严的那个）');
+    }
+    for (const k of ['STRAIN_SETTLE', 'STRAIN_PRESS']) {
+      if (!(typeof AI[k] === 'number' && AI[k] > 0 && AI[k] <= 1)) {
+        problems.push(`wars.js: AI_POLICY.${k} 必须落在 (0,1]`);
+      }
+    }
+  }
+
   notes.push(`wars: ${Object.keys(WARS).length} wars, ${phases} phase steps, ${ops} operations, `
     + `${problems.length} problem(s)`);
   return { problems, notes, stats: { wars: Object.keys(WARS).length, phases, operations: ops } };

@@ -144,6 +144,10 @@ function cleanData() {
         WEAR_MAX: 100, WEAR_UNREST: 0.22, WEAR_DECAY: 0.35, STALEMATE_BAND: 22,
         SETTLE_PRESTIGE: 0.45, LOG_MAX: 24,
       },
+      AI_POLICY: {
+        ADVANTAGE: 25, WEAR_SETTLE: 70, WEAR_HALF: 45,
+        STRAIN_SETTLE: 0.6, STRAIN_PRESS: 0.6,
+      },
     },
     W1980_PRESTIGE: {
       MILESTONES: [
@@ -837,6 +841,20 @@ test('a war table with no exit operation is caught', () => {
 test('DECISIVE_DEV above DEVIATION_CLAMP is caught', () => {
   const d = cleanData(); d.W1980_WARS.PARAMS.DECISIVE_DEV = 60;
   assert.match(checks.checkWars(makeCtx(d)).problems[0], /DECISIVE_DEV\(60\) 高于 DEVIATION_CLAMP\(45\)/);
+});
+test('a missing AI policy is caught', () => {
+  // D2: without a policy the AI has no moves and the war is a one-sided range again.
+  const d = cleanData(); delete d.W1980_WARS.AI_POLICY;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('AI wear thresholds out of order are caught', () => {
+  const d = cleanData();
+  d.W1980_WARS.AI_POLICY.WEAR_HALF = 80;   // 80 > WEAR_SETTLE(70)
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /WEAR_HALF 不得高于 WEAR_SETTLE/);
+});
+test('an AI strain threshold outside (0,1] is caught', () => {
+  const d = cleanData(); d.W1980_WARS.AI_POLICY.STRAIN_SETTLE = 1.5;
+  assert.match(checks.checkWars(makeCtx(d)).problems[0], /AI_POLICY\.STRAIN_SETTLE 必须落在 \(0,1\]/);
 });
 
 // ---- 8i. nuclear risk table (N1) ---------------------------------------------

@@ -46,6 +46,8 @@ function sanitizeGroundWarState(d) {
       if (!known[id]) continue;
       const w = d.wars[id] || {};
       const op = (typeof w.op === "string" && known && T && T.OPS[w.op]) ? w.op : null;
+      const aiOpA = (typeof w.aiOpA === "string" && T && T.OPS[w.aiOpA]) ? w.aiOpA : null;
+      const aiOpB = (typeof w.aiOpB === "string" && T && T.OPS[w.aiOpB]) ? w.aiOpB : null;
       s.wars[id] = {
         dev: num(w.dev, -100, 100, 0),
         attrA: num(w.attrA, 0, 999, 0),
@@ -55,6 +57,8 @@ function sanitizeGroundWarState(d) {
         wearA: num(w.wearA, 0, 100, 0),
         wearB: num(w.wearB, 0, 100, 0),
         op: op,
+        aiOpA: aiOpA,
+        aiOpB: aiOpB,
         settled: !!w.settled,
         outcome: (typeof w.outcome === "string") ? w.outcome : null,
         finalControl: num(w.finalControl, -100, 100, null),
@@ -73,9 +77,49 @@ function warStateOf(id) {
   const s = initGroundWarState();
   if (!s.wars[id]) {
     s.wars[id] = { dev: 0, attrA: 0, attrB: 0, attrDevA: 0, attrDevB: 0,
-      wearA: 0, wearB: 0, op: null, settled: false, outcome: null, finalControl: null, endM: null };
+      wearA: 0, wearB: 0, op: null, aiOpA: null, aiOpB: null,
+      settled: false, outcome: null, finalControl: null, endM: null };
   }
   return s.wars[id];
+}
+
+// D2：AI 交战方是否在决策。沿用既有 AI 的探针白名单模式 ——
+// 探针模式下默认关闭（否则 warprobe / groundwarprobe 的既有断言会因
+// AI 变招而漂移），只有显式 ?warai=1 的探针会话才打开；
+// 旁观模式永远关闭：旁观看的是史实，不是博弈。
+function warAiActive() {
+  return !!ST.player && (!CR.probeMode || /[?&]warai=1/.test(location.search));
+}
+
+// D2：AI 交战方的作战决策（确定性规则，零 RNG、零政治资本）。
+// 输入只有三个真实读数：己方战线优势、己方厌战、己方经济压力。
+// 规则表见 data/wars.js 的 AI_POLICY 注释。
+// now 显式传入（与 updateGroundWars 同一个结算月）——否则探针与引擎会用
+// 不同的日期算 control，测试就是漂的。
+function aiPickWarOp(id, side, now) {
+  const T = warTable();
+  if (!T || !T.AI_POLICY) return null;
+  const P = T.AI_POLICY;
+  const def = T.WARS[id];
+  if (!def) return null;
+  const w = warStateOf(id);
+  const control = groundWarControl(id, now);
+  const myEdge = side === "A" ? control : -control;
+  const wear = side === "A" ? w.wearA : w.wearB;
+  const key = side === "A" ? def.sideA : def.sideB;
+  const strain = (typeof polEconStrainOf === "function") ? polEconStrainOf(key) : 0;
+  const cur = side === "A" ? w.aiOpA : w.aiOpB;
+
+  // 1. 止损优先：劣势 +（厌战高 或 经济吃紧）→ 停火
+  if (myEdge < 0 && (wear >= P.WEAR_SETTLE || strain >= P.STRAIN_SETTLE)) return "seek_settlement";
+  // 2. 优势推进：明显领先且还有余力
+  if (myEdge >= P.ADVANTAGE && wear < P.WEAR_SETTLE) return "ground_offensive";
+  // 3. 劣势稳住：明显落后 → 厌战高就守、还能磨就磨
+  if (myEdge <= -P.ADVANTAGE) return wear >= P.WEAR_HALF ? "hold_line" : "attrition_siege";
+  // 4. 僵持施压：经济吃紧时选便宜的空中施压（drag 0.20 < 攻势 0.30）
+  if (strain >= P.STRAIN_PRESS) return "air_campaign";
+  // 5. 粘性：灰区维持现状 —— 否则方针逐月翻烧饼
+  return (cur && T.OPS[cur]) ? cur : "hold_line";
 }
 
 function curWarMonth(y, m) {
@@ -276,7 +320,8 @@ function groundWarSettle(id, def, y, m, silent, reason) {
     const item = { y: y, m: m,
       zh: "【战局终局】" + def.zh + " · " + (outcome === "stalemate" ? "僵持停火"
         : ((CM.countries[outcome === "A" ? def.sideA : def.sideB] || {}).zh + "获胜")),
-      note: (reason === "settlement" ? "在你寻求的停火下战事终止。" : "战线定格于 " + control.toFixed(0) + "。") +
+      note: (reason === "settlement" ? "在你寻求的停火下战事终止。"
+        : reason === "enemy-settlement" ? "敌方主动求和，战事终止。" : "战线定格于 " + control.toFixed(0) + "。") +
         (mine === null ? "" : (mine ? "我国赢得这场战争。" : "我国输掉了这场战争。")) };
     EV.items.push(item);
     EV.unread++;
@@ -318,54 +363,71 @@ function updateGroundWars(y, m, silent) {
     const supDiff = clamp((supA - supB) * T.PARAMS.DEVIATION_PER_SUPPORT,
       -T.PARAMS.DEVIATION_CLAMP, T.PARAMS.DEVIATION_CLAMP);
 
-    // --- deviation：玩家作战方针 ---
-    let opStrength = 0, opEnemyAttr = 0, opSelfAttr = 0, opWear = 0;
-    const op = w.op ? T.OPS[w.op] : null;
-    let playerSide = null;
-    if (op && ST.player) {
-      if (def.sideA === ST.player) playerSide = "A";
-      else if (def.sideB === ST.player) playerSide = "B";
-      if (playerSide) {
-        const sign = playerSide === "A" ? 1 : -1;
-        opStrength = op.strength * sign;
-        opEnemyAttr = op.enemyAttr;
-        opSelfAttr = op.selfAttr;
-        opWear = op.wear;
-        // C（情报估算）：冒进惩罚 —— 基于**过度乐观的估计**发动进攻，会一头
-        // 撞进有备之敌：推进强度被削、自身消耗加重。买情报（quality→1）就能
-        // 消掉它 —— 这是「情报评估」花钱的真正理由，而不是界面装饰。
-        if (typeof estimateWarOptimism === "function" && op.strength > 0) {
-          const optimism = estimateWarOptimism(id, playerSide);
-          const fog = (typeof estimateOpFogFactor === "function")
-            ? estimateOpFogFactor(optimism) : { cut: 0, attr: 0 };
-          if (fog.cut > 0 || fog.attr > 0) {
-            opStrength *= (1 - fog.cut);
-            opSelfAttr += fog.attr;
-          }
-        }
-      }
+    // --- deviation：双方作战方针（D2）---
+    // 侧 A 的推进方向为正；两侧方针互相抵消：同一时间只有一方能推得动。
+    // 玩家侧用 setWarOp 的结果（w.op）；AI 侧按 D2 规则自选（w.aiOpA/aiOpB）。
+    // 旁观与常规探针里 warAiActive() 为假：AI 不动 → 行为与 D2 之前逐位一致。
+    const playerSide = def.sideA === ST.player ? "A" : (def.sideB === ST.player ? "B" : null);
+    const pickSideOp = (side) => {
+      if (playerSide === side) return w.op ? T.OPS[w.op] : null;
+      if (!warAiActive()) return null;
+      const pick = aiPickWarOp(id, side, now);
+      if (side === "A") w.aiOpA = pick; else w.aiOpB = pick;
+      return pick ? T.OPS[pick] : null;
+    };
+    const opA = pickSideOp("A");
+    const opB = pickSideOp("B");
+
+    let strengthA = opA ? opA.strength : 0;
+    let strengthB = opB ? opB.strength : 0;
+    let selfAttrA = opA ? opA.selfAttr : 0;
+    let selfAttrB = opB ? opB.selfAttr : 0;
+    const enemyAttrA = opB ? opB.enemyAttr : 0;   // B 的方针伤 A
+    const enemyAttrB = opA ? opA.enemyAttr : 0;   // A 的方针伤 B
+    const wearA = opA ? opA.wear : 0;
+    const wearB = opB ? opB.wear : 0;
+
+    // C（情报估算）：冒进惩罚 —— 基于**过度乐观的估计**发动进攻，会一头
+    // 撞进有备之敌：推进强度被削、自身消耗加重。买情报（quality→1）就能
+    // 消掉它 —— 这是「情报评估」花钱的真正理由，而不是界面装饰。
+    // 它刻画的是**玩家的误判**（玩家的估计），所以只作用于玩家的方针；
+    // AI 参谋部的误判没有被建模（它按规则行动，模式可观察）。
+    const fogPenalty = (side, op) => {
+      if (!op || !(op.strength > 0) || playerSide !== side) return null;
+      if (typeof estimateWarOptimism !== "function") return null;
+      const optimism = estimateWarOptimism(id, side);
+      return (typeof estimateOpFogFactor === "function")
+        ? estimateOpFogFactor(optimism) : { cut: 0, attr: 0 };
+    };
+    const fogA = fogPenalty("A", opA);
+    if (fogA && (fogA.cut > 0 || fogA.attr > 0)) {
+      strengthA *= (1 - fogA.cut);
+      selfAttrA += fogA.attr;
+    }
+    const fogB = fogPenalty("B", opB);
+    if (fogB && (fogB.cut > 0 || fogB.attr > 0)) {
+      strengthB *= (1 - fogB.cut);
+      selfAttrB += fogB.attr;
     }
 
     // 目标的 dev 是**可以回落**的：干预撤了、方针停了，偏离会朝 0 收
-    const targetDev = supDiff + opStrength * 6;
+    const targetDev = supDiff + (strengthA - strengthB) * 6;
     w.dev += (targetDev - w.dev) * 0.55;
 
     // --- 消耗：总消耗（展示用）与额外消耗（只对偏离计费）---
     const intensity = 1 + Math.abs(w.dev) / 20;
-    const attrA = 0.30 * intensity + (playerSide === "B" ? opEnemyAttr : (playerSide === "A" ? opSelfAttr : 0));
-    const attrB = 0.30 * intensity + (playerSide === "A" ? opEnemyAttr : (playerSide === "B" ? opSelfAttr : 0));
+    const attrA = 0.30 * intensity + selfAttrA + enemyAttrA;
+    const attrB = 0.30 * intensity + selfAttrB + enemyAttrB;
     w.attrA += attrA;
     w.attrB += attrB;
     // attrDev：只有偏离史实的那部分才收费（历史总代价已在校准曲线里）
-    w.attrDevA += T.PARAMS.ATTR_PER_DEV * Math.abs(w.dev) +
-      (playerSide === "A" ? opSelfAttr : 0) + (playerSide === "B" ? opEnemyAttr : 0);
-    w.attrDevB += T.PARAMS.ATTR_PER_DEV * Math.abs(w.dev) +
-      (playerSide === "B" ? opSelfAttr : 0) + (playerSide === "A" ? opEnemyAttr : 0);
+    w.attrDevA += T.PARAMS.ATTR_PER_DEV * Math.abs(w.dev) + selfAttrA + enemyAttrA;
+    w.attrDevB += T.PARAMS.ATTR_PER_DEV * Math.abs(w.dev) + selfAttrB + enemyAttrB;
 
     // --- 厌战：劣势一方涨得更快 ---
     const control = groundWarControl(id, now);
-    w.wearA = clamp(w.wearA + 1.0 + (control < 0 ? 0.6 : 0) + (playerSide === "A" ? opWear : 0), 0, T.PARAMS.WEAR_MAX);
-    w.wearB = clamp(w.wearB + 1.0 + (control > 0 ? 0.6 : 0) + (playerSide === "B" ? opWear : 0), 0, T.PARAMS.WEAR_MAX);
+    w.wearA = clamp(w.wearA + 1.0 + (control < 0 ? 0.6 : 0) + wearA, 0, T.PARAMS.WEAR_MAX);
+    w.wearB = clamp(w.wearB + 1.0 + (control > 0 ? 0.6 : 0) + wearB, 0, T.PARAMS.WEAR_MAX);
 
     // --- 厌战落到内政（仅执政者；无玩家时内政写入毫无意义，直接跳过）---
     if (ST.player) {
@@ -383,14 +445,18 @@ function updateGroundWars(y, m, silent) {
     }
 
     // --- 决胜 / 停火 ---
-    if (op && op.endEarly && playerSide) {
-      // 主动求和：以现有战线停火，劣势会在威望上留下代价
-      const disadvantage = playerSide === "A" ? -control : control;
-      if (disadvantage > 0 && typeof prestigeAdd === "function") {
+    // D2：双方都可能止损 —— 谁选 seek_settlement 停火就以谁的名义（玩家的
+    // 劣势停火仍付威望代价；AI 的止损不付（它没有威望预算的取舍界面），
+    // 但同样立刻终止战争 —— 对手也必须能认输。
+    const settleSide = (opA && opA.endEarly) ? "A" : ((opB && opB.endEarly) ? "B" : null);
+    if (settleSide) {
+      const myEdge = settleSide === "A" ? control : -control;
+      const disadvantage = -myEdge;
+      if (settleSide === playerSide && disadvantage > 0 && typeof prestigeAdd === "function") {
         prestigeAdd(ST.player, -T.PARAMS.SETTLE_PRESTIGE * disadvantage * 0.1,
           def.zh + "：劣势停火");
       }
-      groundWarSettle(id, def, y, m, silent, "settlement");
+      groundWarSettle(id, def, y, m, silent, settleSide === playerSide ? "settlement" : "enemy-settlement");
       continue;
     }
     if (Math.abs(control) >= def.decisive && Math.abs(w.dev) >= T.PARAMS.DECISIVE_DEV) {
@@ -412,7 +478,9 @@ function groundWarSnapshot() {
     out.wars[id] = {
       zh: def.zh, control: +groundWarControl(id, now).toFixed(1),
       active: groundWarActive(id, now),
-      dev: +w.dev.toFixed(2), op: w.op, outcome: w.outcome,
+      dev: +w.dev.toFixed(2), op: w.op,
+      aiOpA: w.aiOpA || null, aiOpB: w.aiOpB || null,   // D2：对手的方针也可见
+      outcome: w.outcome,
       attrA: +w.attrA.toFixed(1), attrB: +w.attrB.toFixed(1),
       attrDevA: +w.attrDevA.toFixed(2), attrDevB: +w.attrDevB.toFixed(2),
       wearA: +w.wearA.toFixed(1), wearB: +w.wearB.toFixed(1),
@@ -468,6 +536,13 @@ function groundWarPanelHtml(selKey) {
       if (band > 0) {
         h += '<div class="gw-note">读数为情报估计（±' + band.toFixed(0) +
           '）：按过于乐观的估计发动攻势会撞进有备之敌。</div>';
+      }
+      // D2：对手的方针必须可观察 —— 博弈的前提是看得见对方在下哪步棋
+      const enemySide = mine === "A" ? "B" : "A";
+      const enemyOpId = enemySide === "A" ? w.aiOpA : w.aiOpB;
+      const enemyOp = enemyOpId ? T.OPS[enemyOpId] : null;
+      if (enemyOp) {
+        h += '<div class="gw-note">敌方方针：' + enemyOp.icon + ' ' + enemyOp.zh + '</div>';
       }
       if (ST.player === actual) {
         h += '<div class="gw-ops">';

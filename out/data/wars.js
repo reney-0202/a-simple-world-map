@@ -108,5 +108,25 @@
     LOG_MAX: 24
   };
 
-  global.W1980_WARS = { WARS: WARS, OPS: OPS, PARAMS: PARAMS };
+  // D2：AI 交战方的作战决策规则（确定性，零 RNG）。
+  // 三场局部战争此前只有玩家能选方针，AI 交战方永远按史实基线挨打 ——
+  // 战争不是博弈，是玩家的靶场。本表让对手也做决策：
+  //
+  //   1. 止损优先：劣势 + （厌战高 或 经济吃紧）→ seek_settlement
+  //   2. 优势推进：edge ≥ ADVANTAGE 且还有余力 → ground_offensive
+  //   3. 劣势稳住：edge ≤ −ADVANTAGE → 厌战高 hold_line、否则 attrition_siege
+  //   4. 僵持施压：经济吃紧选便宜的 air_campaign
+  //   5. 粘性：灰区维持现状（否则方针逐月翻烧饼）
+  //
+  // AI 不花政治资本（那是玩家的节流阀），但照常累积厌战与消耗 ——
+  // 「耗得起吗」对两边都成立。
+  const AI_POLICY = {
+    ADVANTAGE: 25,          // |edge| 超过此值才有明确的攻/守倾向
+    WEAR_SETTLE: 70,        // 厌战超过此值 → 认真考虑止损
+    WEAR_HALF: 45,          // 厌战超过此值 → 劣势时选守不选磨
+    STRAIN_SETTLE: 0.6,     // 经济压力（polEconStrainOf）超过此值 → 同上
+    STRAIN_PRESS: 0.6       // 僵持且经济吃紧 → 选便宜的空中施压
+  };
+
+  global.W1980_WARS = { WARS: WARS, OPS: OPS, PARAMS: PARAMS, AI_POLICY: AI_POLICY };
 })(typeof window !== "undefined" ? window : globalThis);

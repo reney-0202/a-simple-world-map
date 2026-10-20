@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 62,
-    "pop": 55,
-    "ind": 68,
-    "province": 52,
-    "delta": 57,
-    "resource": 55
+    "bloc": 46,
+    "pop": 44,
+    "ind": 42,
+    "province": 45,
+    "delta": 44,
+    "resource": 48
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1828
+   "totalMs": 1209
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143637,
+   "saveBytes": 143715,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -1563,6 +1563,55 @@
     "endToEndEstimateAlive": "PASS",
     "endToEndBandCoversTruth": "PASS",
     "endToEndPanelEstimates": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "warai": {
+  "marker": "WARAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyThresholdsSane": "PASS",
+    "aiCostsNoCapital": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInWaraiProbe": "PASS",
+    "ruleAdvantagePushes": "PASS",
+    "ruleLosingLowWearSieges": "PASS",
+    "ruleLosingHighWearHolds": "PASS",
+    "ruleLosingExhaustedSettles": "PASS",
+    "ruleStrainedSettles": "PASS",
+    "ruleStalemateStrainedAir": "PASS",
+    "ruleGreyZoneSticky": "PASS",
+    "ruleGreyZoneDefaultHold": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleAdvantageNeverSettles": "PASS",
+    "aiPushesWhenPlayerIdle": "PASS",
+    "bothSidesCancel": "PASS",
+    "playerPushBeatsIdle": "PASS",
+    "aiAttritionFromBoth": "PASS",
+    "enemySettlementEndsWar": "PASS",
+    "enemySettlementLabelled": "PASS",
+    "settlementCostsNoPlayerPrestige": "PASS",
+    "settlementCostsNoRivalPrestige": "PASS",
+    "aiAttritionAccumulates": "PASS",
+    "aiAttritionHurtsOpponent": "PASS",
+    "aiWearAccumulates": "PASS",
+    "aiOpRecorded": "PASS",
+    "panelShowsEnemyOp": "PASS",
+    "snapshotExposesAiOps": "PASS",
+    "roundTripKeepsAiOps": "PASS",
+    "sanitizeRejectsJunkAiOps": "PASS",
+    "spectatorZeroDeviation": "PASS",
+    "spectatorNoAiOps": "PASS",
+    "spectatorConsumesNoRng": "PASS",
+    "endToEndAiMoves": "PASS",
+    "endToEndBounded": "PASS"
    }
   },
   "failed": false
