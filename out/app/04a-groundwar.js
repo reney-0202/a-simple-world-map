@@ -103,7 +103,11 @@ function aiPickWarOp(id, side, now) {
   const def = T.WARS[id];
   if (!def) return null;
   const w = warStateOf(id);
-  const control = groundWarControl(id, now);
+  // C2（情报误报）：AI 读的是**自己的感知** —— 我方的假战报会让对手误判攻防
+  // （诱其冒进或迫其不战自退）。撒谎者自己读到 0 偏差。
+  const bias = (typeof deceptionBiasRaw === "function")
+    ? deceptionBiasRaw(id, "control", side) : 0;
+  const control = groundWarControl(id, now) + bias;
   const myEdge = side === "A" ? control : -control;
   const wear = side === "A" ? w.wearA : w.wearB;
   const key = side === "A" ? def.sideA : def.sideB;

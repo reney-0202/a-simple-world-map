@@ -91,6 +91,22 @@ function cleanData() {
         ? Object.keys(eff).filter((k) => !(k in cleanData().W1980_EFFECTS.EFFECTS)) : [],
     },
     W1980_ASSETS: { LEADERS: { AAA: [{ name: 'a' }] } },
+    W1980_DECEPTION: {
+      DECEPTIONS: {
+        plant_strength: { zh: '示强', icon: 'x', cost: 12, months: 18, field: 'mil', bias: 1.2,
+          side: 'self', risk: 0.08, failLossPrestige: 3, failLossAppeal: 2, note: 'a' },
+        plant_weakness: { zh: '示弱', icon: 'y', cost: 12, months: 18, field: 'mil', bias: -1.2,
+          side: 'self', risk: 0.08, failLossPrestige: 3, failLossAppeal: 2, note: 'b' },
+        false_front: { zh: '假战报', icon: 'z', cost: 14, months: 12, field: 'control', bias: 20,
+          side: 'war', risk: 0.10, failLossPrestige: 4, failLossAppeal: 3, note: 'c' },
+        counter_intel: { zh: '甄别', icon: 'q', cost: 10, months: 12, field: 'shield', bias: 0,
+          side: 'shield', risk: 0, note: 'd' },
+      },
+      PARAMS: {
+        MAX_ACTIVE: 3, SHIELD_MAX: 1, AUTO_MONTHS: 18,
+        AUTO_FALSE_FRONT: 0.06, AUTO_WEAKNESS: 0.03, DETECT_GUARANTEED: true, LOG_MAX: 24,
+      },
+    },
     W1980_FUSES: {
       FUSES: {
         f1: { zh: '武器现代化', icon: 'x', months: 48, cost: 20, drag: 0.35,
@@ -1107,6 +1123,60 @@ test('MAX_ACTIVE covering every fuse is caught', () => {
 test('a partial scale outside (0,1) is caught', () => {
   const d = cleanData(); d.W1980_FUSES.PARAMS.PARTIAL_SCALE = 1;
   assert.match(checks.checkFuses(makeCtx(d)).problems[0], /PARTIAL_SCALE 必须落在 \(0,1\)/);
+});
+
+// ---- 8m. deception table (C2) -----------------------------------------------
+// Disinformation is the last face of the fog. The silent failures: free lies
+// (no cost), lies that never backfire (risk 0), no way back to the truth
+// (no shield), and a bias field no engine reads.
+section('checkDeception');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkDeception(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_DECEPTION;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /未定义 W1980_DECEPTION/);
+});
+test('a free deception is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.plant_strength.cost = 0;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /免费撒谎 = 白送/);
+});
+test('a deception that can never backfire is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.false_front.risk = 0;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /0 = 撒谎永远不会输/);
+});
+test('a painless exposure is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.plant_weakness.failLossPrestige = 0;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /failLossPrestige 必须是正数（曝光要痛）/);
+});
+test('a zero bias is caught', () => {
+  // Directionless bias is just noise -- C already models that.
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.plant_strength.bias = 0;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /bias 必须非零（没有方向的偏差只是噪声）/);
+});
+test('a field with no consumer is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.false_front.field = 'mood';
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /field "mood" 没有引擎消费者/);
+});
+test('a table with no shield is caught', () => {
+  // Without counter-intel the player can never get back to the truth.
+  const d = cleanData(); delete d.W1980_DECEPTION.DECEPTIONS.counter_intel;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /缺反情报护盾/);
+});
+test('a table with no deception is caught', () => {
+  const d = cleanData();
+  delete d.W1980_DECEPTION.DECEPTIONS.plant_strength;
+  delete d.W1980_DECEPTION.DECEPTIONS.plant_weakness;
+  delete d.W1980_DECEPTION.DECEPTIONS.false_front;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /缺欺敌行动/);
+});
+test('a shield with exposure risk is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.DECEPTIONS.counter_intel.risk = 0.1;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /是护盾，不应有曝光风险/);
+});
+test('an auto-plant rate outside (0,1] is caught', () => {
+  const d = cleanData(); d.W1980_DECEPTION.PARAMS.AUTO_FALSE_FRONT = 0;
+  assert.match(checks.checkDeception(makeCtx(d)).problems[0], /AUTO_FALSE_FRONT 必须落在 \(0,1\]/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

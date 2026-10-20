@@ -106,6 +106,9 @@ function evRun(y, m, silent) {
   // E（长引信）：战略工程燃烧 → 到期引爆。引爆判定读**当月国势**（P1 落差 +
   // 动荡），落点跨 F/S-17/N1/P 四条轴。无执政者时无引信无引爆，零回写。
   updateMonthlyFuse(y, m, silent);
+  // C2（情报误报）：欺敌偏差过期 + 反情报护盾识破 + 敌方自动欺敌。
+  // 敌方只在真实游戏动手（探针白名单）—— 既有探针的「诚实雾」断言不受影响。
+  updateMonthlyDeception(y, m, silent);
   // R10B：历史首脑峰会事件窗口照会通知
   if (isAIActive() && window.W1980_AI && Array.isArray(window.W1980_AI.SUMMIT_PRESETS)) {
     const p = window.W1980_AI.SUMMIT_PRESETS.find((sp) => sp.year === y && sp.month === m);
@@ -331,6 +334,7 @@ function simSave(slot) {
     estimates: ST.estimates ? JSON.parse(JSON.stringify(ST.estimates)) : null, // C：情报估算（专项评估/审计）
     ideology: ST.ideology ? JSON.parse(JSON.stringify(ST.ideology)) : null, // S-17：意识形态（感召力/输出工程/漂移）
     fuses: ST.fuses ? JSON.parse(JSON.stringify(ST.fuses)) : null, // E：长引信（燃烧中/增长红利/引爆史）
+    deception: ST.deception ? JSON.parse(JSON.stringify(ST.deception)) : null, // C2：情报误报（欺敌/护盾/审计）
     politicalCapital: ST.politicalCapital,            // L：玩家施政预算（政治资本）
     posture: ST.posture,                              // L：施政方针（均衡/强硬/改革）
     directives: ST.directives,                        // L：国家战略指令（长周期目标）
@@ -508,6 +512,8 @@ function loadSocietyStates(d) {
   ST.ideology = sanitizeIdeologyState(d.ideology);
   // E：还原长引信（燃烧中/增长红利/引爆史）。旧档缺该项 → 空状态。
   ST.fuses = sanitizeFuseState(d.fuses);
+  // C2：还原情报误报（欺敌/护盾/审计）。旧档缺该项 → 空状态。
+  ST.deception = sanitizeDeceptionState(d.deception);
   // L：还原施政方针（旧档缺该项 → 均衡施政，即完全中性）
   ST.posture = sanitizePosture(d.posture);
   // L：还原国家战略指令（旧档缺该项 → 空指令板）

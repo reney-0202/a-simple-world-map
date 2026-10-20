@@ -226,6 +226,18 @@ button,input{font:inherit;color:inherit}
 #panel .covertbox .est-note{margin-top:3px;font-size:8.5px;line-height:1.45;color:#8b949e}
 #panel .covertbox .est-focus-btn{padding:2px 5px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;transition:all .12s}
 #panel .covertbox .est-focus-btn:hover{border-color:var(--gold);color:var(--gold2)}
+/* C2：情报误报 —— 欺敌行动与反情报护盾 */
+#panel .covertbox .dc-block{margin-top:8px;padding:5px 6px;background:#16141f;border:1px solid #2c2637;border-radius:2px}
+#panel .covertbox .dc-hd{font-size:10px;font-weight:700;color:#c9c2d4;margin-bottom:3px}
+#panel .covertbox .dc-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;padding:1px 0;color:#8b949e}
+#panel .covertbox .dc-row b{font-variant-numeric:tabular-nums;color:#c9c2d4}
+#panel .covertbox .dc-note{margin-top:2px;font-size:8.5px;line-height:1.45;color:#8b949e}
+#panel .covertbox .dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px}
+#panel .covertbox .dc-btn{padding:2px 4px;background:#1b2026;border:1px solid #2d353f;border-radius:2px;color:#9aa6b2;font-size:8.5px;cursor:pointer;text-align:left;transition:all .12s}
+#panel .covertbox .dc-btn i{font-style:normal;color:#f0b429;font-variant-numeric:tabular-nums;opacity:.85}
+#panel .covertbox .dc-btn:hover:not(.disabled){border-color:#a78bfa;color:#c4b5fd}
+#panel .covertbox .dc-btn.active{border-color:#a78bfa;color:#c4b5fd;background:#241f33}
+#panel .covertbox .dc-btn.disabled{opacity:.42;cursor:not-allowed}
 /* S-17：意识形态资源化 —— 感召力条 + 主张输出工程按钮 */
 #panel .p-domestic-box .id-block{margin:0 0 6px;padding:4px 5px;background:#141a20;border:1px solid #262c33;border-radius:2px}
 #panel .p-domestic-box .id-row{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#c9d4df}

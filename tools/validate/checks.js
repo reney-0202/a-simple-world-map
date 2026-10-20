@@ -578,8 +578,10 @@ function checkPolEcon(ctx) {
 // bloat (an unoptimised image, a duplicated data file), not to ration features:
 // a gate that trips on every deliberate addition is a gate people learn to skip.
 // Phase F (prestige race) grew the tree by ~30 kB, a whole subsystem, so the
-// budget moved 3.2 -> 3.5 MiB in the same commit that added it.
-const BUNDLE_BUDGET_MIB = 3.5;
+// budget moved 3.2 -> 3.5 MiB in the same commit that added it (F), and
+// 3.5 -> 3.55 MiB with C2 (disinformation: data table + engine + probe ~= 36 KB,
+// same shape as the E-phase fuse files it mirrors).
+const BUNDLE_BUDGET_MIB = 3.55;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
@@ -1158,6 +1160,70 @@ function checkFuses(ctx) {
   return { problems, notes, stats: { fuses: Object.keys(F).length, minMonths } };
 }
 
+// ---- 2s. deception table (C2) ----------------------------------------------
+// Disinformation is the last face of the fog: bias, not noise. Silent failures:
+// a deception with no cost (free lies), a risk of 0 (lying never costs
+// anything), a shield that cannot be bought (no way back to the truth), and a
+// bias field no engine reads (display-only again).
+function checkDeception(ctx) {
+  const notes = [];
+  const problems = [];
+  const DE = ctx.data.W1980_DECEPTION;
+  if (!DE) return { problems: ['deception.js: 未定义 W1980_DECEPTION'], notes };
+  const A = DE.DECEPTIONS, P = DE.PARAMS;
+  if (!A || typeof A !== 'object' || !Object.keys(A).length) {
+    return { problems: ['deception.js: DECEPTIONS 必须是非空对象'], notes };
+  }
+  if (!P || typeof P !== 'object') return { problems: ['deception.js: PARAMS 缺失'], notes };
+
+  // 每个效果字段必须是引擎真实消费者（S-16 的教训）
+  const CONSUMED = ['mil', 'prestige', 'control', 'shield'];
+  let shields = 0, plants = 0;
+  for (const id of Object.keys(A)) {
+    const d = A[id] || {};
+    const tag = `deception.js: 行动 ${id}`;
+    if (!d.zh) problems.push(`${tag} 缺 zh`);
+    if (!d.note) problems.push(`${tag} 缺 note（欺骗的取舍必须能被讲出来）`);
+    if (!(typeof d.cost === 'number' && d.cost > 0)) {
+      problems.push(`${tag} 的 cost 必须是正数（免费撒谎 = 白送）`);
+    }
+    if (!(typeof d.months === 'number' && d.months >= 1)) problems.push(`${tag} 的 months 必须 >= 1`);
+    if (!CONSUMED.includes(d.field)) {
+      problems.push(`${tag} 的 field "${d.field}" 没有引擎消费者`);
+    }
+    if (d.side === 'shield') {
+      shields++;
+      if (d.risk) problems.push(`${tag} 是护盾，不应有曝光风险`);
+    } else {
+      plants++;
+      // 撒谎必须有曝光代价：风险为 0 意味着撒谎永远不会输
+      if (!(typeof d.risk === 'number' && d.risk > 0 && d.risk <= 1)) {
+        problems.push(`${tag} 的 risk 必须落在 (0,1]（0 = 撒谎永远不会输）`);
+      }
+      if (!(typeof d.failLossPrestige === 'number' && d.failLossPrestige > 0)) {
+        problems.push(`${tag} 的 failLossPrestige 必须是正数（曝光要痛）`);
+      }
+      if (!(typeof d.bias === 'number' && d.bias !== 0)) {
+        problems.push(`${tag} 的 bias 必须非零（没有方向的偏差只是噪声）`);
+      }
+    }
+  }
+  if (!shields) problems.push('deception.js: 缺反情报护盾 —— 玩家永远回不到真相');
+  if (!plants) problems.push('deception.js: 缺欺敌行动 —— 误报无从产生');
+
+  // 参数自洽
+  if (!(typeof P.MAX_ACTIVE === 'number' && P.MAX_ACTIVE >= 1)) problems.push('deception.js: MAX_ACTIVE 必须 >= 1');
+  if (!(typeof P.AUTO_MONTHS === 'number' && P.AUTO_MONTHS >= 1)) problems.push('deception.js: AUTO_MONTHS 必须 >= 1');
+  for (const k of ['AUTO_FALSE_FRONT', 'AUTO_WEAKNESS']) {
+    if (!(typeof P[k] === 'number' && P[k] > 0 && P[k] <= 1)) {
+      problems.push(`deception.js: ${k} 必须落在 (0,1]`);
+    }
+  }
+
+  notes.push(`deception: ${plants} deceptions + ${shields} shield(s), ${problems.length} problem(s)`);
+  return { problems, notes, stats: { plants, shields } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1252,6 +1318,7 @@ const CHECKS = [
   { id: 'estimates', label: '情报估算表（雾与误差）', run: checkEstimates },
   { id: 'ideology', label: '意识形态资源表（感召力）', run: checkIdeology },
   { id: 'fuses', label: '长引信表（战略工程）', run: checkFuses },
+  { id: 'deception', label: '情报误报表（欺敌/反情报）', run: checkDeception },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1279,6 +1346,7 @@ module.exports = {
   checkEstimates,
   checkIdeology,
   checkFuses,
+  checkDeception,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

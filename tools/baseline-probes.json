@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 51,
-    "pop": 48,
-    "ind": 45,
-    "province": 49,
-    "delta": 49,
-    "resource": 49
+    "bloc": 48,
+    "pop": 45,
+    "ind": 43,
+    "province": 46,
+    "delta": 44,
+    "resource": 50
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=376818",
    "checksumOk": true,
-   "totalMs": 1299
+   "totalMs": 1260
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143876,
+   "saveBytes": 143938,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -1823,6 +1823,61 @@
     "observerZeroPmods": "PASS",
     "simSaveSucceeds": "PASS",
     "simLoadSucceeds": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "c2": {
+  "marker": "DISINFOPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "liesCostSomething": "PASS",
+    "liesCanBackfire": "PASS",
+    "biasIsDirectional": "PASS",
+    "shieldExists": "PASS",
+    "deceptionStarts": "PASS",
+    "deceptionCostsCapital": "PASS",
+    "biasInstalled": "PASS",
+    "liarNotFooled": "PASS",
+    "deceptionRejectsUnknown": "PASS",
+    "exposureDetected": "PASS",
+    "exposureCostsPrestige": "PASS",
+    "exposureCostsAppeal": "PASS",
+    "exposureInstallsNothing": "PASS",
+    "honestFogCoversTruth": "PASS",
+    "disinfoBreaksTheBand": "PASS",
+    "disinfoShiftsBandOffTruth": "PASS",
+    "estReaderNotTheLiar": "PASS",
+    "falseFrontMovesAi": "PASS",
+    "liarSideNotFooled": "PASS",
+    "warBiasOrientedForVictim": "PASS",
+    "selfBoastRaisesCredibility": "PASS",
+    "enemyWeaknessRaisesMyCred": "PASS",
+    "credStillBounded": "PASS",
+    "shieldStarts": "PASS",
+    "shieldClearsEnemyPlants": "PASS",
+    "shieldKeepsOwnPlants": "PASS",
+    "shieldLogsDetection": "PASS",
+    "shieldBlocksNewPlants": "PASS",
+    "shieldExpires": "PASS",
+    "autoPlantsEventuallyHit": "PASS",
+    "autoPlantConsumesNoRng": "PASS",
+    "autoPlantsNotLeaked": "PASS",
+    "panelRenders": "PASS",
+    "panelShowsOwn": "PASS",
+    "panelHidesEnemy": "PASS",
+    "roundTripKeepsState": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoPlants": "PASS",
+    "spectatorNoDomesticWrites": "PASS",
+    "endToEndStateSane": "PASS",
+    "endToEndPanelEstimates": "PASS"
    }
   },
   "failed": false

@@ -45,7 +45,8 @@ window.W1980_PROBES={
   "fuseprobe",
   "poleconprobe",
   "soundprobe",
-  "assetsprobe"
+  "assetsprobe",
+  "c2probe"
  ],
  "entries": {
   "selftest": {
@@ -250,6 +251,12 @@ window.W1980_PROBES={
    "qs": "assetsprobe=1",
    "marker": "ASSETSPROBE",
    "budget": 30000,
+   "class": "mechanics"
+  },
+  "c2": {
+   "qs": "c2probe=1",
+   "marker": "DISINFOPROBE",
+   "budget": 60000,
    "class": "mechanics"
   }
  }

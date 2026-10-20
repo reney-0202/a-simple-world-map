@@ -109,8 +109,11 @@ function nukeRoll(y, m, salt) {
 
 // 威慑可信度：军费落差 + 威望落差 + 同盟凝聚。
 // 这一层让「裁军」第一次有战略风险：pmods 里省钱，但可信度下降会把误判概率抬高。
-// C（情报估算）：对手的军费读**估计值**而不是真值 —— 威慑是双方的**认知**，
-// 不是上帝视角的算术。情报质量差 → 你对军备差距的判断有偏 → 可信度算错。
+// C（情报估算）：对手的军费/威望读**估计值**而不是真值 —— 威慑是双方的**认知**。
+// C2（情报误报）：两个项都是**感知**，所以反向也算：
+//   差距 = （对方眼里的我方军力）−（我方眼里的对方军力）
+// 我方撒谎示强 → 对方以为我更强 → 威慑更可信；对方示弱 → 我方以为差距更大。
+// 认知战第一次能双向打。
 function nukeCredibilityNow() {
   const T = nukeTable();
   if (!T) return 50;
@@ -118,8 +121,6 @@ function nukeCredibilityNow() {
   const s = initNukeState();
   let cred = P.CRED_START;
 
-  // 军费落差：优先读 AI 决策层（与 07-domestic.js 的既有口径一致），
-  // 对手一侧改用估算（08a-estimates.js 的 estimateOf(..., "mil")）。
   const me = ST.player;
   const rival = (typeof prestigeRivalOf === "function" && me) ? prestigeRivalOf(me) : null;
   const milOf = (k) => {
@@ -134,12 +135,26 @@ function nukeCredibilityNow() {
     }
     return 4.0;
   };
+  // 「对方眼里的我方军力」：真值 + 针对对方的欺敌偏差（撒谎者不算自己的谣）
+  const myMilAsSeen = () => {
+    const bias = (typeof deceptionBiasRaw === "function")
+      ? deceptionBiasRaw(me, "mil", rival) : 0;
+    return ST.mil + bias;
+  };
+  const myPresAsSeen = () => {
+    const bias = (typeof deceptionBiasRaw === "function")
+      ? deceptionBiasRaw(me, "prestige", rival) : 0;
+    return (typeof prestigeOf === "function" ? prestigeOf(me) : 50) + bias;
+  };
   if (me) {
-    const gap = milOf(me) - milOf(rival);
+    const gap = myMilAsSeen() - milOf(rival);
     cred += gap * P.CRED_MIL;
-    // 威望落差（Phase F）：位置性的「谁代表未来」也买得到威慑力
+    // 威望落差（Phase F + C2 的双向感知）：位置性的「谁代表未来」也买得到威慑力
     if (rival && typeof prestigeOf === "function") {
-      cred += (prestigeOf(me) - prestigeOf(rival)) * P.CRED_PRESTIGE;
+      const rivalPres = (typeof estimateOf === "function")
+        ? (() => { const e = estimateOf(rival, "prestige"); return e && typeof e.est === "number" ? e.est : prestigeOf(rival); })()
+        : prestigeOf(rival);
+      cred += (myPresAsSeen() - rivalPres) * P.CRED_PRESTIGE;
     }
   }
   cred += s.credBonus * P.CRED_COHESION;

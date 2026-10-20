@@ -274,6 +274,10 @@ function refreshCovertBox(selKey) {
   // 信息有质量这件事，理应出现在管情报的那块面板上。
   if (typeof estimatesPanelHtml === "function") h += estimatesPanelHtml();
 
+  // C2（情报误报）：欺骗行动与反情报护盾 —— 信息也会**说谎**这件事
+  // 同样属于管情报的面板。只显示自己的欺敌（敌方的伪造不可见）。
+  if (typeof deceptionPanelHtml === "function") h += deceptionPanelHtml();
+
   // 历史战报
   if (intel.history && intel.history.length) {
     h += '<div class="covert-history-hd">📜 近期隐蔽行动档案</div>';
@@ -300,6 +304,16 @@ function refreshCovertBox(selKey) {
   box.querySelectorAll(".est-focus-btn").forEach((btn) => {
     btn.onclick = () => {
       focusIntelligence(btn.dataset.est);
+      refreshCovertBox(selKey);
+      if (ST.sel) refreshDomesticBox(ST.sel);
+    };
+  });
+
+  // C2（情报误报）：欺敌 / 反情报按钮
+  box.querySelectorAll(".dc-btn").forEach((btn) => {
+    if (btn.disabled) return;
+    btn.onclick = () => {
+      startDeception(btn.dataset.dec);
       refreshCovertBox(selKey);
       if (ST.sel) refreshDomesticBox(ST.sel);
     };

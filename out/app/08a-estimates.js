@@ -117,6 +117,8 @@ function estimateQualityOf(subject, warId) {
 }
 
 // 核心：对 (subject, field) 给出估计。truth 永远不外泄到显示层。
+// C2：读数叠加**欺敌偏差** —— 诚实的雾只在没人撒谎时成立。
+// 撒谎者（planter === reader）读到 0：自己造的谣自己不会信。
 function estimateOf(subject, field) {
   const T = estimateTable();
   if (!T) return null;
@@ -124,46 +126,55 @@ function estimateOf(subject, field) {
   if (!F) return null;
   const quality = estimateQualityOf(subject);
   const err = F.base * (1 - quality);
+  const bias = (typeof deceptionBiasRaw === "function")
+    ? deceptionBiasRaw(subject, field, ST.player) : 0;
   let truth;
   if (field === "prestige") truth = (typeof prestigeOf === "function") ? prestigeOf(subject) : 50;
   else if (field === "mil") truth = trueMilOf(subject);
   else return null;
 
+  const shifted = truth + bias;
   if (!(err > 0)) {
-    return { est: truth, err: 0, lo: truth, hi: truth, quality: quality, exact: true };
+    return { est: shifted, err: 0, lo: shifted, hi: shifted, quality: quality, exact: bias === 0, biased: bias !== 0 };
   }
   const q = curEstimateQuarter();
   const off = (estHash01(subject, field, q) - 0.5) * 2 * err;
-  const est = clamp(truth + off, F.lo, F.hi);
+  const est = clamp(shifted + off, F.lo, F.hi);
   return {
     est: +est.toFixed(3),
     err: +err.toFixed(3),
     lo: +clamp(est - err, F.lo, F.hi).toFixed(3),
     hi: +clamp(est + err, F.lo, F.hi).toFixed(3),
     quality: +quality.toFixed(3),
-    exact: false
+    exact: false,
+    biased: bias !== 0
   };
 }
 
 // 战线优势估计（雾最重的量）。playerSide 用于换算「对我方的读数」。
+// C2：假战报把整个区间推离真值 —— 「区间永远罩住真值」只在没人撒谎时成立。
 function estimateControlOf(warId, playerSide) {
   const T = estimateTable();
   if (!T || typeof groundWarControl !== "function") return null;
   const F = T.FIELDS.control;
   const quality = estimateQualityOf(null, warId);
   const err = F.base * (1 - quality);
+  const bias = (typeof deceptionBiasRaw === "function")
+    ? deceptionBiasRaw(warId, "control", ST.player) : 0;
   const truth = groundWarControl(warId);
+  const shifted = truth + bias;
   if (!(err > 0)) {
-    return { est: truth, err: 0, quality: quality, exact: true };
+    return { est: shifted, err: 0, quality: quality, exact: bias === 0, biased: bias !== 0 };
   }
   const q = curEstimateQuarter();
   const off = (estHash01(warId, "control", q) - 0.5) * 2 * err;
-  const est = clamp(truth + off, F.lo, F.hi);
+  const est = clamp(shifted + off, F.lo, F.hi);
   return {
     est: +est.toFixed(2),
     err: +err.toFixed(2),
     quality: +quality.toFixed(3),
-    exact: false
+    exact: false,
+    biased: bias !== 0
   };
 }
 
