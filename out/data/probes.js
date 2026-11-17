@@ -48,7 +48,8 @@ window.W1980_PROBES={
   "assetsprobe",
   "c2probe",
   "f2probe",
-  "endstoryprobe"
+  "endstoryprobe",
+  "e2probe"
  ],
  "entries": {
   "selftest": {
@@ -270,6 +271,12 @@ window.W1980_PROBES={
   "endstory": {
    "qs": "endstoryprobe=1",
    "marker": "ENDSTORYPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "e2": {
+   "qs": "e2probe=1",
+   "marker": "FUSEAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

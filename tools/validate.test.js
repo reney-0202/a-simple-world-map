@@ -123,6 +123,11 @@ function cleanData() {
         GOOD_SURPRISE: 1.0, GOOD_UNREST: 40, BAD_SURPRISE: -1.5, BAD_UNREST: 70,
         PARTIAL_SCALE: 0.5, LOG_MAX: 24,
       },
+      AI_POLICY: {
+        WANT_ACTIVE: 1, STRAIN_MAX: 0.7, MIN_MONTHS: 12,
+        PICK_HI_STRAIN: 0.3, PICK_MID_STRAIN: 0.55,
+        PICK: { hi: ['f1'], mid: ['f2'], lo: ['f3'] },
+      },
     },
     W1980_IDEOLOGY: {
       SYSTEMS: {
@@ -1174,6 +1179,40 @@ test('MAX_ACTIVE covering every fuse is caught', () => {
 test('a partial scale outside (0,1) is caught', () => {
   const d = cleanData(); d.W1980_FUSES.PARAMS.PARTIAL_SCALE = 1;
   assert.match(checks.checkFuses(makeCtx(d)).problems[0], /PARTIAL_SCALE 必须落在 \(0,1\)/);
+});
+test('a missing AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_FUSES.AI_POLICY;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('a zero STRAIN_MAX is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.AI_POLICY.STRAIN_MAX = 0;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /STRAIN_MAX 必须落在 \(0,1\]/);
+});
+test('a zero MIN_MONTHS is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('inverted strain tiers are caught', () => {
+  const d = cleanData();
+  d.W1980_FUSES.AI_POLICY.PICK_HI_STRAIN = 0.6;
+  d.W1980_FUSES.AI_POLICY.PICK_MID_STRAIN = 0.4;
+  const p = checks.checkFuses(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /压力分档/.test(x)));
+});
+test('a ghost pick id is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.AI_POLICY.PICK.hi = ['nope'];
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /"nope" 不是真实引信（幽灵棋）/);
+});
+test('an empty pick tier is caught', () => {
+  const d = cleanData(); d.W1980_FUSES.AI_POLICY.PICK.lo = [];
+  assert.match(checks.checkFuses(makeCtx(d)).problems[0], /PICK\.lo 必须是非空数组/);
+});
+test('pick tiers not ordered by drag are caught', () => {
+  const d = cleanData();
+  d.W1980_FUSES.AI_POLICY.PICK.hi = ['f3'];
+  d.W1980_FUSES.AI_POLICY.PICK.lo = ['f1'];
+  const p = checks.checkFuses(makeCtx(d)).problems;
+  assert.ok(p.some((x) => /按 drag 严格递减/.test(x)));
 });
 
 // ---- 8m. deception table (C2) -----------------------------------------------

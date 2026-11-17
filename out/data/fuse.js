@@ -80,5 +80,31 @@
     LOG_MAX: 24
   };
 
-  global.W1980_FUSES = { FUSES: FUSES, PARAMS: PARAMS };
+  // E2：长引信的 AI 侧（确定性规则，零 RNG，与 F2 的 AI_POLICY 同一模式）。
+  // 玩家能点火埋下 36–72 月的战略工程，对手此前只会旁观 —— 时间尺度的赌注是单方面的。
+  // 本表让对手也埋引信：养得起就点火、养不起砍最贵的、粘性防翻烧饼。
+  // 没有「分数竞赛」也没有反向漂移 —— 引信是赌国运，不是位置性计分；
+  // 真实代价仍是 GDP 拖累进 pmods（P2/D2 读得到）。
+  //
+  //   WANT_ACTIVE   养得起时希望维持几条燃烧中的引信（通常 1，逼出取舍）
+  //   STRAIN_MAX    经济压力到此 → 砍掉拖累最大的一条
+  //   MIN_MONTHS    新引信粘性窗口：最近一项不满此月数 → 不再加新的
+  //   PICK_*_STRAIN 压力分档：压力越低越敢上大工程
+  //   PICK          三档候选（档内按 drag 降序意图，取第一个未在烧的）
+  //
+  // AI 不花政治资本（那是玩家的节流阀），但照常付 GDP 拖累、照常按国势引爆。
+  const AI_POLICY = {
+    WANT_ACTIVE: 1,
+    STRAIN_MAX: 0.7,
+    MIN_MONTHS: 12,
+    PICK_HI_STRAIN: 0.3,
+    PICK_MID_STRAIN: 0.55,
+    PICK: {
+      hi: ["missile_modernization", "energy_independence"],
+      mid: ["naval_expansion", "tech_education"],
+      lo: ["alliance_deepening", "welfare_compact"]
+    }
+  };
+
+  global.W1980_FUSES = { FUSES: FUSES, PARAMS: PARAMS, AI_POLICY: AI_POLICY };
 })(typeof window !== "undefined" ? window : globalThis);
