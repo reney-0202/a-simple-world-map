@@ -311,6 +311,7 @@ load().then(() => {
     c2probe: runDeceptionProbe,
     f2probe: runPrestigeAiProbe,
     endstoryprobe: runEndStoryProbe,
+    e2probe: runFuseAiProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

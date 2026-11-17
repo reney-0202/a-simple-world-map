@@ -30,6 +30,8 @@ function applyPlayerDecisions() {
   // F2（威望的 AI 侧）：对手工程的 GDP 拖累 —— 与玩家工程同一口径。
   // 真实消费者：拖累 → polEconStrainOf 升 → P2 经济目标 / D2 战争 AI 读得到。
   if (typeof accPrestigeAiDrag === "function") accPrestigeAiDrag(acc);
+  // E2（长引信的 AI 侧）：对手燃烧期拖累 + 引爆红利 —— 同一条 pmods 链。
+  if (typeof accFuseAiDrag === "function") accFuseAiDrag(acc);
   for (const k in acc) {
     if (acc[k] !== 0) W1980_SIM.setPMod(SIM.S, k, acc[k]);
   }
@@ -43,6 +45,20 @@ function accPrestigeAiDrag(acc) {
   if (!p || !p.ai) return;
   for (const k in p.ai) {
     const drag = aiPrestigeDragFor(k);
+    if (!drag) continue;
+    const ek = entKeys(k);
+    for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + drag;
+  }
+}
+
+// E2：把各选手长引信的净 GDP 效应挂进 pmods（拖累 + 红利）
+function accFuseAiDrag(acc) {
+  if (typeof aiFuseDragFor !== "function" || typeof fuseAiActive !== "function") return;
+  if (!fuseAiActive()) return;
+  const s = ST.fuses;
+  if (!s || !s.ai) return;
+  for (const k in s.ai) {
+    const drag = aiFuseDragFor(k);
     if (!drag) continue;
     const ek = entKeys(k);
     for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + drag;

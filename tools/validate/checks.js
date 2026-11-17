@@ -1200,6 +1200,46 @@ function checkFuses(ctx) {
     problems.push('fuse.js: PARTIAL_SCALE 必须落在 (0,1)（不了了之要真的「不了了之」）');
   }
 
+  // E2：对手也埋引信 —— AI_POLICY 必须自洽，否则「养得起就点火」是空话
+  const AI = FU.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('fuse.js: 缺 AI_POLICY（E2：对手没有长引信决策规则）');
+  } else {
+    if (!(typeof AI.WANT_ACTIVE === 'number' && AI.WANT_ACTIVE >= 1 &&
+          AI.WANT_ACTIVE <= (typeof P.MAX_ACTIVE === 'number' ? P.MAX_ACTIVE : 2))) {
+      problems.push('fuse.js: AI_POLICY.WANT_ACTIVE 必须落在 [1, MAX_ACTIVE]');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('fuse.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('fuse.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.PICK_HI_STRAIN === 'number' && typeof AI.PICK_MID_STRAIN === 'number' &&
+          AI.PICK_HI_STRAIN > 0 && AI.PICK_HI_STRAIN < AI.PICK_MID_STRAIN &&
+          AI.PICK_MID_STRAIN < AI.STRAIN_MAX)) {
+      problems.push('fuse.js: AI_POLICY 压力分档必须满足 0 < PICK_HI_STRAIN < PICK_MID_STRAIN < STRAIN_MAX');
+    }
+    const pick = AI.PICK || {};
+    for (const t of ['hi', 'mid', 'lo']) {
+      if (!Array.isArray(pick[t]) || !pick[t].length) {
+        problems.push(`fuse.js: AI_POLICY.PICK.${t} 必须是非空数组（档位空 = 该压力档下 AI 无棋可下）`);
+      } else {
+        for (const id of pick[t]) {
+          if (!F[id]) problems.push(`fuse.js: AI_POLICY.PICK.${t} 的 "${id}" 不是真实引信（幽灵棋）`);
+        }
+      }
+    }
+    if (Array.isArray(pick.hi) && Array.isArray(pick.mid) && Array.isArray(pick.lo) &&
+        pick.hi.length && pick.mid.length && pick.lo.length &&
+        pick.hi.every((id) => F[id]) && pick.mid.every((id) => F[id]) && pick.lo.every((id) => F[id])) {
+      const dMax = (arr) => Math.max(...arr.map((id) => F[id].drag));
+      if (!(dMax(pick.hi) > dMax(pick.mid) && dMax(pick.mid) > dMax(pick.lo))) {
+        problems.push('fuse.js: AI_POLICY.PICK 三档必须按 drag 严格递减（hi > mid > lo）');
+      }
+    }
+  }
+
   notes.push(`fuses: ${Object.keys(F).length} fuses (min ${minMonths} months), `
     + `${problems.length} problem(s)`);
   return { problems, notes, stats: { fuses: Object.keys(F).length, minMonths } };
