@@ -80,5 +80,28 @@
     LOG_MAX: 24
   };
 
-  global.W1980_IDEOLOGY = { SYSTEMS: SYSTEMS, PROGRAMS: PROGRAMS, PARAMS: PARAMS };
+  // I2：感召力竞赛的 AI 侧（确定性规则，零 RNG，与 F2 的 AI_POLICY 同一模式）。
+  // 玩家能跑输出工程，对手此前只会被动吃衰减与经济兑现 —— 「谁代表未来」是单方面的。
+  // 本表让对手也输出主张：落后就追赶、领先就收手、经济吃紧就先停最贵的。
+  //
+  // AI 不花政治资本（那是玩家的节流阀），但照常付 GDP 拖累、照常当众翻车 ——
+  // 「耗得起吗」对两边都成立。拖累进 pmods → polEconStrainOf 升 → P2/D2 读得到。
+  const AI_POLICY = {
+    CATCHUP_GAP: 5,          // 感召力落后多少 → 启动追赶（比威望略低：主张对落差更敏感）
+    COAST_GAP: 9,            // 领先多少 → 全部收手
+    STRAIN_MAX: 0.7,
+    MIN_MONTHS: 6,
+    PICK_HI_STRAIN: 0.3,
+    PICK_MID_STRAIN: 0.55,
+    // 档内按 drag 降序取第一个未在跑的；三档 max(drag) 必须严格递减
+    PICK: {
+      hi: ["development_model", "broadcast_war"],
+      mid: ["cultural_export", "broadcast_war"],
+      lo: ["academic_exchange", "youth_festival"]
+    }
+  };
+
+  global.W1980_IDEOLOGY = {
+    SYSTEMS: SYSTEMS, PROGRAMS: PROGRAMS, PARAMS: PARAMS, AI_POLICY: AI_POLICY
+  };
 })(typeof window !== "undefined" ? window : globalThis);

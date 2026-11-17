@@ -313,6 +313,7 @@ load().then(() => {
     endstoryprobe: runEndStoryProbe,
     e2probe: runFuseAiProbe,
     touchprobe: runTouchProbe,
+    i2probe: runIdeologyAiProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };
