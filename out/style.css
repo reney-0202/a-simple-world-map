@@ -11,6 +11,8 @@ button,input{font:inherit;color:inherit}
 #stage{position:absolute;inset:0}
 #map,#overlay{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
 #overlay{pointer-events:none}
+/* Phase T：地图舞台禁止浏览器默认触控手势（滚动/双指缩放），交给 Pointer 手势 */
+#stage{touch-action:none;-ms-touch-action:none}
 
 /* ---------- top resource bar ---------- */
 #topbar{position:absolute;top:0;left:0;right:0;height:40px;z-index:20;display:flex;
@@ -95,7 +97,10 @@ button,input{font:inherit;color:inherit}
 #panel{position:absolute;top:236px;right:12px;width:262px;z-index:16;background:var(--panel);
   border:1px solid var(--line);border-radius:3px;box-shadow:0 6px 24px #000a;
   transform:translateX(290px);transition:transform .18s ease;pointer-events:auto;
-  max-height:calc(100vh - 248px);overflow-y:auto}
+  max-height:calc(100vh - 248px);overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+#panel .p-close{display:none}
+#panel .p-sheet-grip{display:none}
 #panel.open{transform:none}
 #panel .hd{display:flex;align-items:center;gap:9px;padding:9px 11px;
   background:linear-gradient(180deg,#2b3035,#22262a);border-bottom:1px solid var(--line)}
@@ -991,6 +996,111 @@ button,input{font:inherit;color:inherit}
 .unsc-stamp-img{position:absolute;right:12px;top:50%;transform:translateY(-50%) rotate(8deg);
   width:95px;pointer-events:none;opacity:0.9;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
 
+/* ==========================================================================
+ * Phase T — 触控与窄屏
+ *
+ * 布局类只认 html.narrow-ui（由 syncNarrowUiClass 写入）：
+ *   · 真机：matchMedia('(max-width: 820px)') 为真时挂上
+ *   · 探针：setForceNarrow(true) 强制挂上（无头窗口尺寸不稳，不能靠 resize）
+ * 桌面默认（无 narrow-ui）布局一字不变。
+ * ========================================================================== */
+html.narrow-ui #topbar{
+  height:auto;min-height:40px;flex-wrap:wrap;row-gap:2px;
+  padding:env(safe-area-inset-top,0) 0 2px 0;
+}
+html.narrow-ui #topbar .res{padding:0 8px;font-size:12px}
+html.narrow-ui #topbar .res:not(.date):not(.pl):not(.time){display:none}
+html.narrow-ui #topbar .axis{display:none}
+html.narrow-ui #topbar .tools{
+  flex:1 1 100%;order:9;overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;gap:4px;padding:4px 8px 6px;
+  border-top:1px solid #3a4046;scrollbar-width:none;
+}
+html.narrow-ui #topbar .tools::-webkit-scrollbar{display:none}
+html.narrow-ui #topbar .tools .btn,
+html.narrow-ui #topbar .tctl{
+  flex:0 0 auto;min-height:36px;min-width:36px;padding:7px 10px;font-size:12px;
+}
+html.narrow-ui #search{width:120px;min-height:36px}
 
+html.narrow-ui #modes,
+html.narrow-ui #layers{
+  top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  flex-direction:row;flex-wrap:wrap;max-width:46vw;gap:4px;
+}
+html.narrow-ui #modes{left:8px;right:auto}
+html.narrow-ui #layers{right:8px;left:auto;justify-content:flex-end}
+html.narrow-ui #modes .btn,
+html.narrow-ui #layers .btn{
+  width:auto;min-height:36px;padding:7px 9px;font-size:11px;
+}
+html.narrow-ui #modes .btn .mk,
+html.narrow-ui #layers .dot{display:none}
+html.narrow-ui #legend{bottom:auto;top:96px;left:8px}
+html.narrow-ui #mini{display:none}
+html.narrow-ui #hint{
+  left:8px;right:8px;bottom:auto;top:auto;
+  height:auto;min-height:28px;padding:4px 10px;font-size:11px;
+  gap:10px;flex-wrap:wrap;position:absolute;z-index:14;
+}
 
+html.narrow-ui #panel{
+  top:auto;left:0;right:0;bottom:0;width:100%;
+  max-height:min(62vh, calc(100dvh - 96px));
+  border-radius:12px 12px 0 0;border-left:none;border-right:none;border-bottom:none;
+  transform:translateY(110%);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  box-shadow:0 -8px 28px #000c;
+}
+html.narrow-ui #panel.open{transform:none}
+html.narrow-ui #panel .p-sheet-grip{
+  display:flex;align-items:center;justify-content:center;height:18px;flex:none;
+}
+html.narrow-ui #panel .p-sheet-grip i{
+  display:block;width:42px;height:4px;border-radius:2px;background:#5c6166;
+}
+html.narrow-ui #panel .p-close{
+  display:flex;align-items:center;justify-content:center;
+  position:absolute;top:10px;right:10px;z-index:6;
+  width:36px;height:36px;border:1px solid var(--line);border-radius:18px;
+  background:#1b1f23ee;color:var(--ink);font-size:14px;cursor:pointer;
+}
+html.narrow-ui #panel .p-close:active{border-color:var(--gold);color:var(--gold2)}
+html.narrow-ui #panel .hd{padding-right:48px}
+html.narrow-ui #panel .p-tab-btn{min-height:40px;font-size:12px;padding:8px 2px}
+html.narrow-ui #panel .btns .btn{min-height:40px;font-size:12px}
+html.narrow-ui #panel .p-domestic-box .pdb-act-btn,
+html.narrow-ui #panel .p-domestic-box .pdb-prog-btn,
+html.narrow-ui #panel .p-domestic-box .pdb-posture-btn,
+html.narrow-ui #panel .p-domestic-box .pdb-directive-btn,
+html.narrow-ui #panel .p-domestic-box .id-prog-btn,
+html.narrow-ui #panel .p-domestic-box .fuse-btn,
+html.narrow-ui #panel .p-domestic-box .nk-opt-btn,
+html.narrow-ui #panel .warbox .gw-op-btn,
+html.narrow-ui #panel .covertbox .est-focus-btn,
+html.narrow-ui #panel .covertbox .dc-btn{
+  min-height:36px;font-size:11px;padding:6px 7px;
+}
+html.narrow-ui #panel .mil input[type=range]{height:28px}
 
+html.narrow-ui .fl{
+  top:auto !important;left:8px !important;right:8px !important;bottom:8px;
+  width:auto !important;max-width:none;
+  max-height:min(78vh, calc(100dvh - 56px));
+  border-radius:8px;
+}
+html.narrow-ui .fl .bd{max-height:min(62vh, calc(100dvh - 120px))}
+html.narrow-ui #end{
+  left:8px !important;right:8px !important;width:auto !important;max-width:none;
+  top:48px !important;bottom:8px;max-height:none;
+}
+html.narrow-ui #end .bd{max-height:calc(100dvh - 160px)}
+html.narrow-ui #welcome .w-card{
+  max-width:calc(100vw - 24px);margin:12px;padding:18px 16px 16px;
+}
+html.narrow-ui #welcome .w-title{font-size:22px}
+html.narrow-ui #welcome .w-btns .btn{min-height:44px}
+html.narrow-ui .crisis-dossier{width:min(96vw,840px);max-height:92dvh;overflow:auto}
+html.narrow-ui .crisis-btn-decide{min-height:44px;font-size:13px}
+html.narrow-ui #toasts{left:8px;right:8px;transform:none;width:auto;max-width:none}
+html.narrow-ui #toasts .toast{max-width:none}
