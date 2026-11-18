@@ -88,6 +88,8 @@ function evRun(y, m, silent) {
   updateMonthlyAgendas(y, m, silent);       // R12B：次极大国与专属国家战略议程月度推进
   updateMonthlyCrises(y, m, silent);        // R12C：中局突发危机抉择卡与升级阶梯月度检测
   updateMonthlyIntel(y, m, silent);         // R13A：隐蔽行动与全球谍战沙盒月度演进
+  // Cov2：对手隐蔽还手（白名单门控；旁观/普通探针零回写）
+  if (typeof updateMonthlyCovertAi === "function") updateMonthlyCovertAi(y, m, silent);
   // C（情报估算）：专项评估到期（无执政者时它自己就返回 —— 旁观没有情报行动）
   updateMonthlyEstimates(y, m, silent);
   updateMonthlyAfghan(y, m, silent);        // R13B：阿富汗战区态势与帝国失血槽月度结算
@@ -341,6 +343,7 @@ function simSave(slot) {
     agendas: ST.agendas,                              // R12B：专属国家战略议程状态
     crises: ST.crises ? JSON.parse(JSON.stringify(ST.crises)) : null, // R12C：突发危机状态
     intel: ST.intel ? JSON.parse(JSON.stringify(ST.intel)) : null,   // R13A：全球谍战与隐蔽行动状态
+    covertAi: ST.covertAi ? JSON.parse(JSON.stringify(ST.covertAi)) : null, // Cov2：对手隐蔽还手槽
     afghan: ST.afghan ? JSON.parse(JSON.stringify(ST.afghan)) : null, // R13B：阿富汗战区态势与帝国失血槽状态
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
@@ -536,6 +539,9 @@ function loadSocietyStates(d) {
   } else {
     initIntelState();
   }
+  // Cov2：还原对手隐蔽还手槽（旧档缺该项 → 空状态）
+  ST.covertAi = (typeof sanitizeCovertAiState === "function")
+    ? sanitizeCovertAiState(d.covertAi) : { slots: {}, log: [] };
   // R13B：还原阿富汗战区态势与帝国失血槽
   if (d.afghan && typeof d.afghan === "object") {
     ST.afghan = sanitizeAfghanState(d.afghan);

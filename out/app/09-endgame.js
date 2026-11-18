@@ -1026,6 +1026,7 @@ function simReset() {
   initAgendaState();                                                                          // R12B：重置专属国家战略议程至 1980 基准
   initCrisisState(); hideCrisisModal();                                                       // R12C：重置突发危机状态并收起弹窗
   initIntelState();                                                                           // R13A：重置全球谍战与隐蔽行动至 1980 基准
+  if (typeof initCovertAiState === "function") initCovertAiState(true);                       // Cov2：重置对手隐蔽还手槽
   initAfghanState();                                                                          // R13B：重置阿富汗战争泥潭与失血槽至 1980 基准
   applyPlayerDecisions();         // R3：重置后按当前决策重挂 pmods（否则重置会静默丢掉玩家决策）
   simEndClose();                  // R4：重置同时收起上一局结算

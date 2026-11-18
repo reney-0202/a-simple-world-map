@@ -51,7 +51,8 @@ window.W1980_PROBES={
   "endstoryprobe",
   "e2probe",
   "touchprobe",
-  "i2probe"
+  "i2probe",
+  "cov2probe"
  ],
  "entries": {
   "selftest": {
@@ -291,6 +292,12 @@ window.W1980_PROBES={
   "i2": {
    "qs": "i2probe=1",
    "marker": "IDEOLOGYAIPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "cov2": {
+   "qs": "cov2probe=1",
+   "marker": "COVERTAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }
