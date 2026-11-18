@@ -856,7 +856,10 @@ function maybeWelcome() {
   let seen = null; try { seen = localStorage.getItem(SEEN_KEY); } catch (e) {}
   if (seen) return;
   const q = new URLSearchParams(location.search);
-  if (q.has("nowelcome") || q.has("selftest") || q.has("simprobe") || q.has("end") || q.has("flprobe") || q.has("saveprobe") || q.has("warprobe") || q.has("resprobe") || q.has("tradeprobe") || q.has("embargoprobe") || q.has("aiprobe") || q.has("summitprobe") || q.has("unscprobe") || q.has("panelprobe") || q.has("newsprobe") || q.has("chronicleprobe") || q.has("domesticprobe") || q.has("agendaprobe") || q.has("crisisprobe") || q.has("intelprobe") || q.has("afghanprobe") || q.has("soundprobe") || q.has("assetsprobe")) return;
+  // T（触控与窄屏）：欢迎页跳过条件收敛到「探针会话」—— 读 data/probes.js，
+  // 新增探针自动跳过，不再维护一份会静默过期的硬编码名单（此前 prestige/nuke/
+  // fuse/c2/f2/endstory 等均未列入，靠无头环境碰巧有 SEEN_KEY 才没弹窗）。
+  if (q.has("nowelcome") || CR.probeMode) return;
   welcome();
 }
 
@@ -923,6 +926,7 @@ function tutEnd() {
 }
 function onWindowResize() {            // B（架构评审）：唯一的窗口 resize 监听（画布重排 + 教程重定位）
   resize(false); render(); drawOverlay();
+  if (typeof syncNarrowUiClass === "function") syncNarrowUiClass(); // T：横竖屏切换时刷新窄屏类
   if (tutI >= 0) tutShow();
 }
 function tutWire() {
@@ -933,7 +937,8 @@ function tutMaybeAuto() {
   let done = null; try { done = localStorage.getItem(TUT_KEY); } catch (e) {}
   if (done) return;
   const q = new URLSearchParams(location.search);
-  if (q.has("nowelcome") || q.has("selftest") || q.has("simprobe") || q.has("saveprobe") || q.has("flprobe") || q.has("warprobe")) return;
+  // T：与 maybeWelcome 同一口径 —— 探针会话不自动弹教程
+  if (q.has("nowelcome") || CR.probeMode) return;
   const w = $("welcome"); if (w && w.style.display === "flex") return;   // 欢迎层开着则交给它引导进教程
   tutStart(0);
 }

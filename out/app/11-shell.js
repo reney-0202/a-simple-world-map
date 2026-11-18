@@ -742,6 +742,16 @@ function buildUI() {
   wireMouse();
   wireKeys();
   tutWire();
+  // T：窄屏布局类 —— 启动时同步一次，并监听断点变化（横竖屏旋转）
+  syncNarrowUiClass();
+  try {
+    const mq = window.matchMedia && window.matchMedia(NARROW_MQ);
+    if (mq) {
+      const onMq = () => syncNarrowUiClass();
+      if (mq.addEventListener) mq.addEventListener("change", onMq);
+      else if (mq.addListener) mq.addListener(onMq);
+    }
+  } catch (e) { /* ignore */ }
   fillLegend();
   fillStats(); fillTop(); select(null);
 }
@@ -892,29 +902,157 @@ function select(k) {
   drawOverlay();
 }
 
-// ---------------------------------------------------------------- mouse
+// ---------------------------------------------------------------- mouse / touch (Phase T)
+// 窄屏断点与 CSS 的 @media / html.force-narrow 共用同一数字 —— 探针可强制窄屏
+// 而不必真的改窗口尺寸（无头 Chromium 的 viewport 往往固定）。
+const NARROW_BREAKPOINT_PX = 820;
+const NARROW_MQ = "(max-width: " + NARROW_BREAKPOINT_PX + "px)";
+let _forceNarrow = false;
+
+function mediaSaysNarrow() {
+  try { return !!(window.matchMedia && window.matchMedia(NARROW_MQ).matches); }
+  catch (e) { return false; }
+}
+function isForceNarrow() { return !!_forceNarrow; }
+function isNarrowViewport() { return isForceNarrow() || mediaSaysNarrow(); }
+
+/** 把「是否窄屏」写成 html.narrow-ui —— CSS 只认这一类，探针可用 setForceNarrow 强制。 */
+function syncNarrowUiClass() {
+  if (!document.documentElement) return isNarrowViewport();
+  const on = isNarrowViewport();
+  document.documentElement.classList.toggle("narrow-ui", on);
+  document.documentElement.classList.toggle("force-narrow", isForceNarrow());
+  return on;
+}
+function setForceNarrow(on) {
+  _forceNarrow = !!on;
+  return syncNarrowUiClass();
+}
+
 function hitTest(sx, sy) {
   const [rx, ry] = screenToRaster(sx, sy);
   const x = Math.floor(rx), y = Math.floor(ry);
   if (x < 0 || y < 0 || x >= W || y >= H) return 0;
   return pid[y * W + x];
 }
+
+/** 平移地图（屏幕像素增量）。不消费 RNG、不写仿真 —— 纯视口操作。 */
+function applyMapPan(dx, dy) {
+  view.x -= dx / view.s;
+  view.y -= dy / view.s;
+  clampView();
+  render();
+  drawOverlay();
+  drawMini();
+}
+
+function zoomAt(sx, sy, f) {
+  const [rx, ry] = screenToRaster(sx, sy);
+  view.s = clamp(view.s * f, view.fit * 0.5, view.fit * 40);
+  const P = view.s * DPR;
+  view.x = rx - sx * DPR / P; view.y = ry - sy * DPR / P;
+  clampView(); render(); drawOverlay(); drawMini();
+}
+
+/** 双指捏合缩放的可测入口（与滚轮共用 zoomAt）。 */
+function applyPinchZoom(sx, sy, factor) {
+  zoomAt(sx, sy, factor);
+}
+
 function wireMouse() {
   const el = $("stage");
-  let down = false, lx = 0, ly = 0, moved = 0;
-  el.addEventListener("mousedown", (e) => { down = true; moved = 0; lx = e.clientX; ly = e.clientY; });
-  window.addEventListener("mouseup", () => { down = false; });
-  el.addEventListener("mousemove", (e) => {
-    if (down) {
+  // Pointer Events 同时覆盖鼠标与触控；touch-action:none 由 CSS 保证浏览器不抢手势。
+  const pts = new Map(); // pointerId -> {x,y}
+  let mode = null;       // null | "pan" | "pinch"
+  let lx = 0, ly = 0, moved = 0;
+  let pinchDist0 = 0, pinchScale0 = 1, pinchSx = 0, pinchSy = 0;
+
+  function stageXY(e) {
+    const r = el.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function distOf(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy) || 1;
+  }
+  function midOf(a, b) {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  function beginPinch() {
+    const arr = Array.from(pts.values());
+    if (arr.length < 2) return;
+    mode = "pinch";
+    pinchDist0 = distOf(arr[0], arr[1]);
+    pinchScale0 = view.s;
+    const mid = midOf(arr[0], arr[1]);
+    pinchSx = mid.x; pinchSy = mid.y;
+  }
+
+  el.addEventListener("pointerdown", (e) => {
+    // 只接管主指针与第二指；忽略笔/额外手指以免手势抖动。
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    const p = stageXY(e);
+    pts.set(e.pointerId, { x: p.x, y: p.y, cx: e.clientX, cy: e.clientY });
+    if (pts.size >= 2) {
+      beginPinch();
+      moved = 8; // 捏合后不触发点选
+      return;
+    }
+    mode = "pan";
+    moved = 0;
+    lx = e.clientX; ly = e.clientY;
+  });
+
+  el.addEventListener("pointermove", (e) => {
+    if (!pts.has(e.pointerId)) {
+      // 未按下时仅鼠标悬停高亮（触控无 hover）
+      if (e.pointerType === "mouse" && mode === null) {
+        const p = stageXY(e);
+        hover(p.x, p.y);
+      }
+      return;
+    }
+    const p = stageXY(e);
+    pts.set(e.pointerId, { x: p.x, y: p.y, cx: e.clientX, cy: e.clientY });
+    if (mode === "pinch" && pts.size >= 2) {
+      const arr = Array.from(pts.values());
+      const d = distOf(arr[0], arr[1]);
+      const mid = midOf(arr[0], arr[1]);
+      const target = pinchScale0 * (d / pinchDist0);
+      const factor = target / view.s;
+      if (Math.abs(factor - 1) > 0.002) applyPinchZoom(mid.x, mid.y, factor);
+      return;
+    }
+    if (mode === "pan") {
       const dx = e.clientX - lx, dy = e.clientY - ly;
       moved += Math.abs(dx) + Math.abs(dy);
-      view.x -= dx / view.s; view.y -= dy / view.s; lx = e.clientX; ly = e.clientY;
-      clampView(); render(); drawOverlay(); return;
+      applyMapPan(dx, dy);
+      lx = e.clientX; ly = e.clientY;
     }
-    const r = el.getBoundingClientRect();
-    hover(e.clientX - r.left, e.clientY - r.top);
   });
-  el.addEventListener("mouseleave", () => { ST.hover = 0; ST.hoverC = null; drawOverlay(); setHint(0); });
+
+  function endPointer(e) {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    try { el.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (pts.size >= 2) beginPinch();
+    else if (pts.size === 1) {
+      mode = "pan";
+      const only = Array.from(pts.values())[0];
+      lx = only.cx; ly = only.cy;
+    } else {
+      mode = null;
+    }
+  }
+  el.addEventListener("pointerup", endPointer);
+  el.addEventListener("pointercancel", endPointer);
+  el.addEventListener("pointerleave", (e) => {
+    if (e.pointerType === "mouse" && mode === null) {
+      ST.hover = 0; ST.hoverC = null; drawOverlay(); setHint(0);
+    }
+  });
+
   el.addEventListener("click", (e) => {
     if (moved > 4) return;
     const r = el.getBoundingClientRect();
@@ -923,29 +1061,29 @@ function wireMouse() {
   });
   el.addEventListener("dblclick", (e) => {
     const r = el.getBoundingClientRect();
-    const sx = e.clientX - r.left, sy = e.clientY - r.top;
-    const [rx, ry] = screenToRaster(sx, sy);
-    zoomAt(sx, sy, 2);
+    zoomAt(e.clientX - r.left, e.clientY - r.top, 2);
   });
   el.addEventListener("wheel", (e) => {
     e.preventDefault();
     const r = el.getBoundingClientRect();
     zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.18 : 1 / 1.18);
   }, { passive: false });
-  $("minic").addEventListener("mousedown", (e) => {
-    const r = e.target.getBoundingClientRect();
-    const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
-    view.x = fx * W - (mapCan.width / view.s) / 2;
-    view.y = fy * H - (mapCan.height / view.s) / 2;
-    clampView(); render(); drawOverlay();
-  });
-}
-function zoomAt(sx, sy, f) {
-  const [rx, ry] = screenToRaster(sx, sy);
-  view.s = clamp(view.s * f, view.fit * 0.5, view.fit * 40);
-  const P = view.s * DPR;
-  view.x = rx - sx * DPR / P; view.y = ry - sy * DPR / P;
-  clampView(); render(); drawOverlay(); drawMini();
+
+  // 小地图：pointer 兼容触控点选
+  const mini = $("minic");
+  if (mini) {
+    mini.addEventListener("pointerdown", (e) => {
+      const r = e.target.getBoundingClientRect();
+      const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+      view.x = fx * W - (mapCan.width / view.s) / 2;
+      view.y = fy * H - (mapCan.height / view.s) / 2;
+      clampView(); render(); drawOverlay(); drawMini();
+    });
+  }
+
+  // 面板关闭把手（窄屏底栏）
+  const grip = $("p-close");
+  if (grip) grip.addEventListener("click", () => select(null));
 }
 function provKey(p) { const pe = playPol[p]; return (pe && playKeys[pe]) || CM.byId[provPol[p]] || null; }
 

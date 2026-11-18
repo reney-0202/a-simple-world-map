@@ -42,4 +42,10 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   // M2（探针注册收敛）：注册表与分派表的自检入口，供 CDP / 诊断直接验证
   probeParamTokens: probeParamTokens, hasProbeParam: hasProbeParam,
   assertProbeDispatchConsistency: assertProbeDispatchConsistency,
-  panBy: (dx, dy) => { view.x -= dx / view.s; view.y -= dy / view.s; clampView(); render(); drawOverlay(); drawMini(); } };
+  panBy: (dx, dy) => { view.x -= dx / view.s; view.y -= dy / view.s; clampView(); render(); drawOverlay(); drawMini(); },
+  // T（触控与窄屏）：窄屏布局与地图手势的可测入口
+  NARROW_BREAKPOINT_PX: NARROW_BREAKPOINT_PX,
+  isNarrowViewport: isNarrowViewport, setForceNarrow: setForceNarrow,
+  syncNarrowUiClass: syncNarrowUiClass, mediaSaysNarrow: mediaSaysNarrow,
+  applyMapPan: applyMapPan, applyPinchZoom: applyPinchZoom,
+  runTouchProbe: runTouchProbe };

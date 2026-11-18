@@ -49,7 +49,8 @@ window.W1980_PROBES={
   "c2probe",
   "f2probe",
   "endstoryprobe",
-  "e2probe"
+  "e2probe",
+  "touchprobe"
  ],
  "entries": {
   "selftest": {
@@ -278,6 +279,12 @@ window.W1980_PROBES={
    "qs": "e2probe=1",
    "marker": "FUSEAIPROBE",
    "budget": 60000,
+   "class": "mechanics"
+  },
+  "touch": {
+   "qs": "touchprobe=1",
+   "marker": "TOUCHPROBE",
+   "budget": 30000,
    "class": "mechanics"
   }
  }

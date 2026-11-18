@@ -1969,5 +1969,49 @@
    }
   },
   "failed": false
+ },
+ "touch": {
+  "marker": "TOUCHPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "apiPresent": "PASS",
+    "breakpointIs820": "PASS",
+    "panelExists": "PASS",
+    "stageExists": "PASS",
+    "closeHandleExists": "PASS",
+    "sheetGripExists": "PASS",
+    "forceNarrowOn": "PASS",
+    "narrowUiClassOn": "PASS",
+    "forceClassOn": "PASS",
+    "panelIsBottomSheet": "PASS",
+    "panelFullWidth": "PASS",
+    "closeHandleVisible": "PASS",
+    "sheetGripVisible": "PASS",
+    "minimapHidden": "PASS",
+    "toolsScrollable": "PASS",
+    "tabTouchTarget": "PASS",
+    "forceNarrowOff": "PASS",
+    "desktopPanelSide": "PASS",
+    "desktopCloseHidden": "PASS",
+    "desktopMinimapVisible": "PASS",
+    "panMovesView": "PASS",
+    "pinchZoomsView": "PASS",
+    "gestureZeroRng": "PASS",
+    "gestureZeroPmods": "PASS",
+    "gestureZeroGdp": "PASS",
+    "stageTouchActionNone": "PASS",
+    "selectOpensPanel": "PASS",
+    "panelNameRenders": "PASS",
+    "closeClearsPanel": "PASS",
+    "spectatorSafe": "PASS",
+    "narrowBreakpoint": 820,
+    "hostMediaNarrow": false,
+    "finalForced": false
+   }
+  },
+  "failed": false
  }
 }
