@@ -50,7 +50,8 @@ function agendaProbeDatabase(r, assert, ctx) {
   const gbrAgendas = window.W1980_AGENDAS.getAgendasForCountry("GBR");
   const sunAgendas = window.W1980_AGENDAS.getAgendasForCountry("SUN");
   const usaAgendas = window.W1980_AGENDAS.getAgendasForCountry("USA");
-  const defAgendas = window.W1980_AGENDAS.getAgendasForCountry("BRA");
+  // Mid：BRA 已有专属浅层树，DEFAULT 兜底改用仍走通用表的实体（如 MEX）
+  const defAgendas = window.W1980_AGENDAS.getAgendasForCountry("MEX");
 
   assert("chnAgendasCount", chnAgendas.length >= 3, "中国专属议程数 >= 3 (特区/裁军/大三角)");
   assert("jpnAgendasCount", jpnAgendas.length >= 3, "日本专属议程数 >= 3 (半导体/专守防卫/黑潮出海)");
@@ -59,7 +60,7 @@ function agendaProbeDatabase(r, assert, ctx) {
   assert("gbrAgendasCount", gbrAgendas.length >= 2, "英国专属议程数 >= 2 (金融大爆炸/私有化)");
   assert("sunAgendasCount", sunAgendas.length >= 2, "苏联专属议程数 >= 2 (合资法/新联盟)");
   assert("usaAgendasCount", usaAgendas.length >= 2, "美国专属议程数 >= 2 (供给学派/SDI)");
-  assert("defaultFallbackAgendas", defAgendas.length >= 2, "通用国家 fallback 议程有效");
+  assert("defaultFallbackAgendas", defAgendas.length >= 2 && defAgendas === window.W1980_AGENDAS.database.DEFAULT, "通用国家 fallback 议程有效（MEX → DEFAULT）");
 
   // G：跨阶段复用的议程列表经 ctx 传递（后续阶段按原名取回，逻辑不变）
   ctx.chnAgendas = chnAgendas;
@@ -468,7 +469,11 @@ function agendaProbeConditionVocabulary(r, assert, ctx) {
     for (const ag of (AGD[ck] || [])) {
       if (!ag.onComplete || typeof ag.onComplete !== "object") continue;
       ocIds.push(ag.id);
-      const ocSt = domesticStateOf(ck);
+      // Mid：次极 onComplete 字段落在 generals —— 懒物化后再解析，避免误报「无解」
+      let ocSt = domesticStateOf(ck);
+      if (!ocSt && ck !== "DEFAULT" && typeof getGeneralDomestic === "function") {
+        ocSt = getGeneralDomestic(ck);
+      }
       for (const field in ag.onComplete) {
         if (typeof REG.isOnCompleteField !== "function" || !REG.isOnCompleteField(field)) ocUnregistered.push(ag.id + "." + field);
         if (!ocSt || typeof ocSt[field] !== "number") ocUnresolved.push(ag.id + "." + field);

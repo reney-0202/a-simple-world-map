@@ -585,7 +585,7 @@ function checkPolEcon(ctx) {
 // engine wiring + probe ~= 24 KB on top of E2/T), and 3.61 -> 3.64 MiB with
 // Cov2 (covert de-RNG + AI retaliation + probe ~= 20 KB). Same reasoning
 // every time: the guard catches accidental bloat, it does not ration features.
-const BUNDLE_BUDGET_MIB = 3.68;
+const BUNDLE_BUDGET_MIB = 3.72;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.

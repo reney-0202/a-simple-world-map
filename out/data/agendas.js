@@ -554,6 +554,285 @@
       }
     ],
 
+    // ---------------------------------------------------- Phase Mid：次极大国浅层议程
+    // 纯数据 + 既有 onComplete / 门控词表；引擎不加国家分派。
+    // 默认史实路径不自动启动（aiMajors 仍仅七大国），仅执政该国时由玩家推进。
+
+    // ---------------------------------------------------- 印度 (IND)
+    IND: [
+      {
+        id: "ind_green_revolution",
+        title: "绿色革命深化与粮食自给",
+        category: "农业立国",
+        icon: "🌾",
+        desc: "扩大高产小麦与水稻推广、灌溉与化肥配套，巩固粮食自给底线，减轻外汇购粮压力并为工业积累腾出空间。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 0.8,
+          desc: "粮仓稳住后进口粮开支下降，财政与外汇腾挪空间扩大 (+0.22pp/年，外汇流 +0.8亿/月)"
+        }
+      },
+      {
+        id: "ind_nonaligned_trade",
+        title: "不结盟多元经贸与南南合作",
+        category: "外交经济",
+        icon: "🌐",
+        desc: "在不结盟框架下拓宽对欧、海湾与东南亚的贸易结算通道，降低对单一超级大国市场与信贷的依附。",
+        yearMin: 1983,
+        monthMin: 1,
+        duration: 12,
+        requires: "ind_green_revolution",
+        conditionDesc: "需先完成绿色革命深化，1983 年起推进",
+        onComplete: {
+          sanctionStrain: -8,
+          legitimacy: 4
+        },
+        effects: {
+          gdpBonus: 0.18,
+          reserveMonthly: 1.0,
+          stabilityBonus: 6,
+          desc: "出口目的地分散，外部施压弹性上升 (+0.18pp/年，外汇流 +1.0亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "ind_soft_export",
+        title: "软件与服务业外向化萌芽",
+        category: "产业升级",
+        icon: "💻",
+        desc: "以班加罗尔等地为据点推动软件外包与工程服务出口，在轻装军费约束下把人力红利转成经常账户顺差。",
+        yearMin: 1986,
+        monthMin: 6,
+        duration: 15,
+        requires: "ind_nonaligned_trade",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成多元经贸，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 6,
+          stability: 5,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.28,
+          reserveMonthly: 1.2,
+          desc: "服务业出口开辟新的创汇通道 (+0.28pp/年，外汇流 +1.2亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 意大利 (ITA)
+    ITA: [
+      {
+        id: "ita_ems_anchor",
+        title: "里拉锚定与欧洲货币纪律",
+        category: "货币财政",
+        icon: "💶",
+        desc: "借欧洲货币体系纪律压制通胀预期，整顿公共财政与工资指数化惯性，为北方工业恢复竞争力铺路。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 12,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          stability: 5,
+          legitimacy: 3
+        },
+        effects: {
+          gdpBonus: 0.15,
+          stabilityBonus: 5,
+          desc: "通胀预期收敛，投资信心回升 (+0.15pp/年，安定度 +5)"
+        }
+      },
+      {
+        id: "ita_industrial_triangle",
+        title: "北方工业三角与南方基建",
+        category: "区域发展",
+        icon: "🏗️",
+        desc: "巩固米兰—都灵—热那亚工业三角的出口产能，同时以结构性基金推进南方港口与交通基建，缓解南北裂隙。",
+        yearMin: 1983,
+        monthMin: 3,
+        duration: 14,
+        requires: "ita_ems_anchor",
+        conditionDesc: "需先完成里拉锚定，1983 年起推进",
+        onComplete: {
+          legitimacy: 5,
+          unrest: -4
+        },
+        effects: {
+          gdpBonus: 0.24,
+          reserveMonthly: 0.9,
+          stabilityBonus: 7,
+          desc: "制造业出口与基建投资并进 (+0.24pp/年，外汇流 +0.9亿/月，安定度 +7)"
+        }
+      },
+      {
+        id: "ita_nato_south",
+        title: "北约南翼防务分担",
+        category: "联盟防务",
+        icon: "⚓",
+        desc: "在地中海侧翼提高可部署兵力与港口保障，换取联盟内话语权与安全外溢，但须维持足够的防务开支。",
+        yearMin: 1985,
+        monthMin: 1,
+        duration: 12,
+        requires: "ita_industrial_triangle",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成工业三角，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          stability: 4,
+          legitimacy: 4
+        },
+        effects: {
+          gdpBonus: 0.12,
+          stabilityBonus: 8,
+          desc: "联盟可信度提升带来政治稳定红利 (+0.12pp/年，安定度 +8)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 巴西 (BRA)
+    BRA: [
+      {
+        id: "bra_debt_turn",
+        title: "债务危机应对与出口导向转向",
+        category: "宏观稳定",
+        icon: "📉",
+        desc: "面对拉美债务冲击，以出口导向与财政整顿换取偿债喘息，稳住外汇储备与国际信用。",
+        yearMin: 1982,
+        monthMin: 8,
+        duration: 14,
+        conditionDesc: "1982 年债务危机窗口起可启动",
+        onComplete: {
+          sanctionStrain: -6,
+          legitimacy: 4
+        },
+        effects: {
+          gdpBonus: 0.12,
+          reserveMonthly: 1.1,
+          stabilityBonus: 4,
+          desc: "经常账户改善，外债展期空间打开 (+0.12pp/年，外汇流 +1.1亿/月)"
+        }
+      },
+      {
+        id: "bra_democratization",
+        title: "民主转型巩固与文官统治",
+        category: "政体转型",
+        icon: "🗳️",
+        desc: "完成军政府向文官宪政的交接，重建政党竞争与社会契约，以合法性换取改革推进空间。",
+        yearMin: 1985,
+        monthMin: 3,
+        duration: 12,
+        requires: "bra_debt_turn",
+        conditionDesc: "需先稳住债务危机，1985 年民主化窗口推进",
+        onComplete: {
+          legitimacy: 10,
+          unrest: -5,
+          stability: 6
+        },
+        effects: {
+          gdpBonus: 0.18,
+          stabilityBonus: 10,
+          desc: "政治不确定性下降，投资与消费信心回暖 (+0.18pp/年，安定度 +10)"
+        }
+      },
+      {
+        id: "bra_regional_market",
+        title: "南方共同市场萌芽",
+        category: "区域一体化",
+        icon: "🤝",
+        desc: "与南锥体邻国推进关税协调与工业互补，把国内市场延伸为区域市场，分散对北美需求的依赖。",
+        yearMin: 1988,
+        monthMin: 1,
+        duration: 15,
+        requires: "bra_democratization",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成民主转型，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.26,
+          reserveMonthly: 1.0,
+          desc: "区域贸易扩张抬升制造业产能利用率 (+0.26pp/年，外汇流 +1.0亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 韩国 (KOR)
+    KOR: [
+      {
+        id: "kor_heavy_chemical",
+        title: "汉江奇迹：重化工业冲刺",
+        category: "产业政策",
+        icon: "🏭",
+        desc: "继续加码钢铁、造船、石化与汽车产业链，以出口信贷与财阀动员把赶超型工业化推到新台阶。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 4,
+          stability: 3
+        },
+        effects: {
+          gdpBonus: 0.32,
+          reserveMonthly: 1.4,
+          desc: "重化出口顺差扩大，储备快速累积 (+0.32pp/年，外汇流 +1.4亿/月)"
+        }
+      },
+      {
+        id: "kor_electronics_export",
+        title: "电子与半导体出口崛起",
+        category: "技术赶超",
+        icon: "📺",
+        desc: "从消费电子迈向存储芯片与电信设备，把日本雁阵中的下一阶梯变成本土主业。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 15,
+        requires: "kor_heavy_chemical",
+        conditionDesc: "需先完成重化工业冲刺，1983 年起推进",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -4
+        },
+        effects: {
+          gdpBonus: 0.35,
+          reserveMonthly: 1.6,
+          stabilityBonus: 5,
+          desc: "高附加值出口抬升贸易条件 (+0.35pp/年，外汇流 +1.6亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "kor_middle_class",
+        title: "中产扩张与社会契约重订",
+        category: "社会整合",
+        icon: "🏙️",
+        desc: "在出口繁荣基础上扩大住房、教育与工资分享，把增长红利转化为更稳的执政社会基础。",
+        yearMin: 1987,
+        monthMin: 6,
+        duration: 12,
+        requires: "kor_electronics_export",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成电子出口崛起，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 8,
+          stability: 8,
+          unrest: -6
+        },
+        effects: {
+          gdpBonus: 0.20,
+          stabilityBonus: 12,
+          desc: "内需与社会稳定支撑下一轮增长 (+0.20pp/年，安定度 +12)"
+        }
+      }
+    ],
+
     // ---------------------------------------------------- 通用区域国家 (ALL / Default)
     DEFAULT: [
       {

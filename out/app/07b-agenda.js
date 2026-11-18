@@ -245,7 +245,9 @@ function updateMonthlyAgendas(y, m, silent) {
       // 硬编码，加一个国家的议程树就必须回来改引擎。现在：
       //   · 通用规则（短缺 / 安定 / 国会）按「本国状态里有没有这个字段」分派；
       //   · 每项议程的专属回馈由 agendas.js 的 `onComplete: {字段: 增量}` 声明。
-      const st = domesticStateOf(cKey);
+      // Mid：次极走 generals 懒物化 —— 与 polEconDomesticOf 同构，不新增国家名分派。
+      let st = domesticStateOf(cKey);
+      if (!st && typeof getGeneralDomestic === "function") st = getGeneralDomestic(cKey);
       if (st && ag.effects) {
         // 短缺：只有拥有 shortage 的内政模型（苏联）会命中
         if (typeof ag.effects.domesticShortage === "number" && typeof st.shortage === "number") {
