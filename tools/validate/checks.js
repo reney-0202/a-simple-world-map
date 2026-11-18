@@ -580,10 +580,11 @@ function checkPolEcon(ctx) {
 // Phase F (prestige race) grew the tree by ~30 kB, a whole subsystem, so the
 // budget moved 3.2 -> 3.5 MiB in the same commit that added it (F),
 // 3.5 -> 3.55 MiB with C2 (disinformation: data table + engine + probe ~= 36 KB),
-// and 3.55 -> 3.58 MiB with the end-story upgrade (narrative engine + probe
-// ~= 16 KB plus wiring). Same reasoning every time: the guard catches
-// accidental bloat, it does not ration features.
-const BUNDLE_BUDGET_MIB = 3.58;
+// 3.55 -> 3.58 MiB with the end-story upgrade (narrative engine + probe
+// ~= 16 KB plus wiring), and 3.58 -> 3.61 MiB with I2 (ideology AI rules +
+// engine wiring + probe ~= 24 KB on top of E2/T). Same reasoning every time:
+// the guard catches accidental bloat, it does not ration features.
+const BUNDLE_BUDGET_MIB = 3.61;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
@@ -1128,6 +1129,47 @@ function checkIdeology(ctx) {
   if (!(typeof P.DRIFT_TOTAL === 'number' && P.DRIFT_TOTAL >= 1)) problems.push('ideology.js: DRIFT_TOTAL 必须 >= 1');
   if (!Array.isArray(P.DRIFT_ELIGIBLE) || !P.DRIFT_ELIGIBLE.length) {
     problems.push('ideology.js: DRIFT_ELIGIBLE 必须是非空数组（漂移候选的阵营）');
+  }
+
+  // I2：感召力 AI 侧规则表（与 F2 的 AI_POLICY 同一形状）
+  const AI = ID.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('ideology.js: 缺 AI_POLICY（I2：对手没有主张输出决策规则）');
+  } else {
+    if (!(typeof AI.CATCHUP_GAP === 'number' && AI.CATCHUP_GAP > 0)) {
+      problems.push('ideology.js: AI_POLICY.CATCHUP_GAP 必须是正数');
+    }
+    if (!(typeof AI.COAST_GAP === 'number' && AI.COAST_GAP > 0)) {
+      problems.push('ideology.js: AI_POLICY.COAST_GAP 必须是正数');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('ideology.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('ideology.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.PICK_HI_STRAIN === 'number' && typeof AI.PICK_MID_STRAIN === 'number' &&
+      AI.PICK_HI_STRAIN > 0 && AI.PICK_HI_STRAIN < AI.PICK_MID_STRAIN &&
+      AI.PICK_MID_STRAIN < AI.STRAIN_MAX)) {
+      problems.push('ideology.js: AI_POLICY 压力分档必须满足 0 < PICK_HI_STRAIN < PICK_MID_STRAIN < STRAIN_MAX');
+    }
+    const pick = AI.PICK || {};
+    for (const t of ['hi', 'mid', 'lo']) {
+      if (!Array.isArray(pick[t]) || !pick[t].length) {
+        problems.push(`ideology.js: AI_POLICY.PICK.${t} 必须是非空数组（档位空 = 该压力档下 AI 无棋可下）`);
+      } else {
+        for (const id of pick[t]) {
+          if (!PG[id]) problems.push(`ideology.js: AI_POLICY.PICK.${t} 的 "${id}" 不是真实工程（幽灵棋）`);
+        }
+      }
+    }
+    if (Array.isArray(pick.hi) && Array.isArray(pick.mid) && Array.isArray(pick.lo) &&
+      pick.hi.length && pick.mid.length && pick.lo.length) {
+      const dMax = (t) => Math.max(...pick[t].map((id) => (PG[id] && PG[id].drag) || 0));
+      if (!(dMax('hi') > dMax('mid') && dMax('mid') > dMax('lo'))) {
+        problems.push('ideology.js: AI_POLICY.PICK 三档必须按 drag 严格递减（hi > mid > lo）');
+      }
+    }
   }
 
   notes.push(`ideology: ${Object.keys(SY).length} systems, ${Object.keys(PG).length} programs, `

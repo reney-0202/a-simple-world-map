@@ -48,4 +48,8 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   isNarrowViewport: isNarrowViewport, setForceNarrow: setForceNarrow,
   syncNarrowUiClass: syncNarrowUiClass, mediaSaysNarrow: mediaSaysNarrow,
   applyMapPan: applyMapPan, applyPinchZoom: applyPinchZoom,
-  runTouchProbe: runTouchProbe };
+  runTouchProbe: runTouchProbe,
+  // I2（感召力的 AI 侧）
+  ideologyAiActive: ideologyAiActive, aiPickIdeologyProgram: aiPickIdeologyProgram,
+  aiIdeologyDragFor: aiIdeologyDragFor, aiIdeologySlotOf: aiIdeologySlotOf,
+  ideologyAiActors: ideologyAiActors, runIdeologyAiProbe: runIdeologyAiProbe };

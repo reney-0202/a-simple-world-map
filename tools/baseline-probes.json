@@ -2013,5 +2013,56 @@
    }
   },
   "failed": false
+ },
+ "i2": {
+  "marker": "IDEOLOGYAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyThresholdsOrdered": "PASS",
+    "pickTiersReal": "PASS",
+    "pickTiersOrderedByCost": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInI2Probe": "PASS",
+    "ruleCatchupStarts": "PASS",
+    "ruleCatchupPicksHighTier": "PASS",
+    "ruleCoastStopsAll": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleFullStopsAdding": "PASS",
+    "ruleNeutralDoesNothing": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleMidTierUnderStrain": "PASS",
+    "ruleLoTierUnderStrain": "PASS",
+    "ruleStrainCutsDearest": "PASS",
+    "monthlyStartsCatchup": "PASS",
+    "monthlyGainAccrues": "PASS",
+    "monthlyFailureCostsAppeal": "PASS",
+    "monthlyFailureLogged": "PASS",
+    "dragIsNegative": "PASS",
+    "dragEntersPmods": "PASS",
+    "dragReleasedOnStop": "PASS",
+    "dragGatedOffWithoutPlayer": "PASS",
+    "playerDragEntersPmods": "PASS",
+    "reverseDriftHappens": "PASS",
+    "reverseDriftGoesToRivalBloc": "PASS",
+    "reverseDriftRespectsTotalCap": "PASS",
+    "snapshotExposesRivalActive": "PASS",
+    "panelShowsRivalPrograms": "PASS",
+    "roundTripKeepsAi": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoAiPrograms": "PASS",
+    "spectatorNoRng": "PASS",
+    "spectatorNoBlocDrift": "PASS",
+    "endToEndStateSane": "PASS",
+    "endToEndPanelRenders": "PASS"
+   }
+  },
+  "failed": false
  }
 }

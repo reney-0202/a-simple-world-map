@@ -25,7 +25,7 @@ function ideologyTable() {
 }
 
 function ideologyBlank() {
-  return { appeal: {}, active: [], since: {}, drift: [], leadMonths: 0, log: [] };
+  return { appeal: {}, active: [], since: {}, drift: [], leadMonths: 0, rivalLeadMonths: 0, ai: {}, log: [] };
 }
 
 function initIdeologyState(force) {
@@ -37,7 +37,18 @@ function initIdeologyState(force) {
   if (!Array.isArray(s.drift)) s.drift = [];
   if (!Array.isArray(s.log)) s.log = [];
   if (typeof s.leadMonths !== "number" || !isFinite(s.leadMonths)) s.leadMonths = 0;
+  if (!s.ai || typeof s.ai !== "object") s.ai = {};
+  if (typeof s.rivalLeadMonths !== "number" || !isFinite(s.rivalLeadMonths)) s.rivalLeadMonths = 0;
   return s;
+}
+
+// I2：某选手的输出工程槽（惰性建档）
+function aiIdeologySlotOf(k) {
+  const s = initIdeologyState();
+  if (!s.ai[k] || typeof s.ai[k] !== "object") s.ai[k] = { active: [], since: {} };
+  if (!Array.isArray(s.ai[k].active)) s.ai[k].active = [];
+  if (!s.ai[k].since || typeof s.ai[k].since !== "object") s.ai[k].since = {};
+  return s.ai[k];
 }
 
 // 纯函数：只吃 d、只吐新状态（与 sanitizePrestigeState 同一约定）
@@ -71,6 +82,29 @@ function sanitizeIdeologyState(d) {
       .filter((e) => e && typeof e === "object" && typeof e.zh === "string");
   }
   if (typeof d.leadMonths === "number" && isFinite(d.leadMonths)) s.leadMonths = Math.max(0, Math.round(d.leadMonths));
+  // I2：各选手的输出工程与反向漂移计数（旧档缺该项 → 空状态）
+  if (d.ai && typeof d.ai === "object") {
+    const aiMax = T ? T.PARAMS.MAX_ACTIVE : 2;
+    for (const k in d.ai) {
+      if (!CM.countries[k]) continue;
+      const slot = d.ai[k];
+      if (!slot || typeof slot !== "object") continue;
+      const act = Array.isArray(slot.active)
+        ? slot.active.filter((id) => typeof id === "string" && !!known[id]).slice(0, aiMax)
+        : [];
+      const since = {};
+      if (slot.since && typeof slot.since === "object") {
+        for (const id of act) {
+          const v = slot.since[id];
+          if (typeof v === "number" && isFinite(v)) since[id] = v;
+        }
+      }
+      s.ai[k] = { active: act, since: since };
+    }
+  }
+  if (typeof d.rivalLeadMonths === "number" && isFinite(d.rivalLeadMonths)) {
+    s.rivalLeadMonths = Math.max(0, Math.round(d.rivalLeadMonths));
+  }
   return s;
 }
 
@@ -111,6 +145,89 @@ function ideologyProgramDrag() {
   if (!T || !s || !Array.isArray(s.active) || !s.active.length) return 0;
   let drag = 0;
   for (const id of s.active) {
+    const def = T.PROGRAMS[id];
+    if (def) drag += def.drag;
+  }
+  return -drag;
+}
+
+// ---- I2（感召力的 AI 侧）：对手也输出主张 ------------------------------------
+// 与 D2 / C2 / F2 同族的白名单门控：探针会话默认关闭（既有探针逐位不变），
+// 只有 ?i2probe=1 或真实游戏才打开；旁观模式永远关闭。
+function ideologyAiActive() {
+  return !!ST.player && (!CR.probeMode || /[?&]i2probe=1/.test(location.search));
+}
+
+function aiIdeologyOpponentOf(k) {
+  const player = ST.player;
+  if (player && ideologyRivalOf(player) === k) return player;
+  return ideologyRivalOf(k);
+}
+
+function ideologyAiActors() {
+  const player = ST.player;
+  if (!player) return [];
+  const out = [];
+  const push = (k) => { if (k && k !== player && CM.countries[k] && out.indexOf(k) < 0) out.push(k); };
+  push(ideologyRivalOf(player));
+  push("USA");
+  push("SUN");
+  return out;
+}
+
+function aiPickIdeologyProgram(k, y, m) {
+  const T = ideologyTable();
+  if (!T || !T.AI_POLICY) return null;
+  const P = T.AI_POLICY;
+  const slot = aiIdeologySlotOf(k);
+  const opp = aiIdeologyOpponentOf(k);
+  if (!opp) return null;
+  const gap = ideologyAppealOf(k) - ideologyAppealOf(opp);
+  const strain = (typeof polEconStrainOf === "function") ? polEconStrainOf(k) : 0;
+  const active = slot.active;
+
+  if (gap >= P.COAST_GAP && active.length) return { stopAll: true, reason: "coast", gap: gap };
+  if (strain >= P.STRAIN_MAX && active.length) {
+    let worst = active[0];
+    for (const id of active) {
+      const a = T.PROGRAMS[id], b = T.PROGRAMS[worst];
+      if (a && b && a.drag > b.drag) worst = id;
+    }
+    return { stop: worst, reason: "strain", gap: gap };
+  }
+  if (active.length >= (T.PARAMS.MAX_ACTIVE || 2)) return null;
+  const yy = (y !== undefined) ? y : (SIM.S ? SIM.S.year : 1980);
+  const mm = (m !== undefined) ? m : (SIM.S ? Math.max(1, SIM.S.month) : 1);
+  const ym = yy * 12 + mm;
+  for (const id of active) {
+    const since = slot.since[id];
+    if (typeof since === "number" && ym - since < P.MIN_MONTHS) return null;
+  }
+  if (gap <= -P.CATCHUP_GAP) {
+    const tier = strain < P.PICK_HI_STRAIN ? "hi" : (strain < P.PICK_MID_STRAIN ? "mid" : "lo");
+    for (const id of (P.PICK[tier] || [])) {
+      if (active.indexOf(id) < 0 && T.PROGRAMS[id]) return { start: id, reason: "catchup", gap: gap, tier: tier };
+    }
+  }
+  return null;
+}
+
+function aiStopIdeologyProgram(k, id) {
+  const slot = aiIdeologySlotOf(k);
+  const i = slot.active.indexOf(id);
+  if (i < 0) return false;
+  slot.active.splice(i, 1);
+  delete slot.since[id];
+  return true;
+}
+
+function aiIdeologyDragFor(k) {
+  const T = ideologyTable();
+  if (!T || !ideologyAiActive()) return 0;
+  const s = ST.ideology;
+  if (!s || !s.ai || !s.ai[k]) return 0;
+  let drag = 0;
+  for (const id of s.ai[k].active) {
     const def = T.PROGRAMS[id];
     if (def) drag += def.drag;
   }
@@ -175,7 +292,7 @@ function updateIdeology(y, m, silent) {
     s.appeal[k] = clamp(s.appeal[k] + (base - s.appeal[k]) * P.DECAY, P.APPEAL_MIN, P.APPEAL_MAX);
   }
 
-  // 2) 输出工程的产出与翻车（只有执政者资助的工程）
+  // 2) 输出工程的产出与翻车（执政者资助的工程）
   if (ST.player) {
     for (const id of s.active.slice()) {
       const def = T.PROGRAMS[id];
@@ -212,6 +329,50 @@ function updateIdeology(y, m, silent) {
     }
   }
 
+  // I2：选手们也输出主张 —— 选棋、执行、产感召力、掷翻车。
+  // 零政治资本、零引擎 RNG；拖累进 pmods 由 accIdeologyAiDrag 结算。
+  if (ideologyAiActive()) {
+    for (const k of ideologyAiActors()) {
+      const slot = aiIdeologySlotOf(k);
+      const pick = aiPickIdeologyProgram(k, y, m);
+      if (pick && pick.stopAll) {
+        for (const id of slot.active.slice()) aiStopIdeologyProgram(k, id);
+      } else if (pick && pick.stop) {
+        aiStopIdeologyProgram(k, pick.stop);
+      } else if (pick && pick.start) {
+        slot.active.push(pick.start);
+        slot.since[pick.start] = y * 12 + m;
+        if (!silent) {
+          const item = { y: y, m: m,
+            zh: "【主张输出】" + (CM.countries[k] || {}).zh + "启动" + T.PROGRAMS[pick.start].zh,
+            note: "对手不再只靠制度惯性吃饭 —— 辩论的另一侧开始主动输出了。" };
+          EV.items.push(item);
+          EV.unread++;
+          renderInbox();
+          toast(item);
+        }
+      }
+      for (const id of slot.active.slice()) {
+        const def = T.PROGRAMS[id];
+        if (!def) continue;
+        s.appeal[k] = clamp(ideologyAppealOf(k) + def.gain, P.APPEAL_MIN, P.APPEAL_MAX);
+        if (ideologyRoll(y, m, id + ":" + k) < def.risk) {
+          s.appeal[k] = clamp(ideologyAppealOf(k) - def.failLoss, P.APPEAL_MIN, P.APPEAL_MAX);
+          ideologyRecord("fail", (CM.countries[k] || {}).zh + "·" + def.zh + "翻车", { d: -def.failLoss, k: k });
+          if (!silent) {
+            const item = { y: y, m: m,
+              zh: "【主张输出受挫】" + (CM.countries[k] || {}).zh + "的" + def.zh + "被当众戳穿",
+              note: "对手的翻车就是你的机会 —— 感召力是说服力存量，此消即彼长。" };
+            EV.items.push(item);
+            EV.unread++;
+            renderInbox();
+            toast(item);
+          }
+        }
+      }
+    }
+  }
+
   // 4) 消费者 ①：软实力变现 —— 感召力领先方每月汇入威望
   // 静默小额（reason 传空）：这是持续的涓流，不是事件，不该每月刷战史日志。
   const player = ST.player;
@@ -243,9 +404,41 @@ function updateIdeology(y, m, silent) {
   // 6) 消费者 ③：第三世界漂移（与 F 的威望漂移同机制、独立计数）
   if (player && rival) {
     const gap = ideologyAppealOf(player) - ideologyAppealOf(rival);
-    const lead = gap > 0;
-    if (lead) s.leadMonths += 1;
+    if (gap > 0) s.leadMonths += 1;
     else s.leadMonths = 0;
+
+    // I2：反向漂移 —— 对手领先同样会拉走第三世界（共用 DRIFT_TOTAL）
+    if (ideologyAiActive()) {
+      if (gap < 0) s.rivalLeadMonths += 1;
+      else s.rivalLeadMonths = 0;
+      if (s.rivalLeadMonths >= P.DRIFT_MONTHS && -gap >= P.DRIFT_GAP &&
+          s.drift.length < P.DRIFT_TOTAL) {
+        const rivalBloc = (typeof blocOf === "function") ? blocOf(rival) : null;
+        const eligible = Object.keys(CM.countries)
+          .filter((k) => k !== player && k !== rival && !ST.blocOverride[k] &&
+            T.PARAMS.DRIFT_ELIGIBLE.indexOf(CM.countries[k].bloc) >= 0)
+          .sort();
+        if (eligible.length && rivalBloc) {
+          const pick = eligible[(y * 12 + m) % eligible.length];
+          ST.blocOverride[pick] = rivalBloc;
+          s.drift.push(pick);
+          s.rivalLeadMonths = 0;
+          ideologyRecord("drift", CM.countries[pick].zh + "倒向" + (BLOC_ZH[rivalBloc] || rivalBloc),
+            { k: pick, rival: true });
+          if (typeof rebuildBlocTable === "function") rebuildBlocTable();
+          if (typeof select === "function" && ST.sel) select(ST.sel);
+          if (!silent) {
+            const item = { y: y, m: m,
+              zh: "【感召力漂移】" + CM.countries[pick].zh + "倒向" + (BLOC_ZH[rivalBloc] || rivalBloc),
+              note: "对手的持续主张优势开始改变第三世界的选择 —— 辩论的输赢不只在口号上。" };
+            EV.items.push(item);
+            EV.unread++;
+            renderInbox();
+            toast(item);
+          }
+        }
+      }
+    }
 
     if (s.leadMonths >= P.DRIFT_MONTHS && gap >= P.DRIFT_GAP && s.drift.length < P.DRIFT_TOTAL) {
       const targetBloc = (typeof blocOf === "function") ? blocOf(player) : null;
@@ -289,6 +482,8 @@ function ideologySnapshot() {
     rivalAppeal: rival ? +ideologyAppealOf(rival).toFixed(2) : null,
     gap: (player && rival) ? +(ideologyAppealOf(player) - ideologyAppealOf(rival)).toFixed(2) : null,
     active: s.active.slice(),
+    // I2：对手在跑的输出工程（公开 —— 广播战与文化输出藏不住）
+    rivalActive: (rival && s.ai && s.ai[rival]) ? s.ai[rival].active.slice() : [],
     drag: +ideologyProgramDrag().toFixed(3),
     leadMonths: s.leadMonths,
     drifted: s.drift.length
@@ -338,6 +533,13 @@ function ideologyPanelHtml() {
       h += '<div class="id-note">输出使感召力 +' +
         s.active.reduce((a, id) => a + T.PROGRAMS[id].gain, 0).toFixed(2) + '/月，GDP 增速 ' +
         ideologyProgramDrag().toFixed(2) + 'pp/年</div>';
+    }
+    // I2：对手工程公开上榜（广播战上天是藏不住的）
+    const rv = ideologyRivalOf(player);
+    if (rv && s.ai && s.ai[rv] && s.ai[rv].active.length) {
+      h += '<div class="id-note" style="color:#f0987d">对手输出：' +
+        s.ai[rv].active.map((id) => (T.PROGRAMS[id] || {}).icon + (T.PROGRAMS[id] || {}).zh).join(" · ") +
+        '</div>';
     }
     if (s.leadMonths > 0 && s.drift.length < T.PARAMS.DRIFT_TOTAL) {
       h += '<div class="id-note">感召力连续领先 ' + s.leadMonths + '/' + T.PARAMS.DRIFT_MONTHS +

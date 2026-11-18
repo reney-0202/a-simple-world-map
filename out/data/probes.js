@@ -50,7 +50,8 @@ window.W1980_PROBES={
   "f2probe",
   "endstoryprobe",
   "e2probe",
-  "touchprobe"
+  "touchprobe",
+  "i2probe"
  ],
  "entries": {
   "selftest": {
@@ -285,6 +286,12 @@ window.W1980_PROBES={
    "qs": "touchprobe=1",
    "marker": "TOUCHPROBE",
    "budget": 30000,
+   "class": "mechanics"
+  },
+  "i2": {
+   "qs": "i2probe=1",
+   "marker": "IDEOLOGYAIPROBE",
+   "budget": 60000,
    "class": "mechanics"
   }
  }

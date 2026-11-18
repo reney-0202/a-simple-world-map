@@ -32,8 +32,24 @@ function applyPlayerDecisions() {
   if (typeof accPrestigeAiDrag === "function") accPrestigeAiDrag(acc);
   // E2（长引信的 AI 侧）：对手燃烧期拖累 + 引爆红利 —— 同一条 pmods 链。
   if (typeof accFuseAiDrag === "function") accFuseAiDrag(acc);
+  // I2（感召力的 AI 侧）：对手输出工程的 GDP 拖累 —— 同一条 pmods 累加链。
+  if (typeof accIdeologyAiDrag === "function") accIdeologyAiDrag(acc);
   for (const k in acc) {
     if (acc[k] !== 0) W1980_SIM.setPMod(SIM.S, k, acc[k]);
+  }
+}
+
+// I2：把各选手主张输出工程的拖累挂进 pmods（唯一写者仍是 applyPlayerDecisions）
+function accIdeologyAiDrag(acc) {
+  if (typeof aiIdeologyDragFor !== "function" || typeof ideologyAiActive !== "function") return;
+  if (!ideologyAiActive()) return;
+  const s = ST.ideology;
+  if (!s || !s.ai) return;
+  for (const k in s.ai) {
+    const drag = aiIdeologyDragFor(k);
+    if (!drag) continue;
+    const ek = entKeys(k);
+    for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + drag;
   }
 }
 
@@ -145,6 +161,11 @@ if (ST.player === "SUN" && ST.afghan && ST.afghan.withdrawn) {
 if (typeof prestigeProgramDrag === "function") {
   const pd = prestigeProgramDrag();
   if (pd !== 0) selfPP += pd;
+}
+// S-17 / I2：主张输出工程的机会成本（此前函数存在但未进累加链 —— 装饰性拖累）
+if (typeof ideologyProgramDrag === "function") {
+  const id = ideologyProgramDrag();
+  if (id !== 0) selfPP += id;
 }
 // D（地面战争）：玩家自己作为交战方的额外消耗（同样只算偏离史实的部分）
 if (typeof groundWarSelfDrag === "function") {
