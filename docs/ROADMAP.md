@@ -6,8 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动（`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1`）。
 
 ---
 
@@ -1581,6 +1582,7 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 | **感召力的 AI 侧** | ✅ 已交付（Phase I2：对手四条决策规则 + 反向漂移） |
 | **隐蔽行动去 RNG + AI** | ✅ 已交付（Phase Cov2：确定性哈希 + 对手还手） |
 | **AI 外交主动** | ✅ 已交付（Phase Dip2：提议峰会 / 加压履约 / 拒绝空谈） |
+| **次极大国浅层议程** | ✅ 已交付（Phase Mid：IND/ITA/BRA/KOR 数据声明式 2–3 步树） |
 
 ### Phase Dip2：AI 外交主动（仪式与谈判轴的对手侧）
 
@@ -1617,13 +1619,54 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 > 全量 `cmp`：**只有 `dip2` 新增**；既有 `summitprobe` / `unscprobe` 不受影响
 >（拒签门控仅在 `dipAiActive()` 时生效）；history identical:3。
 
+### Phase Mid：次极大国浅层议程（战略地理拉宽）
+
+基准：`main` @ Dip2（`1708992`）。七大国议程树 + AI 代推已齐；47 个通用实体原先只有
+L 的三按钮施政 + DEFAULT 两条并列议程。本切片给 **IND / ITA / BRA / KOR** 各加
+**数据声明式 2–3 步树**，走现有 `onComplete` / 门控词表（`mil_le_3` / `mil_ge_5` /
+`requires`），**引擎零新国家分派**（`aiMajors` 仍仅七大国 → 默认史实路径不改 history）。
+
+#### Mid.1 四国浅层树
+
+| 实体 | 步骤（id） | 门控要点 |
+| --- | --- | --- |
+| **IND** | `ind_green_revolution` → `ind_nonaligned_trade` → `ind_soft_export` | 末步 `mil_le_3` |
+| **ITA** | `ita_ems_anchor` → `ita_industrial_triangle` → `ita_nato_south` | 末步 `mil_ge_5` |
+| **BRA** | `bra_debt_turn` → `bra_democratization` → `bra_regional_market` | 末步 `mil_le_3` |
+| **KOR** | `kor_heavy_chemical` → `kor_electronics_export` → `kor_middle_class` | 末步 `mil_le_3` |
+
+#### Mid.2 真实消费者（禁止纯装饰）
+
+| 效果 | 消费者 |
+| --- | --- |
+| `gdpBonus` | `applyPlayerDecisions` → 玩家 `pmods` |
+| `reserveMonthly` | `updateMonthlyAgendas` → `ST.reserves[*].usd` |
+| `stabilityBonus` | 完成时写入 `generals[*].stability` |
+| `onComplete.{legitimacy,stability,unrest,sanctionStrain}` | `ONCOMPLETE_FIELDS` → `generals[*]` |
+
+#### Mid.3 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；次极不进 `aiMajors` |
+| 效果进词表 | `effects.js` + `?midprobe=1` / `agendaprobe` 双保险 |
+| 引擎零新分派 | 无 Mid 专用 API；完成回馈仍走 `domesticStateOf` + generals 懒物化 |
+
+**实测（`?midprobe=1`，47 条断言）**：专属树 / 词表 / 消费者 / 门控 / AI 不自动启动次极。
+
+| 量 | 值 |
+| --- | --- |
+| 次极实体 | 4（IND / ITA / BRA / KOR），各 3 步 |
+| 探针 | 43 个（含 Dip2 + Mid）；全量 1660 条断言 |
+| 发布包 | 3.675 MiB（预算 3.68 → 3.72）；`CACHE_VERSION` v33 |
+
+> 全量 `cmp`：**只有 `mid` 新增**；`domestic.__effectSites` 55→67、`agenda.__onCompleteSites` 14→26
+>（均来自 12 条新议程数据站点）；history identical:3。
+
 ### 后续可选方向
 
-| 次序 | 切片 | 说明 |
-| --- | --- | --- |
-| **①** | **Phase Mid：次极大国浅层议程** | 2–4 个次极各加数据声明式 2–3 步树，走现有 `onComplete` / 门控词表 |
-
-串行：Cov2 → Dip2（均已交付）→ Mid。体积再贴顶时插入纯卫生轮。
+表内大战略切片已交付完毕。体积再贴顶时插入**纯卫生**轮（压图 / 拆文件 / 抬预算），
+不算机制切片，但应挡在下一机制之前。
 
 ---
 
@@ -1636,7 +1679,7 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 3. **效果词表**：新增 `effects` 键必须先进 `data/effects.js`，否则构建期判失败。
 4. **探针即契约**：`tools/baseline-probes.json` 是回归基线；差异必须能逐条解释，**绝不能丢失断言**。
 5. **发布**：任何发布文件变更都要 bump `out/sw.js` 的 `CACHE_VERSION`，并重跑 `node tools/sw_manifest.js out`。
-6. **产物体积与生成记录字段**：`out/` ≤ 3.68 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
+6. **产物体积与生成记录字段**：`out/` ≤ 3.72 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
    （`checkBundleHygiene` 自动门）。新增字段必须是**有意识的**改动。
 7. **政治经济学表**：新增实体必须在 `data/polecon.js` 的 `ANCHOR` 里给出
    `[史实均值, 史实标准差]`，否则该国永远算不出落差、永远没有政治后果。

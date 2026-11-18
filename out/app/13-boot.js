@@ -316,6 +316,7 @@ load().then(() => {
     i2probe: runIdeologyAiProbe,
     cov2probe: runCovertAiProbe,
     dip2probe: runDipAiProbe,
+    midprobe: runMidAgendaProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };
