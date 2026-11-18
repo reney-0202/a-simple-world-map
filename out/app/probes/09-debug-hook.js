@@ -52,4 +52,10 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   // I2（感召力的 AI 侧）
   ideologyAiActive: ideologyAiActive, aiPickIdeologyProgram: aiPickIdeologyProgram,
   aiIdeologyDragFor: aiIdeologyDragFor, aiIdeologySlotOf: aiIdeologySlotOf,
-  ideologyAiActors: ideologyAiActors, runIdeologyAiProbe: runIdeologyAiProbe };
+  ideologyAiActors: ideologyAiActors, runIdeologyAiProbe: runIdeologyAiProbe,
+  // Cov2（隐蔽行动去 RNG + AI 还手）
+  covertRoll: covertRoll, covertAiActive: covertAiActive, aiPickCovertOp: aiPickCovertOp,
+  covertAiActors: covertAiActors, aiCovertSlotOf: aiCovertSlotOf,
+  executeCovertAiAction: executeCovertAiAction, updateMonthlyCovertAi: updateMonthlyCovertAi,
+  sanitizeCovertAiState: sanitizeCovertAiState, covertAiSnapshot: covertAiSnapshot,
+  runCovertAiProbe: runCovertAiProbe };

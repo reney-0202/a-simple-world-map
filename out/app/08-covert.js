@@ -2,6 +2,18 @@
 
 
 // ---- R13A: 全球谍战沙盒与隐蔽行动控制台系统 ----
+// Cov2：成功/曝光判定的确定性掷骰（FNV，与 deceptionRoll / prestigeRoll 同族）。
+// 盐 + 年月 + 行动 + 目标 → [0,1)；**不**推进 SIM.S.rngState。
+function covertRoll(salt, y, m, a, b) {
+  let h = 2166136261;
+  const s = String(salt) + "|" + y + "|" + m + "|" + a + "|" + b;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 function initIntelState(cKey) {
   const k = cKey || ST.player || "DEFAULT";
   const cfg = (window.W1980_INTEL && window.W1980_INTEL.getAgency(k)) || {
@@ -104,12 +116,14 @@ function executeCovertAction(actionId, targetKey, forceSuccess, forceBlowback) {
     else if (ST.domestic.generals && ST.domestic.generals[tgt]) tgtStab = ST.domestic.generals[tgt].stability;
   }
 
-  const odds = window.W1980_INTEL.calcOperationOdds(actionId, ST.player, tgt, intel.counterLevel, tgtStab);
-  let rollSuccess = forceSuccess !== undefined ? !!forceSuccess : (Math.random() < odds.successRate);
-  let rollBlowback = forceBlowback !== undefined ? !!forceBlowback : (!rollSuccess && Math.random() < odds.blowbackRate);
-
   const y = SIM.S ? SIM.S.year : 1980;
   const m = SIM.S ? SIM.S.month : 1;
+  const odds = window.W1980_INTEL.calcOperationOdds(actionId, ST.player, tgt, intel.counterLevel, tgtStab);
+  // Cov2：成功/曝光改确定性哈希（与 C2/E 同族），不推进 SIM.S.rngState。
+  let rollSuccess = forceSuccess !== undefined ? !!forceSuccess
+    : (covertRoll("ok", y, m, actionId, tgt) < odds.successRate);
+  let rollBlowback = forceBlowback !== undefined ? !!forceBlowback
+    : (!rollSuccess && covertRoll("bk", y, m, actionId, tgt) < odds.blowbackRate);
 
   // G（收尾评审）：具体行动效果与丑闻反噬两段抽为独立函数（见下方 covertApply*）。
   const note = covertApplyActionEffect(actionId, { intel: intel, tgt: tgt, tgtZh: tgtZh, rollSuccess: rollSuccess });

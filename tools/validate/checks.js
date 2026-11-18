@@ -581,10 +581,11 @@ function checkPolEcon(ctx) {
 // budget moved 3.2 -> 3.5 MiB in the same commit that added it (F),
 // 3.5 -> 3.55 MiB with C2 (disinformation: data table + engine + probe ~= 36 KB),
 // 3.55 -> 3.58 MiB with the end-story upgrade (narrative engine + probe
-// ~= 16 KB plus wiring), and 3.58 -> 3.61 MiB with I2 (ideology AI rules +
-// engine wiring + probe ~= 24 KB on top of E2/T). Same reasoning every time:
-// the guard catches accidental bloat, it does not ration features.
-const BUNDLE_BUDGET_MIB = 3.61;
+// ~= 16 KB plus wiring), 3.58 -> 3.61 MiB with I2 (ideology AI rules +
+// engine wiring + probe ~= 24 KB on top of E2/T), and 3.61 -> 3.64 MiB with
+// Cov2 (covert de-RNG + AI retaliation + probe ~= 20 KB). Same reasoning
+// every time: the guard catches accidental bloat, it does not ration features.
+const BUNDLE_BUDGET_MIB = 3.64;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
@@ -1351,6 +1352,60 @@ function checkDeception(ctx) {
   return { problems, notes, stats: { plants, shields } };
 }
 
+// ---- 2t. intel / covert AI policy (Cov2) ------------------------------------
+// Covert ops without an AI side is a one-player sandbox; AI_POLICY without
+// sticky / floors / real retaliate acts is decoration. Also every RETALIATE
+// / DEFEND id must resolve to a real ACTIONS row (no ghost chess).
+function checkIntel(ctx) {
+  const notes = [];
+  const problems = [];
+  const IN = ctx.data.W1980_INTEL;
+  if (!IN) return { problems: ['intel.js: 未定义 W1980_INTEL'], notes };
+  const acts = Array.isArray(IN.ACTIONS) ? IN.ACTIONS : [];
+  const byId = {};
+  for (const a of acts) if (a && typeof a.id === 'string') byId[a.id] = a;
+  if (acts.length < 4) problems.push('intel.js: ACTIONS 应至少包含 4 大隐蔽行动');
+
+  const AI = IN.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('intel.js: 缺 AI_POLICY（Cov2：对手没有隐蔽还手规则）');
+  } else {
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('intel.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('intel.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof AI.BUDGET_FLOOR === 'number' && AI.BUDGET_FLOOR > 0)) {
+      problems.push('intel.js: AI_POLICY.BUDGET_FLOOR 必须是正数');
+    }
+    if (!(typeof AI.AP_FLOOR === 'number' && AI.AP_FLOOR >= 1)) {
+      problems.push('intel.js: AI_POLICY.AP_FLOOR 必须 >= 1');
+    }
+    if (!(typeof AI.RETALIATE_LOOKBACK === 'number' && AI.RETALIATE_LOOKBACK >= 1)) {
+      problems.push('intel.js: AI_POLICY.RETALIATE_LOOKBACK 必须 >= 1');
+    }
+    if (!Array.isArray(AI.RETALIATE_ACTS) || AI.RETALIATE_ACTS.length < 2) {
+      problems.push('intel.js: AI_POLICY.RETALIATE_ACTS 必须是长度 ≥2 的数组');
+    } else {
+      for (const id of AI.RETALIATE_ACTS) {
+        if (!byId[id]) problems.push(`intel.js: AI_POLICY.RETALIATE_ACTS 的 "${id}" 不是真实行动（幽灵棋）`);
+      }
+    }
+    if (typeof AI.DEFEND_ACT !== 'string' || !byId[AI.DEFEND_ACT]) {
+      problems.push('intel.js: AI_POLICY.DEFEND_ACT 必须指向真实行动');
+    }
+    for (const k of ['UNREST_HIT', 'BUDGET_DRAIN', 'TENSION_HIT', 'PRESTIGE_HIT']) {
+      if (!(typeof AI[k] === 'number' && AI[k] > 0)) {
+        problems.push(`intel.js: AI_POLICY.${k} 必须是正数（真实消费者，禁止纯装饰）`);
+      }
+    }
+  }
+
+  notes.push(`intel: ${acts.length} actions, AI_POLICY ${AI ? 'ok' : 'missing'}, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { actions: acts.length } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1446,6 +1501,7 @@ const CHECKS = [
   { id: 'ideology', label: '意识形态资源表（感召力）', run: checkIdeology },
   { id: 'fuses', label: '长引信表（战略工程）', run: checkFuses },
   { id: 'deception', label: '情报误报表（欺敌/反情报）', run: checkDeception },
+  { id: 'intel', label: '隐蔽行动表（谍战/Cov2 AI）', run: checkIntel },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1474,6 +1530,7 @@ module.exports = {
   checkIdeology,
   checkFuses,
   checkDeception,
+  checkIntel,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

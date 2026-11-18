@@ -2,11 +2,12 @@
 
 > 评审日期：2026-10-17（Phase L 交付于 2026-10-18；M/N/O 交付于 2026-10-19；P0/P1/P2 与 F 交付于 2026-10-19）｜ 基线提交：`0e82a70` 之后连续推进
 >
-> **基线全绿**：`validate_data` ✅ · `validate.test` ✅ · 探针 40/40 ✅ · `cmp --class=history` identical:3 ✅
+> **基线全绿**：`validate_data` ✅ · `validate.test` ✅ · 探针 41/41 ✅ · `cmp --class=history` identical:3 ✅
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 已交付**：长引信 AI 侧、触控与窄屏、感召力 AI 侧（`?e2probe=1` / `?touchprobe=1` / `?i2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1`）。
 
 ---
 
@@ -1515,6 +1516,59 @@ F2 让威望的 AI 侧下棋，I2 让感召力的 AI 侧下棋。
 
 > 全量 `cmp`：**只有 `i2` 新增，既有 `ideo`/`saveprobe`/`touch` 等逐位不变**；history identical:3。
 
+### Phase Cov2 — 隐蔽行动：去 RNG + 对手还手（✅ 已交付）
+
+R13A 给了玩家完整的谍战沙盒，但成功/曝光仍走 `Math.random`，且对手几乎只靠
+C2 自动欺敌「擦边还手」。Cov2 先把判定改成确定性哈希（不推进 `rngState`），
+再让对手按规则还手 —— 与 F2/E2/I2 同构的最后一块情报家族结构债。
+
+#### Cov2.1 确定性判定
+
+```
+covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
+成功 / 曝光均吃哈希；全仓隐蔽路径零 Math.random；不推进 SIM.S.rngState
+```
+
+#### Cov2.2 对手的确定性规则（≥3）
+
+```
+对等还手  玩家近期成功进攻性行动 → proxy / coup / smuggle 指向玩家
+养不起    预算/AP 紧或 strain≥0.7 → standDown
+粘性      新行动 < MIN_MONTHS     → 不再加（防逐月翻烧饼）
+附：反间偏低先加固；玩家丑闻冻结中 → coast
+```
+
+#### Cov2.3 真实消费者
+
+| 消费者 | 落点 |
+| --- | --- |
+| **动荡 / 合法性 / 国会** | 既有内政字段 |
+| **特情预算** | 抽走玩家黑金 |
+| **美苏张力** | `ST.ai.tensions` |
+| **威望 / 感召力** | 小额可见扣分 |
+
+#### Cov2.4 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；`covertAiActive()` 白名单（`?cov2probe=1`） |
+| 旁观零回写 | 无玩家：`covertAiActors()` 空，月度推进立即返回 |
+| 决策确定 | 同状态同结果，不碰 `SIM.S.rngState` |
+| 不升存档版本 | `ST.covertAi` 走 `sanitizeCovertAiState` |
+
+**实测（`?cov2probe=1`，36 条断言）**：规则表 / 哈希稳定 / 门控 / 三条+规则 / 消费者 /
+存档清洗 / 旁观零回写 / 端到端。
+
+| 量 | 值 |
+| --- | --- |
+| 决策规则 | ≥3 条（还手 / 收手 / 粘性 + 加固/coast） |
+| 探针 | 41 个（含 E2 + T + I2 + Cov2） |
+| 发布包 | 3.622 MiB（预算 3.61 → 3.64） |
+
+> 全量 `cmp`：**只有 `cov2` 新增**；`intelprobe` 仍绿（成功/曝光改为哈希后结果
+> 可能与旧 RNG 路径不同，但断言只查结构效果 / 强制掷骰用例，不受影响）；
+> history identical:3。
+
 ### 下一轮最优先（表内项均已交付）
 
 | 方向 | 为什么它排在最前 |
@@ -1525,6 +1579,16 @@ F2 让威望的 AI 侧下棋，I2 让感召力的 AI 侧下棋。
 | **E2. 长引信的 AI 侧** | ✅ 已交付（对手也埋战略工程） |
 | **移动端触控打磨** | ✅ 已交付（Phase T：底栏面板 + Pointer 手势 + 33 条断言） |
 | **感召力的 AI 侧** | ✅ 已交付（Phase I2：对手四条决策规则 + 反向漂移） |
+| **隐蔽行动去 RNG + AI** | ✅ 已交付（Phase Cov2：确定性哈希 + 对手还手） |
+
+### 后续可选方向
+
+| 次序 | 切片 | 说明 |
+| --- | --- | --- |
+| **①** | **Phase Dip2：AI 外交主动** | 对手在窗口期提议峰会、加压履约或拒绝空谈；补「仪式与谈判」轴的主动性 |
+| **②** | **Phase Mid：次极大国浅层议程** | 2–4 个次极各加数据声明式 2–3 步树，走现有 `onComplete` / 门控词表 |
+
+串行：先 Cov2（已交付）→ Dip2 → Mid。体积再贴顶时插入纯卫生轮。
 
 ---
 
@@ -1537,7 +1601,7 @@ F2 让威望的 AI 侧下棋，I2 让感召力的 AI 侧下棋。
 3. **效果词表**：新增 `effects` 键必须先进 `data/effects.js`，否则构建期判失败。
 4. **探针即契约**：`tools/baseline-probes.json` 是回归基线；差异必须能逐条解释，**绝不能丢失断言**。
 5. **发布**：任何发布文件变更都要 bump `out/sw.js` 的 `CACHE_VERSION`，并重跑 `node tools/sw_manifest.js out`。
-6. **产物体积与生成记录字段**：`out/` ≤ 3.61 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
+6. **产物体积与生成记录字段**：`out/` ≤ 3.64 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
    （`checkBundleHygiene` 自动门）。新增字段必须是**有意识的**改动。
 7. **政治经济学表**：新增实体必须在 `data/polecon.js` 的 `ANCHOR` 里给出
    `[史实均值, 史实标准差]`，否则该国永远算不出落差、永远没有政治后果。

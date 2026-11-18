@@ -124,9 +124,41 @@
     }
   ];
 
+  // Cov2：隐蔽行动的 AI 侧（确定性规则，零 RNG，与 F2/E2/I2 同族门控）。
+  // 玩家能跑代理人/政变/反间/走私，对手此前几乎只靠 C2 自动欺敌擦边还手。
+  // 本表让对手也动手：被打就还手、养不起就收手、粘性防翻烧饼。
+  // AI 不花玩家政治资本；代价落在既有通道（动荡/合法性/特情预算/阵营张力/威望）。
+  const AI_POLICY = {
+    MIN_MONTHS: 4,            // 粘性：两次行动至少隔 4 个月（防逐月翻烧饼）
+    RETALIATE_LOOKBACK: 18,   // 回看玩家档案多少月内有成功进攻性行动 → 还手
+    STRAIN_MAX: 0.7,          // 经济压力过高 → 收手
+    BUDGET_FLOOR: 3.0,        // AI 黑金低于此 → 收手
+    AP_FLOOR: 2,              // AI AP 低于此 → 收手
+    COUNTER_LOW: 55,          // 反间等级偏低且被压 → 先加固
+    INITIAL_BUDGET: 18.0,
+    INITIAL_AP: 6,
+    INITIAL_COUNTER: 60,
+    MONTHLY_BUDGET: 0.5,
+    MONTHLY_AP: 1,
+    MAX_AP: 10,
+    // 还手优先序：代理人压力 → 政变（高风险）→ 技术挖角
+    RETALIATE_ACTS: ["proxy_insurgency", "coup_attempt", "tech_smuggle"],
+    DEFEND_ACT: "counter_intel",
+    // 真实消费者量级（对玩家执政国）
+    UNREST_HIT: 4,
+    LEGIT_HIT: 3,
+    CONGRESS_HIT: 4,
+    BUDGET_DRAIN: 1.5,        // 抽走玩家特情预算
+    TENSION_HIT: 4,
+    PRESTIGE_HIT: 0.8,        // 成功特工压力扣玩家威望（小额、可见）
+    APPEAL_HIT: 0.6,          // 成功特工压力扣玩家感召力
+    LOG_MAX: 24
+  };
+
   const API = {
     AGENCIES: AGENCIES,
     ACTIONS: ACTIONS,
+    AI_POLICY: AI_POLICY,
 
     getAgency: function (countryKey) {
       if (!countryKey) return AGENCIES.DEFAULT;

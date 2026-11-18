@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 62,
-    "pop": 51,
-    "ind": 47,
-    "province": 41,
-    "delta": 45,
-    "resource": 46
+    "bloc": 82,
+    "pop": 221,
+    "ind": 68,
+    "province": 67,
+    "delta": 43,
+    "resource": 41
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -27,9 +27,9 @@
    "topGdpDeu": "8500 亿美元 / Bonn",
    "hoverProbe": "2472/Tomsk@SUN",
    "landNoAta": "1.356",
-   "exportPng": "data:image/png; len=376818",
+   "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1399
+   "totalMs": 1711
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143966,
+   "saveBytes": 143997,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -318,12 +318,12 @@
    "blocOrig": "NATO",
    "badgeBefore": "北约",
    "tblDeuColorBefore": 4289752894,
-   "sigBefore": "60ace610",
+   "sigBefore": "416bd736",
    "pmodsBefore": 0,
    "overrideSet": true,
    "badgeAfter": "华约",
    "badgeOk": true,
-   "sigAfter": "60ace610",
+   "sigAfter": "416bd736",
    "tblBefore": 4289752894,
    "tblAfter": 4282006192,
    "blocTableChanged": true,
@@ -377,10 +377,10 @@
    },
    "errors": [],
    "c0Rgb": "95,158,160",
-   "sigPol0": "72395488",
+   "sigPol0": "1b9cb66d",
    "cOccRgb": "125,106,158",
-   "sigPolOcc": "4405db98",
-   "sigBlocOcc": "4bbaf678",
+   "sigPolOcc": "1a9727c8",
+   "sigBlocOcc": "36d0a0dc",
    "hintTxt": "伊朗（中立） · 【交战控制：伊拉克】"
   },
   "failed": false
@@ -539,8 +539,8 @@
     "resBoxHiddenOnClose": true
    },
    "errors": [],
-   "sigPol": "47d38496",
-   "sigRes": "2503aa18"
+   "sigPol": "62ba66aa",
+   "sigRes": "c8848a9"
   },
   "failed": false
  },
@@ -1970,6 +1970,54 @@
   },
   "failed": false
  },
+ "e2": {
+  "marker": "FUSEAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyThresholdsOrdered": "PASS",
+    "pickTiersReal": "PASS",
+    "pickTiersOrderedByCost": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInE2Probe": "PASS",
+    "ruleIgniteStarts": "PASS",
+    "ruleIgnitePicksHighTier": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleFullStopsAdding": "PASS",
+    "ruleWantSatisfied": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleMidTierUnderStrain": "PASS",
+    "ruleLoTierUnderStrain": "PASS",
+    "ruleStrainCutsDearest": "PASS",
+    "monthlyStartsIgnite": "PASS",
+    "monthlyCountdownTicks": "PASS",
+    "dragIsNegative": "PASS",
+    "dragEntersPmods": "PASS",
+    "dragReleasedOnStop": "PASS",
+    "dragGatedOffWithoutPlayer": "PASS",
+    "outcomeLandsOnOwner": "PASS",
+    "outcomeSkipsPlayerCred": "PASS",
+    "fiascoHurtsOwner": "PASS",
+    "outcomeForDeterministic": "PASS",
+    "snapshotExposesRivalBurning": "PASS",
+    "panelShowsRivalPrograms": "PASS",
+    "roundTripKeepsAi": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoAiPrograms": "PASS",
+    "spectatorNoRng": "PASS",
+    "spectatorNoPmods": "PASS",
+    "endToEndStateSane": "PASS",
+    "endToEndPanelRenders": "PASS"
+   }
+  },
+  "failed": false
+ },
  "touch": {
   "marker": "TOUCHPROBE",
   "class": "mechanics",
@@ -2061,6 +2109,53 @@
     "spectatorNoBlocDrift": "PASS",
     "endToEndStateSane": "PASS",
     "endToEndPanelRenders": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "cov2": {
+  "marker": "COVERTAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyStickyPositive": "PASS",
+    "policyStrainBounded": "PASS",
+    "policyFloorsPositive": "PASS",
+    "policyRetaliateActsReal": "PASS",
+    "policyDefendActReal": "PASS",
+    "policyConsumersPositive": "PASS",
+    "hashStable": "PASS",
+    "hashVariesWithMonth": "PASS",
+    "hashConsumesNoRng": "PASS",
+    "playerPathDeterministic": "PASS",
+    "playerPathNoRng": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInCov2Probe": "PASS",
+    "ruleNeutralDoesNothing": "PASS",
+    "ruleRetaliate": "PASS",
+    "ruleStrainStandsDown": "PASS",
+    "ruleStrainFromEconomy": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleCoastOnScandal": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleDefendWhenCounterLow": "PASS",
+    "consumerTouchesUnrest": "PASS",
+    "consumerDrainsBudget": "PASS",
+    "consumerRaisesTension": "PASS",
+    "consumerHitsPrestige": "PASS",
+    "monthlyActsOrStands": "PASS",
+    "roundTripKeepsSlot": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoActors": "PASS",
+    "spectatorNoWrite": "PASS",
+    "spectatorNoRng": "PASS",
+    "endToEndStateSane": "PASS"
    }
   },
   "failed": false

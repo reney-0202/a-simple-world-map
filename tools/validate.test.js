@@ -70,7 +70,22 @@ function cleanData() {
       ONCOMPLETE_FIELDS: { sezMomentum: { zh: '特区动能' }, unrest: { zh: '动荡' } },
       isOnCompleteField(name) { return Object.prototype.hasOwnProperty.call(this.ONCOMPLETE_FIELDS, name); },
     },
-    W1980_INTEL: { AGENCIES: { BBB: { name: 'b' }, DEFAULT: null } },
+    W1980_INTEL: {
+      AGENCIES: { BBB: { name: 'b' }, DEFAULT: null },
+      ACTIONS: [
+        { id: 'proxy_insurgency', name: 'proxy', cost: 3, apCost: 2, blowbackRisk: 0.18 },
+        { id: 'coup_attempt', name: 'coup', cost: 6, apCost: 4, blowbackRisk: 0.32 },
+        { id: 'counter_intel', name: 'counter', cost: 2, apCost: 2, blowbackRisk: 0 },
+        { id: 'tech_smuggle', name: 'smuggle', cost: 4.5, apCost: 3, blowbackRisk: 0.22 },
+      ],
+      AI_POLICY: {
+        MIN_MONTHS: 4, RETALIATE_LOOKBACK: 18, STRAIN_MAX: 0.7,
+        BUDGET_FLOOR: 3, AP_FLOOR: 2, COUNTER_LOW: 55,
+        RETALIATE_ACTS: ['proxy_insurgency', 'coup_attempt'],
+        DEFEND_ACT: 'counter_intel',
+        UNREST_HIT: 4, BUDGET_DRAIN: 1.5, TENSION_HIT: 4, PRESTIGE_HIT: 0.8,
+      },
+    },
     W1980_AFGHAN: { POLICIES: { p1: {} } },
     W1980_AI: {
       AI_DOCTRINES: { AAA: { baseMil: 2, reactions: [{ effects: { ceasefire: true } }] } },
@@ -1310,6 +1325,36 @@ test('a shield with exposure risk is caught', () => {
 test('an auto-plant rate outside (0,1] is caught', () => {
   const d = cleanData(); d.W1980_DECEPTION.PARAMS.AUTO_FALSE_FRONT = 0;
   assert.match(checks.checkDeception(makeCtx(d)).problems[0], /AUTO_FALSE_FRONT 必须落在 \(0,1\]/);
+});
+
+// ---- 8n. intel / covert AI policy (Cov2) ------------------------------------
+section('checkIntel');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkIntel(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_INTEL;
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /未定义 W1980_INTEL/);
+});
+test('a missing AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_INTEL.AI_POLICY;
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('a zero sticky window is caught', () => {
+  const d = cleanData(); d.W1980_INTEL.AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('a strain max outside \(0,1\] is caught', () => {
+  const d = cleanData(); d.W1980_INTEL.AI_POLICY.STRAIN_MAX = 1.5;
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /STRAIN_MAX 必须落在 \(0,1\]/);
+});
+test('a ghost retaliate act is caught', () => {
+  const d = cleanData(); d.W1980_INTEL.AI_POLICY.RETALIATE_ACTS = ['proxy_insurgency', 'nope'];
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /"nope" 不是真实行动（幽灵棋）/);
+});
+test('a zero consumer magnitude is caught', () => {
+  const d = cleanData(); d.W1980_INTEL.AI_POLICY.UNREST_HIT = 0;
+  assert.match(checks.checkIntel(makeCtx(d)).problems[0], /UNREST_HIT 必须是正数/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------
