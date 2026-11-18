@@ -452,6 +452,29 @@
     return { ok: true, tension: att.tension, availableTreaties: available };
   }
 
+  // Dip2：仪式与谈判轴的 AI 侧（确定性规则，零 RNG，与 F2/E2/I2/Cov2 同族）。
+  // 玩家能点开峰会/安理会/军控弹窗，对手此前几乎只在窗口期发一封邀请照会 ——
+  // 本表让对手主动提议峰会、加压履约、拒绝空谈；量级必须喂真实消费者。
+  const DIP_AI_POLICY = {
+    MIN_MONTHS: 3,              // 粘性：两次外交主动至少隔 3 个月
+    STRAIN_MAX: 0.75,           // 经济压力过高 → 收手（不主动提议）
+    PROPOSE_WINDOW_SLACK: 1,    // 历史峰会窗口 ±1 月
+    // 美苏宿敌基线张力约 85；历史峰会本就是高张力破冰，上限须盖住基线
+    PROPOSE_TENSION_MAX: 90,    // 张力过高不主动破冰（对齐 canHoldSummit 附近）
+    PROPOSE_TENSION_MIN: 20,    // 已经太平 → 不必再邀
+    PROPOSE_PRESTIGE: 0.7,      // 主动邀约给对手威望（发起方地位）
+    PRESS_MIL_MARGIN: 0.45,     // 军费距 milCap 不足此值 → 加压履约
+    PRESS_PRESTIGE: 0.9,        // 加压扣玩家威望
+    PRESS_UNREST: 3,            // 加压抬动荡
+    PRESS_LEGIT: 2,             // 加压扣合法性
+    // 与 canHoldSummit（tension > 85 拒赴会）对齐：再热才算空谈拒签
+    REJECT_TENSION: 86,         // 张力 ≥ 此值 → 拒绝空谈（拒签）
+    REJECT_MIL_OVER: 5.5,       // 军费仍高却谈军控 → 拒签
+    REJECT_PRESTIGE: 1.2,       // 拒签扣玩家威望
+    REJECT_UNREST: 2,
+    LOG_MAX: 24
+  };
+
   function evaluateBreach(treaty, playerDecisions, aiDecisions) {
     if (!treaty || treaty.status !== "active") return { breached: false };
     const pMil = (playerDecisions && typeof playerDecisions.mil === "number") ? playerDecisions.mil : 0;
@@ -926,6 +949,7 @@
     UNSC_P5: UNSC_P5,
     UNSC_RESOLUTIONS: UNSC_RESOLUTIONS,
     evaluateUNSCVote: evaluateUNSCVote,
-    canTableResolution: canTableResolution
+    canTableResolution: canTableResolution,
+    DIP_AI_POLICY: DIP_AI_POLICY
   };
 })();

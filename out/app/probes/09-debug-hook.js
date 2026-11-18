@@ -58,4 +58,10 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   covertAiActors: covertAiActors, aiCovertSlotOf: aiCovertSlotOf,
   executeCovertAiAction: executeCovertAiAction, updateMonthlyCovertAi: updateMonthlyCovertAi,
   sanitizeCovertAiState: sanitizeCovertAiState, covertAiSnapshot: covertAiSnapshot,
-  runCovertAiProbe: runCovertAiProbe };
+  runCovertAiProbe: runCovertAiProbe,
+  // Dip2（AI 外交主动）
+  dipAiActive: dipAiActive, aiPickDipOp: aiPickDipOp, dipAiActors: dipAiActors,
+  aiDipSlotOf: aiDipSlotOf, executeDipAiAction: executeDipAiAction,
+  updateMonthlyDipAi: updateMonthlyDipAi, sanitizeDipAiState: sanitizeDipAiState,
+  dipAiAcceptTreaty: dipAiAcceptTreaty, dipAiApplyReject: dipAiApplyReject,
+  dipAiSnapshot: dipAiSnapshot, runDipAiProbe: runDipAiProbe };
