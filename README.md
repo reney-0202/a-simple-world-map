@@ -285,6 +285,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **T** | 触控与窄屏 | ✅ | `html.narrow-ui`：顶栏工具横滑、国家面板变底栏、小地图让位、浮层全宽、触控靶 ≥36px；地图改 Pointer Events（拖平移 / 双指捏合），零 RNG；欢迎页跳过收敛到 `CR.probeMode`。`?touchprobe=1` 33 条断言；39 探针 / history identical:3 |
 | **I2** | 感召力的 AI 侧 | ✅ | 对手也输出主张：**落后追赶 / 领先收手 / 养不起砍最贵 / 粘性**（确定性，零 RNG）。工程走 pmods 真实拖累；**反向第三世界漂移**；对手输出公开上榜。顺带接上 S-17 装饰性玩家拖累。`?i2probe=1` 40 条断言；40 探针 / history identical:3 |
 | **Cov2** | 隐蔽行动去 RNG + AI | ✅ | 成功/曝光改确定性哈希（零 `Math.random`、不推进 `rngState`）；对手还手：**对等报复 / 养不起收手 / 粘性**（+ 加固/coast）；真实消费者（动荡/合法性/特情预算/张力/威望）。`?cov2probe=1` 36 条断言；41 探针 / history identical:3 |
+| **Dip2** | AI 外交主动 | ✅ | 对手在窗口期**提议峰会 / 加压履约 / 拒绝空谈**（确定性，零 RNG）；真实消费者（威望/动荡/合法性）；`signTreaty` 拒签接线。`?dip2probe=1` 39 条断言；42 探针 / history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：**Dip2 → Mid**。
+后续可选方向见 `docs/ROADMAP.md` 末尾：**Mid**。
 

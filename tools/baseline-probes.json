@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 82,
-    "pop": 221,
-    "ind": 68,
-    "province": 67,
-    "delta": 43,
-    "resource": 41
+    "bloc": 59,
+    "pop": 53,
+    "ind": 49,
+    "province": 51,
+    "delta": 52,
+    "resource": 57
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1711
+   "totalMs": 1242
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 143997,
+   "saveBytes": 144010,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -2155,6 +2155,56 @@
     "spectatorNoActors": "PASS",
     "spectatorNoWrite": "PASS",
     "spectatorNoRng": "PASS",
+    "endToEndStateSane": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "dip2": {
+  "marker": "DIPAIPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyStickyPositive": "PASS",
+    "policyStrainBounded": "PASS",
+    "policyProposeWindow": "PASS",
+    "policyProposeTensionOrder": "PASS",
+    "policyRejectTension": "PASS",
+    "policyConsumersPositive": "PASS",
+    "summitPresetsExist": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInDip2Probe": "PASS",
+    "ruleNeutralOffWindow": "PASS",
+    "ruleProposeInWindow": "PASS",
+    "rulePressNearBreach": "PASS",
+    "rulePressUnscIdle": "PASS",
+    "ruleUnscPassedNoPress": "PASS",
+    "ruleStrainStandsDown": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "ruleRejectArmed": "PASS",
+    "ruleRejectHighTension": "PASS",
+    "ruleAcceptWhenReady": "PASS",
+    "consumerProposePrestige": "PASS",
+    "consumerProposePending": "PASS",
+    "consumerPressPrestige": "PASS",
+    "consumerPressUnrest": "PASS",
+    "consumerRejectPrestige": "PASS",
+    "consumerRejectUnrest": "PASS",
+    "monthlyProposesOrPresses": "PASS",
+    "roundTripKeepsSlot": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoActors": "PASS",
+    "spectatorNoWrite": "PASS",
+    "spectatorNoRng": "PASS",
+    "signTreatyRejectsEmptyTalk": "PASS",
+    "signTreatyAcceptsWhenReady": "PASS",
     "endToEndStateSane": "PASS"
    }
   },

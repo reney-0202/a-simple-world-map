@@ -315,6 +315,7 @@ load().then(() => {
     touchprobe: runTouchProbe,
     i2probe: runIdeologyAiProbe,
     cov2probe: runCovertAiProbe,
+    dip2probe: runDipAiProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

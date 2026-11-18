@@ -52,7 +52,8 @@ window.W1980_PROBES={
   "e2probe",
   "touchprobe",
   "i2probe",
-  "cov2probe"
+  "cov2probe",
+  "dip2probe"
  ],
  "entries": {
   "selftest": {
@@ -298,6 +299,12 @@ window.W1980_PROBES={
   "cov2": {
    "qs": "cov2probe=1",
    "marker": "COVERTAIPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "dip2": {
+   "qs": "dip2probe=1",
+   "marker": "DIPAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

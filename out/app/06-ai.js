@@ -499,6 +499,21 @@ function signTreaty(treatyId, aiKey, preset) {
   const curY = SIM.S ? SIM.S.year : 1980;
   const curM = SIM.S ? Math.max(1, SIM.S.month) : 1;
 
+  // Dip2：对手拒绝空谈 —— 张力仍高 / 军费仍高 / 制裁未撤 → 拒签并写入真实代价
+  if (typeof dipAiAcceptTreaty === "function") {
+    const verdict = dipAiAcceptTreaty(treatyId, aiKey);
+    if (verdict && verdict.ok === false) {
+      if (typeof dipAiApplyReject === "function") dipAiApplyReject(aiKey, verdict.reason, curY, curM, false);
+      else {
+        toast({
+          y: curY, m: curM, zh: "【拒绝空谈】对手拒签军控",
+          note: "双边互信或军备姿态尚不足以支撑条约。"
+        });
+      }
+      return;
+    }
+  }
+
   if (treatyId === "inf" && ST.mil > 4.0) {
     ST.mil = 4.0;
     refreshMilBox();

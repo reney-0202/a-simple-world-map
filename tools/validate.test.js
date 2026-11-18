@@ -90,6 +90,19 @@ function cleanData() {
     W1980_AI: {
       AI_DOCTRINES: { AAA: { baseMil: 2, reactions: [{ effects: { ceasefire: true } }] } },
       STRATEGIC_OBJECTIVES: { CCC: [{ id: 'o1', kind: 'mil', delta: 0.5, target: 'BBB' }] },
+      SUMMIT_PRESETS: [
+        { id: 's1', year: 1985, month: 11, participants: ['AAA', 'BBB'] },
+        { id: 's2', year: 1986, month: 10, participants: ['AAA', 'BBB'] },
+        { id: 's3', year: 1987, month: 12, participants: ['AAA', 'BBB'] },
+      ],
+      DIP_AI_POLICY: {
+        MIN_MONTHS: 3, STRAIN_MAX: 0.75, PROPOSE_WINDOW_SLACK: 1,
+        PROPOSE_TENSION_MIN: 20, PROPOSE_TENSION_MAX: 90,
+        PROPOSE_PRESTIGE: 0.7, PRESS_MIL_MARGIN: 0.45,
+        PRESS_PRESTIGE: 0.9, PRESS_UNREST: 3, PRESS_LEGIT: 2,
+        REJECT_TENSION: 86, REJECT_MIL_OVER: 5.5,
+        REJECT_PRESTIGE: 1.2, REJECT_UNREST: 2, LOG_MAX: 24,
+      },
     },
     W1980_RESOURCES: { meta: { oil: {}, tech: {} }, countries: { AAA: {}, BBB: {} } },
     W1980_EMBARGO: {
@@ -1355,6 +1368,34 @@ test('a ghost retaliate act is caught', () => {
 test('a zero consumer magnitude is caught', () => {
   const d = cleanData(); d.W1980_INTEL.AI_POLICY.UNREST_HIT = 0;
   assert.match(checks.checkIntel(makeCtx(d)).problems[0], /UNREST_HIT 必须是正数/);
+});
+
+// ---- 8o. diplomacy AI policy (Dip2) -----------------------------------------
+section('checkDipAi');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkDipAi(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_AI;
+  assert.match(checks.checkDipAi(makeCtx(d)).problems[0], /未定义 W1980_AI/);
+});
+test('a missing DIP_AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_AI.DIP_AI_POLICY;
+  assert.match(checks.checkDipAi(makeCtx(d)).problems[0], /缺 DIP_AI_POLICY/);
+});
+test('a zero sticky window is caught', () => {
+  const d = cleanData(); d.W1980_AI.DIP_AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkDipAi(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('a broken propose tension window is caught', () => {
+  const d = cleanData();
+  d.W1980_AI.DIP_AI_POLICY.PROPOSE_TENSION_MIN = 80;
+  d.W1980_AI.DIP_AI_POLICY.PROPOSE_TENSION_MAX = 70;
+  assert.match(checks.checkDipAi(makeCtx(d)).problems[0], /提议张力窗必须满足/);
+});
+test('a zero consumer magnitude is caught', () => {
+  const d = cleanData(); d.W1980_AI.DIP_AI_POLICY.PRESS_PRESTIGE = 0;
+  assert.match(checks.checkDipAi(makeCtx(d)).problems[0], /PRESS_PRESTIGE 必须是正数/);
 });
 
 // ---- 8e. agenda condition vocabulary -----------------------------------------

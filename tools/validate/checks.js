@@ -585,7 +585,7 @@ function checkPolEcon(ctx) {
 // engine wiring + probe ~= 24 KB on top of E2/T), and 3.61 -> 3.64 MiB with
 // Cov2 (covert de-RNG + AI retaliation + probe ~= 20 KB). Same reasoning
 // every time: the guard catches accidental bloat, it does not ration features.
-const BUNDLE_BUDGET_MIB = 3.64;
+const BUNDLE_BUDGET_MIB = 3.68;
 // The complete set of fields a province record may carry. Anything else is
 // either dead weight or a new field that must be declared (and consumed) on
 // purpose — both deserve a build-time decision rather than silent drift.
@@ -1406,6 +1406,54 @@ function checkIntel(ctx) {
   return { problems, notes, stats: { actions: acts.length } };
 }
 
+// ---- 2u. diplomacy AI policy (Dip2) ----------------------------------------
+// Summit / UNSC / treaty windows without an AI side stay player-only theatre.
+// DIP_AI_POLICY must keep sticky / tension order / positive real consumers.
+function checkDipAi(ctx) {
+  const notes = [];
+  const problems = [];
+  const AI = ctx.data.W1980_AI;
+  if (!AI) return { problems: ['ai.js: 未定义 W1980_AI'], notes };
+  const P = AI.DIP_AI_POLICY;
+  if (!P || typeof P !== 'object') {
+    problems.push('ai.js: 缺 DIP_AI_POLICY（Dip2：对手没有外交主动规则）');
+  } else {
+    if (!(typeof P.MIN_MONTHS === 'number' && P.MIN_MONTHS >= 1)) {
+      problems.push('ai.js: DIP_AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof P.STRAIN_MAX === 'number' && P.STRAIN_MAX > 0 && P.STRAIN_MAX <= 1)) {
+      problems.push('ai.js: DIP_AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof P.PROPOSE_WINDOW_SLACK === 'number' && P.PROPOSE_WINDOW_SLACK >= 0)) {
+      problems.push('ai.js: DIP_AI_POLICY.PROPOSE_WINDOW_SLACK 必须 >=0');
+    }
+    if (!(typeof P.PROPOSE_TENSION_MIN === 'number' && typeof P.PROPOSE_TENSION_MAX === 'number'
+        && P.PROPOSE_TENSION_MIN < P.PROPOSE_TENSION_MAX && P.PROPOSE_TENSION_MAX < 100)) {
+      problems.push('ai.js: DIP_AI_POLICY 提议张力窗必须满足 MIN < MAX < 100');
+    }
+    if (!(typeof P.REJECT_TENSION === 'number' && P.REJECT_TENSION > P.PROPOSE_TENSION_MIN
+        && P.REJECT_TENSION <= 100)) {
+      problems.push('ai.js: DIP_AI_POLICY.REJECT_TENSION 必须高于提议下限且 ≤100');
+    }
+    if (!(typeof P.REJECT_MIL_OVER === 'number' && P.REJECT_MIL_OVER > 0)) {
+      problems.push('ai.js: DIP_AI_POLICY.REJECT_MIL_OVER 必须是正数');
+    }
+    if (!(typeof P.PRESS_MIL_MARGIN === 'number' && P.PRESS_MIL_MARGIN > 0)) {
+      problems.push('ai.js: DIP_AI_POLICY.PRESS_MIL_MARGIN 必须是正数');
+    }
+    for (const k of ['PROPOSE_PRESTIGE', 'PRESS_PRESTIGE', 'PRESS_UNREST', 'REJECT_PRESTIGE', 'REJECT_UNREST']) {
+      if (!(typeof P[k] === 'number' && P[k] > 0)) {
+        problems.push(`ai.js: DIP_AI_POLICY.${k} 必须是正数（真实消费者，禁止纯装饰）`);
+      }
+    }
+    if (!Array.isArray(AI.SUMMIT_PRESETS) || AI.SUMMIT_PRESETS.length < 3) {
+      problems.push('ai.js: SUMMIT_PRESETS 必须 ≥3（Dip2 提议规则的数据源）');
+    }
+  }
+  notes.push(`dipAi: DIP_AI_POLICY ${P ? 'ok' : 'missing'}, ${problems.length} problem(s)`);
+  return { problems, notes, stats: { hasPolicy: !!P } };
+}
+
 // ---- 2j. agenda condition vocabulary -----------------------------------------
 // M3：每个议程的 `condition` 必须是 data/agenda-conditions.js 里登记过的名字，
 // 并且带上该门控要求的同伴字段。引擎遇到未登记的名字会 fail-closed（判未通过），
@@ -1502,6 +1550,7 @@ const CHECKS = [
   { id: 'fuses', label: '长引信表（战略工程）', run: checkFuses },
   { id: 'deception', label: '情报误报表（欺敌/反情报）', run: checkDeception },
   { id: 'intel', label: '隐蔽行动表（谍战/Cov2 AI）', run: checkIntel },
+  { id: 'dipAi', label: '外交主动表（峰会/军控/Dip2 AI）', run: checkDipAi },
   { id: 'bundleHygiene', label: '发布包体积与生成记录字段', run: checkBundleHygiene },
   { id: 'agendaConditions', label: '议程门控词表', run: checkAgendaConditions },
 ];
@@ -1531,6 +1580,7 @@ module.exports = {
   checkFuses,
   checkDeception,
   checkIntel,
+  checkDipAi,
   checkBundleHygiene,
   PROVINCE_FIELDS,
   CITY_ARITY,

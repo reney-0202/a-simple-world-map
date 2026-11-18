@@ -6,8 +6,8 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动（`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1`）。
 
 ---
 
@@ -1580,15 +1580,50 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 | **移动端触控打磨** | ✅ 已交付（Phase T：底栏面板 + Pointer 手势 + 33 条断言） |
 | **感召力的 AI 侧** | ✅ 已交付（Phase I2：对手四条决策规则 + 反向漂移） |
 | **隐蔽行动去 RNG + AI** | ✅ 已交付（Phase Cov2：确定性哈希 + 对手还手） |
+| **AI 外交主动** | ✅ 已交付（Phase Dip2：提议峰会 / 加压履约 / 拒绝空谈） |
+
+### Phase Dip2：AI 外交主动（仪式与谈判轴的对手侧）
+
+基准：`main` @ Cov2（`4b4189a`）。峰会 / 安理会 / 军控此前基本是**玩家点开弹窗**；
+本切片用确定性规则让对手在窗口期主动提议、加压履约、拒绝空谈。
+
+#### Dip2.1 三条（及以上）规则
+
+| 规则 | 触发 | 落点 |
+| --- | --- | --- |
+| **提议峰会** | 历史峰会窗口 ±slack、张力适中、尚有可签条约 | 外交照会 + `pending` 邀约；对手威望 + |
+| **加压履约** | 生效条约下军费贴 `milCap` / 违规制裁；或安理会窗口空转 | 玩家威望 −、动荡/合法性；照会催票 |
+| **拒绝空谈** | `signTreaty` 时张力仍高或军费仍高 | 拒签 + 威望/舆论代价（挂在既有签署路径） |
+| **粘性 / 收手** | `MIN_MONTHS`；`polEconStrainOf` ≥ `STRAIN_MAX` | 防逐月翻烧饼；经济吃紧不主动破冰 |
+
+#### Dip2.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；`dipAiActive()` 白名单（`?dip2probe=1`） |
+| 旁观零回写 | 无玩家：`dipAiActors()` 空，月度推进立即返回 |
+| 决策确定 | 同状态同结果，不碰 `SIM.S.rngState` |
+| 不升存档版本 | `ST.dipAi` 走 `sanitizeDipAiState` |
+
+**实测（`?dip2probe=1`，39 条断言）**：规则表 / 门控 / 三条+规则 / 消费者 / 存档清洗 /
+旁观零回写 / `signTreaty` 拒签接线 / 端到端。
+
+| 量 | 值 |
+| --- | --- |
+| 决策规则 | ≥3 条（提议 / 加压 / 拒签 + 粘性/收手） |
+| 探针 | 42 个（含 Cov2 + Dip2）；全量 1613 条断言 |
+| 发布包 | 3.653 MiB（预算 3.64 → 3.68）；`CACHE_VERSION` v32 |
+
+> 全量 `cmp`：**只有 `dip2` 新增**；既有 `summitprobe` / `unscprobe` 不受影响
+>（拒签门控仅在 `dipAiActive()` 时生效）；history identical:3。
 
 ### 后续可选方向
 
 | 次序 | 切片 | 说明 |
 | --- | --- | --- |
-| **①** | **Phase Dip2：AI 外交主动** | 对手在窗口期提议峰会、加压履约或拒绝空谈；补「仪式与谈判」轴的主动性 |
-| **②** | **Phase Mid：次极大国浅层议程** | 2–4 个次极各加数据声明式 2–3 步树，走现有 `onComplete` / 门控词表 |
+| **①** | **Phase Mid：次极大国浅层议程** | 2–4 个次极各加数据声明式 2–3 步树，走现有 `onComplete` / 门控词表 |
 
-串行：先 Cov2（已交付）→ Dip2 → Mid。体积再贴顶时插入纯卫生轮。
+串行：Cov2 → Dip2（均已交付）→ Mid。体积再贴顶时插入纯卫生轮。
 
 ---
 
@@ -1601,7 +1636,7 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 3. **效果词表**：新增 `effects` 键必须先进 `data/effects.js`，否则构建期判失败。
 4. **探针即契约**：`tools/baseline-probes.json` 是回归基线；差异必须能逐条解释，**绝不能丢失断言**。
 5. **发布**：任何发布文件变更都要 bump `out/sw.js` 的 `CACHE_VERSION`，并重跑 `node tools/sw_manifest.js out`。
-6. **产物体积与生成记录字段**：`out/` ≤ 3.64 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
+6. **产物体积与生成记录字段**：`out/` ≤ 3.68 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
    （`checkBundleHygiene` 自动门）。新增字段必须是**有意识的**改动。
 7. **政治经济学表**：新增实体必须在 `data/polecon.js` 的 `ANCHOR` 里给出
    `[史实均值, 史实标准差]`，否则该国永远算不出落差、永远没有政治后果。
