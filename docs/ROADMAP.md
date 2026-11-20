@@ -8,7 +8,7 @@
 >
 > **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
 > AI 外交主动、次极大国浅层议程（含第二/三批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1`）。
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1`）。
 
 ---
 
@@ -1956,10 +1956,52 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 >（均来自 12 条新议程数据站点）；history identical:3。
 > 标记名用 `MIDTHREEPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?mid3probe=1`）。
 
+### Phase Bloc2：阵营凝聚 / 卫星离心（浅层）
+
+基准：`main` @ Mid3（`2b7e5fd`）。第三世界漂移已有；阵营**内部**此前几乎无杠杆。
+本切片用确定性浅层规则让凝聚度 / 离心压力改既有通道（动荡、军援效率、核可信度加成、照会），
+补上「铁幕内侧」而不开贸易迷你游戏、**不**把次极推进 `aiMajors`。
+
+#### Bloc2.1 三条（及以上）规则
+
+| 规则 | 触发 | 落点 |
+| --- | --- | --- |
+| **卫星离心** | 阵营卫星动荡 / 压力高且未获军援 | 凝聚↓、卫星/领袖动荡↑、`credBonus`↓、`aidEff`↓、照会 |
+| **凝聚维稳** | 军援该卫星或军费 ≥ 门槛 | 凝聚↑、卫星动荡↓、`credBonus`↑、`aidEff` 回升、照会 |
+| **军援空转** | 凝聚过低且仍有阵营内军援 | `aidEff` 打折（进 `accDecisionListCost`）、领袖动荡↑、`credBonus`↓ |
+| **粘性 / 收手** | `MIN_MONTHS`；领袖 `polEconStrainOf` ≥ `STRAIN_MAX` | 防逐月翻烧饼；经济吃紧不主动管理 |
+
+门控：`blocAiActive() = 有玩家 && (!探针模式 || ?bloc2probe=1)`。
+
+#### Bloc2.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；白名单外零回写 |
+| 旁观零回写 | 无玩家：`blocAiActors()` 空，月度推进立即返回；`blocAidEff()≡1` |
+| 决策确定 | 同状态同结果，不碰 `SIM.S.rngState` |
+| 不升存档版本 | `ST.blocAi` 走 `sanitizeBlocAiState` |
+| 与 Dip2/N2 边界 | 不拒签峰会、不碰 DEFCON；`AI_POLICY` 无仪式/核拒签字段 |
+| 次极不进 `aiMajors` | 探针抽查 `updateMonthlyAgendas` 字面量仍七大国 |
+
+**实测（`?bloc2probe=1`，49 条断言，标记 `BLOCTWOPROBE`）**：规则表 / 门控 / 三条+规则 / 消费者
+（动荡 / `aidEff` / `credBonus`）/ 存档清洗 / 旁观零回写 / 端到端。
+
+| 量 | 值 |
+| --- | --- |
+| 决策规则 | ≥3 条（离心 / 维稳 / 空转 + 粘性/收手） |
+| 探针 | **50** 个（含 Mid3 + Bloc2）；标记 `BLOCTWOPROBE` |
+| 新文件 | `data/bloc.js` + `app/06b-blocai.js` + `probes/08aa-bloc2.js` |
+| 发布包 | **3.682** MiB（预算仍 **3.72**）；`CACHE_VERSION` v40 → **v41** |
+
+> 全量 `cmp`：**新增 `bloc2`**；history identical:3。
+> 标记名用 `BLOCTWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?bloc2probe=1`）。
+
 ### 后续可选方向
 
-**Mid3** 已交付。按批继续：**Bloc2（阵营凝聚浅层）**；
-体积贴顶时插入微型 Hyg。**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
+**Bloc2** 已交付；本长程批（Cri2→End2→Mid3→Bloc2）闭合。
+进入维护 / 内容扩张期：可再扩次极或危机卡，体积贴顶时插微型 Hyg。
+**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
 

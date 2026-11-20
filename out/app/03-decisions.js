@@ -200,9 +200,11 @@ for (let i = 0; i < ST.sanctions.length; i++) {
   for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) - DEC_TIERS.san[s.l].tgt;
   selfPP -= DEC_TIERS.san[s.l].self;          // 自身反噬（逐个目标累加）
 }
+// Bloc2：阵营凝聚过低时军援目标增速打折（损耗仍全额）—— 白名单外 blocAidEff≡1。
+const aidEffK = (typeof blocAidEff === "function") ? blocAidEff() : 1;
 for (let i = 0; i < ST.aid.length; i++) {
   const a = ST.aid[i], ek = entKeys(a.t);
-  for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt;
+  for (let j = 0; j < ek.length; j++) acc[ek[j]] = (acc[ek[j]] || 0) + DEC_TIERS.aid[a.l].tgt * aidEffK;
   selfPP -= DEC_TIERS.aid[a.l].self;          // 转移损耗（逐个目标累加）
 }
   return selfPP;

@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 69,
-    "pop": 239,
-    "ind": 81,
-    "province": 82,
-    "delta": 74,
-    "resource": 68
+    "bloc": 71,
+    "pop": 324,
+    "ind": 83,
+    "province": 284,
+    "delta": 117,
+    "resource": 104
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1803
+   "totalMs": 2571
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 144236,
+   "saveBytes": 144250,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -2588,6 +2588,66 @@
     "hunCompleted": "PASS",
     "hunStabilityBonusConsumer": "PASS",
     "noEngineCountryDispatch": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "bloc2": {
+  "marker": "BLOCTWOPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "tableLoaded": "PASS",
+    "campsLoaded": "PASS",
+    "apiPresent": "PASS",
+    "policyStickyPositive": "PASS",
+    "policyStrainBounded": "PASS",
+    "policySpinThresholds": "PASS",
+    "policyGluePositive": "PASS",
+    "policyHollow": "PASS",
+    "policyConsumersPositive": "PASS",
+    "noDip2Overlap": "PASS",
+    "noN2Overlap": "PASS",
+    "eastSatsIncludeMid3": "PASS",
+    "aiMajorsUntouched": "PASS",
+    "gateOffWithoutPlayer": "PASS",
+    "gateOnInBloc2Probe": "PASS",
+    "campEastForSun": "PASS",
+    "campWestForUsa": "PASS",
+    "ruleNeutralCalm": "PASS",
+    "ruleSpinHighUnrest": "PASS",
+    "ruleGlueWhenAiding": "PASS",
+    "ruleHollowLowCohesion": "PASS",
+    "ruleGlueHighMil": "PASS",
+    "ruleStrainStandsDown": "PASS",
+    "ruleStickyBlocksChurn": "PASS",
+    "ruleDeterministic": "PASS",
+    "ruleConsumesNoRng": "PASS",
+    "consumerSpinCohesion": "PASS",
+    "consumerSpinSatUnrest": "PASS",
+    "consumerSpinLeaderUnrest": "PASS",
+    "consumerSpinCred": "PASS",
+    "consumerGlueCohesion": "PASS",
+    "consumerGlueSatUnrest": "PASS",
+    "consumerGlueCred": "PASS",
+    "consumerGlueAidEff": "PASS",
+    "consumerHollowAidEff": "PASS",
+    "consumerHollowUnrest": "PASS",
+    "consumerHollowCred": "PASS",
+    "consumerAidEffInAcc": "PASS",
+    "monthlySpinsOrStands": "PASS",
+    "roundTripKeepsMeter": "PASS",
+    "roundTripKeepsSlot": "PASS",
+    "sanitizeRejectsJunk": "PASS",
+    "sanitizeNullSafe": "PASS",
+    "spectatorNoActors": "PASS",
+    "spectatorNoWrite": "PASS",
+    "spectatorNoNukeWrite": "PASS",
+    "spectatorAidEffOne": "PASS",
+    "spectatorNoRng": "PASS",
+    "endToEndStateSane": "PASS"
    }
   },
   "failed": false
