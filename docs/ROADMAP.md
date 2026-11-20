@@ -6,8 +6,8 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二/三批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 / Bloc2 / Hygμ 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二/三批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批、阵营凝聚浅层、微型产物卫生
 > （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1`）。
 
 ---
@@ -1997,10 +1997,37 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 > 全量 `cmp`：**新增 `bloc2`**；history identical:3。
 > 标记名用 `BLOCTWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?bloc2probe=1`）。
 
+### Phase Hygμ：微型产物卫生
+
+基准：`main` @ Bloc2（`b0a15f6`）。Bloc2 后 `out/` ≈ 3.682 MiB / 预算 3.72（余量 ~38 KiB），
+撑不住下一批 Mid4→Cri3→End3。本轮**不算机制**：无损重压栅格/UI PNG，回落体积；
+**不**上调 `BUNDLE_BUDGET_MIB`（仍 **3.72**）。
+
+#### Hygμ.1 无损压图（zopfli）
+
+| 资产 | 做法 |
+| --- | --- |
+| `data/*_id.png` | zopfli 无损重编码（RGBA / 解码 ID 不变）；更新 `checksum.json` + `countries.js` 的 `sha256_province_id_png` |
+| `assets/ui` + `assets/pwa` | 同上（RGBA 逐位不变） |
+
+合计约 **−152 KiB**；`out/` 从 ~3.682 → **~3.534 MiB**（预算仍 **3.72**，余量约 **190 KiB**，给 Mid4/Cri3/End3 留头）。
+news/portraits 已在 Hyg 压过，本轮不再降质；纯搬运拆文件本轮不做（无必要）。
+
+#### Hygμ.2 发布壳
+
+| 项 | 值 |
+| --- | --- |
+| `CACHE_VERSION` | `w1980-v41` → **`w1980-v42`** |
+| `sw_manifest` | PRECACHE 仍 143（文件集合未变） |
+| 探针 / 断言 | **不塌缩**（无新探针、无删断言） |
+| 预算 | 保持 **3.72 MiB**（压图已回落，无需上调） |
+
+> `cmp --class=history` → **identical:3**（像素语义与仿真零改动）。
+
 ### 后续可选方向
 
-**Bloc2** 已交付；本长程批（Cri2→End2→Mid3→Bloc2）闭合。
-进入维护 / 内容扩张期：可再扩次极或危机卡，体积贴顶时插微型 Hyg。
+**Hygμ** 已交付；第三长程批按 Hygμ → Mid4 → Cri3 → End3 推进（见 `docs/next-long-batch-3-plan.md`）。
+体积余量约 **190 KiB**；若 Mid4 后再次贴顶再插 Hygμ2。
 **勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
