@@ -27,6 +27,8 @@ function applyPlayerDecisions() {
   // D（地面战争）：只对**偏离史实的那部分**消耗计费。
   // 历史总代价已在校准曲线里，重复收费会变成对史实的双重扣款。
   if (typeof accWarAttrition === "function") accWarAttrition(acc);
+  // Afg2：非玩家苏方的偏离失血（玩家为美时）—— 只对偏离史实计费。
+  if (typeof accAfghanBleed === "function") accAfghanBleed(acc);
   // F2（威望的 AI 侧）：对手工程的 GDP 拖累 —— 与玩家工程同一口径。
   // 真实消费者：拖累 → polEconStrainOf 升 → P2 经济目标 / D2 战争 AI 读得到。
   if (typeof accPrestigeAiDrag === "function") accPrestigeAiDrag(acc);
@@ -171,6 +173,11 @@ if (typeof ideologyProgramDrag === "function") {
 if (typeof groundWarSelfDrag === "function") {
   const wd = groundWarSelfDrag();
   if (wd !== 0) selfPP += wd;
+}
+// Afg2：苏联玩家偏离史实的阿富汗失血拖累（无干预 → bleedDev≡0 → 零增量）
+if (typeof afghanBleedDrag === "function") {
+  const ad = afghanBleedDrag();
+  if (ad !== 0) selfPP += ad;
 }
 // E（长引信）：燃烧期的机会成本（拖累）+ 引爆后的增长红利（bonus）。
 // 两条都走同一条 pmods 累加链 —— 存档/探针/AI 决策层看到的是同一份数字。

@@ -36,6 +36,13 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   initCrisisState: initCrisisState, sanitizeCrisisState: sanitizeCrisisState, openCrisisModal: openCrisisModal, hideCrisisModal: hideCrisisModal, closeCrisisModal: closeCrisisModal, resolveCrisis: resolveCrisis, updateMonthlyCrises: updateMonthlyCrises, runCrisisProbe: runCrisisProbe,
   initIntelState: initIntelState, sanitizeIntelState: sanitizeIntelState, updateMonthlyIntel: updateMonthlyIntel, executeCovertAction: executeCovertAction, refreshCovertBox: refreshCovertBox, runIntelProbe: runIntelProbe,
   initAfghanState: initAfghanState, sanitizeAfghanState: sanitizeAfghanState, updateMonthlyAfghan: updateMonthlyAfghan, setAfghanPolicy: setAfghanPolicy, refreshAfghanBox: refreshAfghanBox, runAfghanProbe: runAfghanProbe,
+  // Afg2（阿富汗可争夺 + 对手方针）
+  afghanAiActive: afghanAiActive, afghanContested: afghanContested,
+  aiPickAfghanOp: aiPickAfghanOp, executeAfghanAiAction: executeAfghanAiAction,
+  updateMonthlyAfghanAi: updateMonthlyAfghanAi, sanitizeAfghanAiState: sanitizeAfghanAiState,
+  afghanBleedDrag: afghanBleedDrag, syncAfghanBleedDev: syncAfghanBleedDev,
+  historicAfghanAt: historicAfghanAt, afghanAiSnapshot: afghanAiSnapshot,
+  runAfghan2Probe: runAfghan2Probe,
   refreshSoundBtn: refreshSoundBtn, toggleSoundMute: toggleSoundMute, runSoundProbe: runSoundProbe,
   refreshLeaderCard: refreshLeaderCard, runAssetsProbe: runAssetsProbe,
   decSet: decSet, sanctionSet: sanctionSet, aidSet: aidSet, setPlayer: setPlayer, setMil: setMil, select: select, entKeys: entKeys, applyPlayerDecisions: applyPlayerDecisions,

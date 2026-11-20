@@ -139,6 +139,7 @@ function checkKeyedDatabases(ctx) {
   // afghan.POLICIES is keyed by strategy id, not by country - skip (vocabulary, not FK)
   const AF = d.W1980_AFGHAN;
   if (AF && AF.POLICIES) notes.push(`afghan.POLICIES: ${Object.keys(AF.POLICIES).length} strategies (id-keyed, not a country FK)`);
+  // Afg2 的 PARAMS / AI_POLICY / historicAt 由 checkAfghan 专检
   const AI = d.W1980_AI;
   if (AI && AI.AI_DOCTRINES) checkKeys('ai.AI_DOCTRINES', AI.AI_DOCTRINES, 'entries');
   const RES = d.W1980_RESOURCES;
@@ -1038,6 +1039,82 @@ function checkNuke(ctx) {
 // cap of 1.0 (the fog fully lifts -- uncertainty gone), a focus action that
 // costs nothing (then every player focuses everything), or an optimism band of
 // 0 (every offensive is punished regardless of intel, making intel pointless).
+// ---- 2o2. afghan quagmire (Afg2) ---------------------------------------------
+// 史实基线函数 + 偏离计费参数 + AI 方针表必须自洽，否则「可争夺」会变成
+// 旁观双扣或对手空转。
+function checkAfghan(ctx) {
+  const notes = [];
+  const problems = [];
+  const AF = ctx.data.W1980_AFGHAN;
+  if (!AF) return { problems: ['afghan.js: 未定义 W1980_AFGHAN'], notes };
+
+  if (!AF.POLICIES || typeof AF.POLICIES !== 'object') {
+    problems.push('afghan.js: 缺 POLICIES');
+  }
+  if (typeof AF.historicAt !== 'function') {
+    problems.push('afghan.js: 缺 historicAt（Afg2：史实基线纯函数）');
+  } else {
+    try {
+      const h = AF.historicAt(1980, 1);
+      if (!h || typeof h.bleedingCost !== 'number') {
+        problems.push('afghan.js: historicAt(1980,1) 必须返回带 bleedingCost 的快照');
+      }
+      const w = AF.historicAt(1989, 2);
+      if (!w || !w.withdrawn || w.bleedingCost !== 0) {
+        problems.push('afghan.js: historicAt(1989,2) 必须 withdrawn 且失血归零');
+      }
+    } catch (e) {
+      problems.push('afghan.js: historicAt 抛错：' + (e && e.message || e));
+    }
+  }
+
+  const Par = AF.PARAMS;
+  if (!Par || typeof Par !== 'object') {
+    problems.push('afghan.js: 缺 PARAMS（Afg2：偏离计费与月度漂移）');
+  } else {
+    if (!(typeof Par.BLEED_PP_PER_UNIT === 'number' && Par.BLEED_PP_PER_UNIT > 0)) {
+      problems.push('afghan.js: PARAMS.BLEED_PP_PER_UNIT 必须是正数');
+    }
+    if (!(typeof Par.BLEED_PP_CAP === 'number' && Par.BLEED_PP_CAP > 0)) {
+      problems.push('afghan.js: PARAMS.BLEED_PP_CAP 必须是正数');
+    }
+    if (!(typeof Par.SURGE_RES_DELTA === 'number' && Par.SURGE_RES_DELTA < 0)) {
+      problems.push('afghan.js: PARAMS.SURGE_RES_DELTA 必须为负（扫荡压抵抗）');
+    }
+    if (!(typeof Par.ARM_RES_DELTA === 'number' && Par.ARM_RES_DELTA > 0)) {
+      problems.push('afghan.js: PARAMS.ARM_RES_DELTA 必须为正（武装抬抵抗）');
+    }
+    if (!(typeof Par.ARM_AIR_DELTA === 'number' && Par.ARM_AIR_DELTA < 0)) {
+      problems.push('afghan.js: PARAMS.ARM_AIR_DELTA 必须为负（武装削空优）');
+    }
+  }
+
+  const AI = AF.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('afghan.js: 缺 AI_POLICY（Afg2：对手没有方针规则）');
+  } else {
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('afghan.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('afghan.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    for (const k of ['PRESS_PRESTIGE', 'PRESS_UNREST', 'STINGER_PRESTIGE']) {
+      if (!(typeof AI[k] === 'number' && AI[k] > 0)) {
+        problems.push(`afghan.js: AI_POLICY.${k} 必须是正数（真实消费者，禁止纯装饰）`);
+      }
+    }
+    if (!(typeof AI.GENEVA_BLEED_MIN === 'number' && AI.GENEVA_BLEED_MIN > AI.CONS_BLEED_MIN)) {
+      problems.push('afghan.js: AI_POLICY 必须满足 GENEVA_BLEED_MIN > CONS_BLEED_MIN');
+    }
+  }
+
+  notes.push(`afghan: POLICIES ${AF.POLICIES ? Object.keys(AF.POLICIES).length : 0}, `
+    + `PARAMS ${Par ? 'ok' : 'missing'}, AI_POLICY ${AI ? 'ok' : 'missing'}, `
+    + `${problems.length} problem(s)`);
+  return { problems, notes };
+}
+
 function checkEstimates(ctx) {
   const notes = [];
   const problems = [];
@@ -1582,6 +1659,7 @@ const CHECKS = [
   { id: 'prestige', label: '威望竞赛表（位置性威望）', run: checkPrestige },
   { id: 'wars', label: '地面战争表（可争夺战局）', run: checkWars },
   { id: 'nuke', label: '核风险轴（DEFCON/事故）', run: checkNuke },
+  { id: 'afghan', label: '阿富汗泥潭（史实基线/Afg2 AI）', run: checkAfghan },
   { id: 'estimates', label: '情报估算表（雾与误差）', run: checkEstimates },
   { id: 'ideology', label: '意识形态资源表（感召力）', run: checkIdeology },
   { id: 'fuses', label: '长引信表（战略工程）', run: checkFuses },
@@ -1612,6 +1690,7 @@ module.exports = {
   checkPrestige,
   checkWars,
   checkNuke,
+  checkAfghan,
   checkEstimates,
   checkIdeology,
   checkFuses,
