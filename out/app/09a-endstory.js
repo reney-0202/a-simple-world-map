@@ -22,7 +22,8 @@
 // 不变量（与渲染层同一约定）：纯函数读快照、零回写、零 RNG、确定性。
 // ---- End2：新轴小句（缺快照 → null，调用方跳过）----
 
-const END2_MID_KEYS = ["IND", "ITA", "BRA", "KOR", "TUR", "ESP", "EGY", "PAK"];
+const END2_MID_KEYS = ["IND", "ITA", "BRA", "KOR", "TUR", "ESP", "EGY", "PAK",
+  "POL", "HUN", "CSK", "ROU"];
 
 function endStoryAfg2Clause() {
   if (typeof afghanAiSnapshot !== "function") return null;

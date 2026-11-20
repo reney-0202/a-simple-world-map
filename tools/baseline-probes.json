@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 63,
-    "pop": 238,
-    "ind": 82,
-    "province": 73,
-    "delta": 68,
-    "resource": 62
+    "bloc": 69,
+    "pop": 239,
+    "ind": 81,
+    "province": 82,
+    "delta": 74,
+    "resource": 68
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1883
+   "totalMs": 1803
   },
   "failed": false
  },
@@ -959,7 +959,7 @@
     "effectVocabRuntimeApi": "PASS",
     "__effectViolationsLive": 0,
     "effectVocabLivePathsClean": "PASS",
-    "__effectSites": 94,
+    "__effectSites": 106,
     "effectVocabAuditsAllSites": "PASS",
     "effectVocabDataClean": "PASS",
     "__effectCaught": "gdpBonux",
@@ -1148,7 +1148,7 @@
     "agendaConditionsAllRegistered": "PASS",
     "unknownAgendaConditionBlocks": "PASS",
     "deadAgendaConditionsRejected": "PASS",
-    "__onCompleteSites": 38,
+    "__onCompleteSites": 50,
     "__onCompleteFields": 30,
     "agendaOnCompleteFieldsRegistered": "PASS",
     "agendaOnCompleteFieldsResolve": "PASS",
@@ -2496,7 +2496,7 @@
   },
   "failed": false
  },
- "end2":  {
+ "end2": {
   "marker": "ENDTWOPROBE",
   "class": "mechanics",
   "result": {
@@ -2527,6 +2527,67 @@
     "endToEndSane": "PASS",
     "endToEndHtmlRenders": "PASS",
     "spectatorComplete": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "mid3": {
+  "marker": "MIDTHREEPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "databaseLoaded": "PASS",
+    "effectsVocabLoaded": "PASS",
+    "conditionVocabLoaded": "PASS",
+    "POLOwnTree": "PASS",
+    "POLTreeDepth": "PASS",
+    "POLHasChain": "PASS",
+    "HUNOwnTree": "PASS",
+    "HUNTreeDepth": "PASS",
+    "HUNHasChain": "PASS",
+    "CSKOwnTree": "PASS",
+    "CSKTreeDepth": "PASS",
+    "CSKHasChain": "PASS",
+    "ROUOwnTree": "PASS",
+    "ROUTreeDepth": "PASS",
+    "ROUHasChain": "PASS",
+    "__mid3Countries": "POL,HUN,CSK,ROU",
+    "__mid3AgendaCount": 12,
+    "POL/pol_martial_credit/hasConsumerKey": "PASS",
+    "POL/pol_round_table/hasConsumerKey": "PASS",
+    "POL/pol_market_transition/hasConsumerKey": "PASS",
+    "HUN/hun_nem_deepen/hasConsumerKey": "PASS",
+    "HUN/hun_west_joint/hasConsumerKey": "PASS",
+    "HUN/hun_border_open/hasConsumerKey": "PASS",
+    "CSK/csk_normalize_industry/hasConsumerKey": "PASS",
+    "CSK/csk_soft_export/hasConsumerKey": "PASS",
+    "CSK/csk_heavy_pact/hasConsumerKey": "PASS",
+    "ROU/rou_debt_payoff/hasConsumerKey": "PASS",
+    "ROU/rou_energy_autarky/hasConsumerKey": "PASS",
+    "ROU/rou_securitate_fortress/hasConsumerKey": "PASS",
+    "mid3EffectsInVocab": "PASS",
+    "mid3OnCompleteInVocab": "PASS",
+    "mid3ConditionsInVocab": "PASS",
+    "polStartOk": "PASS",
+    "polCompleted": "PASS",
+    "polGdpBonusConsumer": "PASS",
+    "polOnCompleteLegitimacy": "PASS",
+    "polOnCompleteStability": "PASS",
+    "polReserveMonthlyConsumer": "PASS",
+    "polPlayerGdpPathWired": "PASS",
+    "polMilGateBlocks": "PASS",
+    "polMilGateOpens": "PASS",
+    "rouMilGateBlocks": "PASS",
+    "rouMilGateOpens": "PASS",
+    "__aiActiveDuringMid3Probe": "no",
+    "mid3NotAutoStartedByAI": "PASS",
+    "aiMajorsStillSeven": "PASS",
+    "hunStartOk": "PASS",
+    "hunCompleted": "PASS",
+    "hunStabilityBonusConsumer": "PASS",
+    "noEngineCountryDispatch": "PASS"
    }
   },
   "failed": false
