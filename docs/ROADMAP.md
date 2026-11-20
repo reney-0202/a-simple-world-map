@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1`）。
 
 ---
 
@@ -1881,9 +1881,40 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 
 > 标记名用 `CRITWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?cri2probe=1`）。
 
+### Phase End2 — 史笔织入新轴（✅ 已交付）
+
+史笔交付后又走了半圈机制：Cov2 / Dip2 / N2 / Afg2 / Mid·Mid2 的快照字段
+没有进入四幕连接词，终局仍像「七个旧仪表盘的散文版」。End2 是**纯渲染层**：
+只读快照、零 RNG、零回写；缺轴降级不抛错；既有判词与 `?endstoryprobe=1` 不塌缩。
+
+#### End2.1 织入落点
+
+| 幕 | 新增织入 | 读数来源 |
+| --- | --- | --- |
+| 二幕 · 棋盘上的较量 | Afg2 泥潭偏离 / 对手还手；Mid·Mid2 次极完成步 | `afghanAiSnapshot` · `ST.agendas` |
+| 三幕 · 悬崖边的舞蹈 | N2 降温/照会/拒强硬；Cov2 还手/收手；Dip2 峰会/加压/拒签 | `nukeAiSnapshot` · `covertAiSnapshot` · `dipAiSnapshot` |
+
+#### End2.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 纯函数 | `endStoryOf` / End2 小句只读快照；探针断言零回写各 AI 槽 |
+| 缺轴不抛错 | 快照函数缺失 → 小句返回 `null`，幕文跳过 |
+| 既有史笔不塌 | 判词六向原文保留；`?endstoryprobe=1` 仍绿 |
+
+**实测（`?end2probe=1`，24 条断言，标记 `ENDTWOPROBE`）**：缺轴降级 / 判词不塌 / 五轴织数 /
+零 RNG 零回写 / 端到端四幕健全。
+
+| 量 | 值 |
+| --- | --- |
+| 探针 | **48** 个（含 End2）；全量 **1862** 条断言；标记 `ENDTWOPROBE` |
+| 发布包 | **3.628** MiB（预算仍 **3.72**）；`CACHE_VERSION` v38 → **v39** |
+
+> 全量 `cmp`：history identical:3；mechanics 仅新增 `end2`（既有 47 探针逐位不变）。
+
 ### 后续可选方向
 
-**Cri2** 已交付。按批继续：**End2（史笔织入新轴）→ Mid3（次极第三批）→ Bloc2（阵营凝聚浅层）**；
+**End2** 已交付。按批继续：**Mid3（次极第三批）→ Bloc2（阵营凝聚浅层）**；
 体积贴顶时插入微型 Hyg。**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
