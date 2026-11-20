@@ -45,6 +45,7 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   runAfghan2Probe: runAfghan2Probe,
   runMid2AgendaProbe: runMid2AgendaProbe,
   runMid3AgendaProbe: runMid3AgendaProbe,
+  runMid4AgendaProbe: runMid4AgendaProbe,
   crisisSituationHeat: crisisSituationHeat,
   crisisApplyGate: crisisApplyGate,
   crisisSoftAutoBaseline: crisisSoftAutoBaseline,
