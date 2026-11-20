@@ -86,7 +86,22 @@ function cleanData() {
         UNREST_HIT: 4, BUDGET_DRAIN: 1.5, TENSION_HIT: 4, PRESTIGE_HIT: 0.8,
       },
     },
-    W1980_AFGHAN: { POLICIES: { p1: {} } },
+    W1980_AFGHAN: {
+      POLICIES: { standard: {}, surge: {}, consolidate: {}, geneva_withdraw: {} },
+      PARAMS: {
+        BLEED_PP_PER_UNIT: 0.08, BLEED_PP_CAP: 0.45,
+        SURGE_RES_DELTA: -1, CONS_RES_DELTA: 0.5,
+        ARM_RES_DELTA: 1.2, ARM_AIR_DELTA: -0.8,
+      },
+      AI_POLICY: {
+        MIN_MONTHS: 2, STRAIN_MAX: 0.75,
+        PRESS_PRESTIGE: 0.45, PRESS_UNREST: 1.5, STINGER_PRESTIGE: 0.55,
+        CONS_BLEED_MIN: 4.8, GENEVA_BLEED_MIN: 5.2,
+      },
+      historicAt: (y, m) => (y > 1989 || (y === 1989 && m >= 2))
+        ? { withdrawn: true, bleedingCost: 0 }
+        : { withdrawn: false, bleedingCost: 3.5 },
+    },
     W1980_AI: {
       AI_DOCTRINES: { AAA: { baseMil: 2, reactions: [{ effects: { ceasefire: true } }] } },
       STRATEGIC_OBJECTIVES: { CCC: [{ id: 'o1', kind: 'mil', delta: 0.5, target: 'BBB' }] },
@@ -1083,6 +1098,38 @@ test('a zero consumer magnitude in AI_POLICY is caught', () => {
 test('Dip2 field bleed into AI_POLICY is caught', () => {
   const d = cleanData(); d.W1980_NUKE.AI_POLICY.REJECT_TENSION = 86;
   assert.match(checks.checkNuke(makeCtx(d)).problems[0], /不得复用 Dip2/);
+});
+
+// ---- 8i2. afghan quagmire (Afg2) ---------------------------------------------
+section('checkAfghan');
+test('clean fixture reports no problems', () => {
+  assert.deepStrictEqual(checks.checkAfghan(makeCtx(cleanData())).problems, []);
+});
+test('a missing registry is reported, not thrown', () => {
+  const d = cleanData(); delete d.W1980_AFGHAN;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /未定义 W1980_AFGHAN/);
+});
+test('a missing historicAt is caught', () => {
+  const d = cleanData(); delete d.W1980_AFGHAN.historicAt;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /缺 historicAt/);
+});
+test('a missing AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_AFGHAN.AI_POLICY;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('a zero sticky window in AI_POLICY is caught', () => {
+  const d = cleanData(); d.W1980_AFGHAN.AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('a zero consumer magnitude in AI_POLICY is caught', () => {
+  const d = cleanData(); d.W1980_AFGHAN.AI_POLICY.PRESS_PRESTIGE = 0;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /PRESS_PRESTIGE 必须是正数/);
+});
+test('a broken geneva\/cons bleed order is caught', () => {
+  const d = cleanData();
+  d.W1980_AFGHAN.AI_POLICY.GENEVA_BLEED_MIN = 4.0;
+  d.W1980_AFGHAN.AI_POLICY.CONS_BLEED_MIN = 5.0;
+  assert.match(checks.checkAfghan(makeCtx(d)).problems[0], /GENEVA_BLEED_MIN > CONS_BLEED_MIN/);
 });
 
 // ---- 8j. intelligence estimation table (C) -----------------------------------

@@ -8,7 +8,7 @@
 >
 > **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
 > AI 外交主动、次极大国浅层议程、产物与模块卫生、核风险 AI
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1`）。
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1`）。
 
 ---
 
@@ -1735,9 +1735,63 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 > 全量 `cmp`：**只有 `n2` 新增**；既有 `nukeprobe` 白名单外可解释不变（`nukeAiActive()` 关）；
 > history identical:3。
 
+### Phase Afg2：阿富汗泥潭可争夺化 + 对手方针
+
+基准：`main` @ N2（`48c46e6`）。Hyg 已把阿富汗拆到 `08f-afghan.js`；本切片把
+日历机升级为「史实基线 + 偏离」，并让对手按确定性规则还手。
+
+#### Afg2.1 模型：`bleedDev = 实际失血 − 史实基线`
+
+| 量 | 用途 |
+| --- | --- |
+| `historicAt(y,m)` | 纯函数史实快照（兵力/空优/抵抗/毒刺/撤军/失血） |
+| `bleedingCost` | 面板展示的实际月度失血 |
+| `bleedDev` | 偏离；只对偏离计费 → `afghanBleedDrag` / `accAfghanBleed` → pmods |
+
+旁观 / 无干预 → `bleedDev ≡ 0` → 史实轨迹与失血口径一字不变（D.3 同构）。
+
+#### Afg2.2 方针真正推战区
+
+| 侧 | 方针 | 落点 |
+| --- | --- | --- |
+| 苏 | 增兵 / 收缩 / 日内瓦 | `troops` / `resistance` / `bleeding` + 短缺滴漏 |
+| 美 | 毒刺 / 武装圣战者 | `air` / `resistance` / `bleeding` + 威望 |
+
+月度漂移只在可争夺局（`afghanContested()`）生效；白名单外零漂移。
+
+#### Afg2.3 对手方针（≥3 条）
+
+| 侧 | 规则 |
+| --- | --- |
+| 美（玩家为苏） | 提前毒刺 / 武装抵抗 / 外交施压（+ 粘性/收手） |
+| 苏（玩家为美） | 增兵扫荡 / 要点收缩 / 日内瓦撤军（+ 粘性/收手） |
+
+门控：`afghanAiActive() = 有玩家 && (!探针模式 || ?afg2probe=1)`。
+
+#### Afg2.4 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；白名单外 AI 不动 |
+| 旁观零回写 | 无玩家：`updateMonthlyAfghanAi` 立即返回 |
+| 只对偏离计费 | `bleedDev≡0` → 零 pmods 增量 |
+| 决策确定 | 同状态同结果，不碰 `SIM.S.rngState` |
+| 不升存档版本 | `ST.afghan*` 走 sanitize 缺省补齐 |
+| 既有 afghanprobe | 白名单外可解释不变 |
+
+| 量 | 值 |
+| --- | --- |
+| 决策规则 | ≥3 条/侧（美：毒刺/武装/施压；苏：增兵/收缩/日内瓦） |
+| 探针 | 45 个（含 N2 + Afg2）；`?afg2probe=1` **45** 条断言 |
+| 新文件 | `probes/08v-afghan2.js`（规则进既有 `08f-afghan.js`） |
+| 发布包 | **3.567** MiB（预算仍 **3.72**）；`CACHE_VERSION` v35 → **v36** |
+
+> 全量 `cmp`：**`afg2` 新增**（基线同步补上 N2）；既有 `afghanprobe` 白名单外 identical；
+> history identical:3。
+
 ### 后续可选方向
 
-N2 已合入。下一批按计划串行：**Afg2（阿富汗可争夺）→ Mid2（次极第二批）**。
+Afg2 已合入。下一批按计划串行：**Mid2（次极第二批）**。
 体积再次贴顶时允许再插一轮微型 Hyg。
 
 ---

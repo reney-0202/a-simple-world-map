@@ -55,7 +55,8 @@ window.W1980_PROBES={
   "cov2probe",
   "dip2probe",
   "midprobe",
-  "n2probe"
+  "n2probe",
+  "afg2probe"
  ],
  "entries": {
   "selftest": {
@@ -319,6 +320,12 @@ window.W1980_PROBES={
   "n2": {
    "qs": "n2probe=1",
    "marker": "NUKEAIPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "afg2": {
+   "qs": "afg2probe=1",
+   "marker": "AFGHANAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

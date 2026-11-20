@@ -1,5 +1,6 @@
 // world1980 - data/afghan.js
 // R13B: 阿富汗战争泥潭与帝国消耗槽（Afghan Quagmire & Empire Bleeding Database）
+// Afg2: 史实基线 + 偏离计费 + 对手方针（确定性规则，零 RNG）
 
 (function () {
   const PHASES = [
@@ -71,6 +72,56 @@
     }
   };
 
+  // Afg2：偏离计费与月度漂移（只对偏离史实的失血计费 —— D.3 同构）
+  const PARAMS = {
+    BASE_TROOPS: 105000,
+    BASE_AIR: 85,
+    BASE_RES: 65,
+    STINGER_AIR: 35,
+    STINGER_RES_BUMP: 15,
+    STINGER_Y: 1986, STINGER_M: 6,
+    WITHDRAW_START_Y: 1988, WITHDRAW_START_M: 5,
+    WITHDRAW_END_Y: 1989, WITHDRAW_END_M: 2,
+    WITHDRAW_MONTHS: 9,
+    // 失血偏离 → 增速拖累（$/亿·月 → pp/年）；上限对齐地面战争量级
+    BLEED_PP_PER_UNIT: 0.08,
+    BLEED_PP_CAP: 0.45,
+    // 方针月度漂移（有执政者且非旁观时）
+    SURGE_RES_DELTA: -1.0,
+    CONS_RES_DELTA: 0.5,
+    ARM_RES_DELTA: 1.2,
+    ARM_AIR_DELTA: -0.8,
+    SURGE_SHORTAGE_DRIP: 0.4,
+    RES_FLOOR: 20, RES_CAP: 95,
+    AIR_FLOOR: 15, AIR_CAP: 95,
+    LOG_MAX: 24
+  };
+
+  // Afg2：对手方针（确定性规则，零 RNG；与 F2/E2/I2/Cov2/Dip2/N2 同族）
+  // 美方：提前毒刺 / 武装抵抗 / 外交施压
+  // 苏方：增兵扫荡 / 要点收缩 / 日内瓦撤军
+  const AI_POLICY = {
+    MIN_MONTHS: 2,                 // 粘性：两次出手至少隔 2 个月
+    STRAIN_MAX: 0.75,              // 经济压力过高 → 收手
+    // 美方规则阈值
+    STINGER_AIR_MIN: 60,           // 苏军空优仍高 → 提前投毒刺
+    ARM_RES_MAX: 88,               // 抵抗未顶满 → 可武装
+    ARM_AFTER_STINGER: true,       // 毒刺后优先武装
+    PRESS_BLEED_MIN: 4.0,          // 苏军仍在高失血 → 外交施压
+    PRESS_PRESTIGE: 0.45,          // 施压扣苏方威望
+    PRESS_UNREST: 1.5,             // 施压抬苏方动荡
+    STINGER_PRESTIGE: 0.55,        // 提前毒刺给美方威望
+    // 苏方规则阈值
+    SURGE_RES_MIN: 70,             // 抵抗过高且毒刺未入 → 增兵
+    CONS_BLEED_MIN: 4.8,           // 失血过高 → 收缩
+    CONS_AIR_MAX: 45,              // 或空优崩塌 → 收缩
+    GENEVA_BLEED_MIN: 5.2,         // 失血极高 → 日内瓦
+    GENEVA_YEAR_MIN: 1987,         // 或不早于 1987 且空优崩 + 抵抗高
+    GENEVA_AIR_MAX: 40,
+    GENEVA_RES_MIN: 78,
+    LOG_MAX: 24
+  };
+
   function getPhase(y, m) {
     for (let i = 0; i < PHASES.length; i++) {
       const p = PHASES[i];
@@ -100,11 +151,46 @@
     return Math.max(30, base);
   }
 
+  // 史实轨迹纯函数：旁观/无干预时引擎必须与此对齐，偏离才计费。
+  function historicAt(y, m) {
+    const P = PARAMS;
+    const stinger = (y > P.STINGER_Y || (y === P.STINGER_Y && m >= P.STINGER_M));
+    const air = stinger ? P.STINGER_AIR : P.BASE_AIR;
+    const resistance = stinger ? Math.min(95, P.BASE_RES + P.STINGER_RES_BUMP) : P.BASE_RES;
+
+    if (y > P.WITHDRAW_END_Y || (y === P.WITHDRAW_END_Y && m >= P.WITHDRAW_END_M)) {
+      return {
+        troops: 0, airSuperiority: air, resistance: resistance,
+        stingerActive: true, withdrawn: true, withdrawing: false,
+        withdrawMonths: P.WITHDRAW_MONTHS, policy: "standard", bleedingCost: 0
+      };
+    }
+
+    let troops = P.BASE_TROOPS;
+    let withdrawing = false;
+    let withdrawMonths = 0;
+    if (y > P.WITHDRAW_START_Y || (y === P.WITHDRAW_START_Y && m >= P.WITHDRAW_START_M)) {
+      withdrawing = true;
+      withdrawMonths = Math.min(P.WITHDRAW_MONTHS,
+        (y - P.WITHDRAW_START_Y) * 12 + (m - P.WITHDRAW_START_M) + 1);
+      troops = Math.max(0, P.BASE_TROOPS - Math.round((P.BASE_TROOPS / P.WITHDRAW_MONTHS) * withdrawMonths));
+    }
+    const bleedingCost = calcBleedingCost(troops, air, stinger, "standard");
+    return {
+      troops: troops, airSuperiority: air, resistance: resistance,
+      stingerActive: stinger, withdrawn: false, withdrawing: withdrawing,
+      withdrawMonths: withdrawMonths, policy: "standard", bleedingCost: bleedingCost
+    };
+  }
+
   window.W1980_AFGHAN = {
     PHASES: PHASES,
     POLICIES: POLICIES,
+    PARAMS: PARAMS,
+    AI_POLICY: AI_POLICY,
     getPhase: getPhase,
     calcBleedingCost: calcBleedingCost,
-    calcMonthlyCasualties: calcMonthlyCasualties
+    calcMonthlyCasualties: calcMonthlyCasualties,
+    historicAt: historicAt
   };
 })();

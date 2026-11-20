@@ -58,7 +58,7 @@ const BLOC_NET_BASE = {
 //   06-ai.js       ai（含 tensions/cables/decisions）, panelTab
 //   07-domestic.js domestic, agendas, crises
 //   08-covert.js   intel, sound
-//   08f-afghan.js  afghan（Hyg：从 08-covert 纯搬运，给 Afg2 腾地方）
+//   08f-afghan.js  afghan + Afg2（史实基线偏离计费 + 对手方针）
 //   09-endgame.js  endTab
 //   10-events-save.js lastNewsId（读侧过滤见同文件 showNews 处）、newsModalEnabled（读侧）
 // 迁移字段时：先改写主，再更新本表；不要把散落的 ST.x = ... 直接搬进其他模块。
@@ -114,6 +114,7 @@ const ST = {
   crises: { history: [], pending: null },  // R12C（突发危机抉择卡与升级阶梯）：已决断历史与当前待决危机
   intel: null,                             // R13A（全球谍战沙盒）：特情局黑金预算、行动力点数与隐蔽行动记录
   afghan: null,                            // R13B（阿富汗战争泥潭）：第40集团军战区态势、失血槽与撤军进度
+  afghanAi: null,                          // Afg2：对手方针槽（提前毒刺/武装/施压/苏方增兵·收缩·日内瓦）
   sound: { muted: false, vol: 0.6 },       // R13C（时代音效架构）：音效开关与音量
   layers: { province: true, country: true, capital: true, city: true, label: true }
 };

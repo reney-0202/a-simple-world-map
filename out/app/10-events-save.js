@@ -95,6 +95,9 @@ function evRun(y, m, silent) {
   // C（情报估算）：专项评估到期（无执政者时它自己就返回 —— 旁观没有情报行动）
   updateMonthlyEstimates(y, m, silent);
   updateMonthlyAfghan(y, m, silent);        // R13B：阿富汗战区态势与帝国失血槽月度结算
+  // Afg2：对手方针（提前毒刺 / 武装 / 施压 / 苏方增兵·收缩·日内瓦）
+  // 紧跟月度结算：白名单门控，旁观零回写。
+  if (typeof updateMonthlyAfghanAi === "function") updateMonthlyAfghanAi(y, m, silent);
   // N1（核风险轴）：升级 / 可信度 / 误判 / DEFCON。
   // 放在战争与威望之后 —— 它要读这两者的当期结果（进行中的战争、威望落差）。
   // 无执政者时它只做只读计算：不掷骰、不触发事故、不写内政。
@@ -352,6 +355,7 @@ function simSave(slot) {
     dipAi: ST.dipAi ? JSON.parse(JSON.stringify(ST.dipAi)) : null, // Dip2：对手外交主动槽
     nukeAi: ST.nukeAi ? JSON.parse(JSON.stringify(ST.nukeAi)) : null, // N2：对手核风险管理槽
     afghan: ST.afghan ? JSON.parse(JSON.stringify(ST.afghan)) : null, // R13B：阿富汗战区态势与帝国失血槽状态
+    afghanAi: ST.afghanAi ? JSON.parse(JSON.stringify(ST.afghanAi)) : null, // Afg2：对手方针槽
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
     sandbox: !!ST.sandbox,                            // E：沙盒模式开关（随存档持久化）
@@ -561,6 +565,9 @@ function loadSocietyStates(d) {
   } else {
     initAfghanState();
   }
+  // Afg2：还原对手方针槽（旧档缺该项 → 空状态）
+  ST.afghanAi = (typeof sanitizeAfghanAiState === "function")
+    ? sanitizeAfghanAiState(d.afghanAi) : { slots: {}, log: [] };
   // R13C：还原时代音效状态
   if (d.sound && typeof d.sound === "object") {
     ST.sound = { muted: !!d.sound.muted, vol: typeof d.sound.vol === "number" ? clamp(d.sound.vol, 0, 1) : 0.6 };
