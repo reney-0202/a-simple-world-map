@@ -1,8 +1,9 @@
 /**
- * world1980 - 冷战中局突发危机抉择卡与升级阶梯数据库 (R12C + Cri2)
- * 涵盖 1981-1989 年间史实热点：原 8 张 + Cri2 扩写 5 张（Able Archer / 黄金峡谷 /
- * 切尔诺贝利 / 鲁斯特红场 / 柏林墙）。Cri2 卡带 gate 字段：日历仍是触发真理，
- * 国势（张力 / 升级 / 动荡）只调制后果幅度与玩家是否弹窗，旁观仍按月记史实阶梯 2。
+ * world1980 - 冷战中局突发危机抉择卡与升级阶梯数据库 (R12C + Cri2 + Cri3)
+ * 原 8 张 + Cri2 扩写 5 张（Able Archer / 黄金峡谷 / 切尔诺贝利 / 鲁斯特 / 柏林墙）
+ * + Cri3 再扩 5 张（莫斯科奥运抵制 / 黎巴嫩战争 / 英国矿工潮 / 中导条约 /
+ * 海湾前奏）。门控卡带 gate：日历仍是触发真理，国势只调制后果幅度与玩家是否弹窗，
+ * 旁观仍按月记史实阶梯 2。Cri3 刻意避开 Able Archer / 切尔诺贝利等同月同效果双计。
  */
 (function (global) {
   "use strict";
@@ -707,7 +708,320 @@
           }
         }
       ]
+    },
+    // ---- Phase Cri3：再扩写 5 张史实热点（带国势门控；避开 Able Archer / 切尔诺贝利双计）----
+    {
+      id: "crisis_olympics_1980",
+      year: 1980,
+      month: 7,
+      title: "莫斯科奥运抵制余波",
+      headline: "西方集体抵制与东西方体育外交摊牌",
+      region: "东欧 / 莫斯科",
+      target: "SUN",
+      initiator: "USA",
+      actors: ["USA", "SUN", "GBR", "DEU"],
+      gate: { modulate: true, minHeat: 0.22 },
+      desc: "苏联出兵阿富汗后，卡特政府推动西方集体抵制莫斯科夏季奥运会。克里姆林宫与白宫必须决定：把抵制做成长期孤立，还是借体育通道保留外交回旋余地。",
+      options: [
+        {
+          tier: 1,
+          title: "保留通道与有限参赛斡旋",
+          icon: "🕊️",
+          desc: "允许部分盟国自行决定参赛，强调人道与体育中立，避免把奥运彻底武器化。",
+          badge: "软着陆",
+          effects: {
+            tensionDelta: -12,
+            usaCongressApproval: -4,
+            sunReformist: +2,
+            prestigeDelta: -2,
+            summary: "对抗降温，但国内鹰派指责白宫向莫斯科示弱。"
+          }
+        },
+        {
+          tier: 2,
+          title: "主导抵制并保留热线",
+          icon: "⚖️",
+          desc: "坚持集体抵制核心项目，同时保持危机热线与粮食贸易谈判窗口，避免全面断交。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: +6,
+            usaCongressApproval: +3,
+            sunConservative: +2,
+            prestigeDelta: +1,
+            summary: "展示惩罚代价，双边张力可控上升，未切断全部沟通。"
+          }
+        },
+        {
+          tier: 3,
+          title: "全面孤立与联动制裁加码",
+          icon: "⚡",
+          desc: "把抵制升级为科技与信贷联动制裁，公开要求苏军限期撤阿，否则扩大巴统清单。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +20,
+            usaCongressApproval: +5,
+            sunConservative: +4,
+            sunShortage: +3,
+            cocomStrict: true,
+            prestigeDelta: +3,
+            summary: "西方政治动员成功，但美苏对抗与苏联物资压力同步抬升。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_lebanon_1982",
+      year: 1982,
+      month: 6,
+      title: "加利利和平行动与黎巴嫩战火",
+      headline: "以色列入黎、贝卡谷地空战与多国部队阴影",
+      region: "中东 / 贝鲁特—贝卡",
+      // D：LBN 仅为成员键；可玩实体用 LEV（黎凡特联邦），地区语义不变。
+      target: "LEV",
+      initiator: "ISR",
+      actors: ["USA", "SUN", "ISR", "LEV", "EGY"],
+      gate: { modulate: true, minHeat: 0.24 },
+      desc: "以色列发动『加利利和平』越境行动，贝卡谷地空战与贝鲁特围城把超级大国卷进黎巴嫩棋局。华盛顿与莫斯科必须在斡旋停火、有限介入与公开站队之间抉择——与日后人质危机不同，此刻争的是前线战局本身。",
+      options: [
+        {
+          tier: 1,
+          title: "紧急停火斡旋与人道走廊",
+          icon: "🕊️",
+          desc: "推动安理会与区域调停，开辟贝鲁特人道走廊，劝阻大规模巷战与长期占领。",
+          badge: "多边斡旋",
+          effects: {
+            tensionDelta: -10,
+            middleEastTension: -8,
+            usaCongressApproval: -3,
+            prestigeDelta: +1,
+            stabilityBonus: +3,
+            summary: "中东战火短暂降温，但国内舆论批评未能展示实力。"
+          }
+        },
+        {
+          tier: 2,
+          title: "有限外交施压与海上监视",
+          icon: "⚖️",
+          desc: "第六舰队抵近监视，同步向各方施压接受分阶段撤军与缓冲安排，避免直接交火。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: +4,
+            middleEastTension: +5,
+            usaCongressApproval: +2,
+            summary: "维持前沿存在与外交杠杆，黎巴嫩战局未全面失控。"
+          }
+        },
+        {
+          tier: 3,
+          title: "公开站队与扩大威慑部署",
+          icon: "⚡",
+          desc: "加大军援与情报协同，航母战斗群进入高强度战备，警告第三方勿扩大介入。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +18,
+            middleEastTension: +12,
+            usaCongressApproval: +4,
+            defconRisk: +4,
+            prestigeDelta: +2,
+            summary: "威慑信号清晰，但中东与美苏对抗风险同步飙升。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_miners_1984",
+      year: 1984,
+      month: 3,
+      title: "英国矿工大罢工与同盟侧翼",
+      headline: "煤矿关闭潮、警力对峙与北约南翼注意力分流",
+      region: "西欧 / 英格兰—威尔士煤田",
+      target: "GBR",
+      initiator: "GBR",
+      actors: ["GBR", "USA", "SUN"],
+      gate: { modulate: true, minHeat: 0.18 },
+      desc: "撒切尔政府推动关闭亏损矿井，全国矿工联合会发动持久大罢工。伦敦政局动荡牵动北约凝聚力与苏联对『西方内伤』的评估——这是内政危机外溢到冷战叙事的一刻。",
+      options: [
+        {
+          tier: 1,
+          title: "谈判妥协与社区纾困",
+          icon: "🕊️",
+          desc: "重启三方谈判，保留部分矿区过渡安置与补贴，优先社会和解。",
+          badge: "社会和解",
+          effects: {
+            tensionDelta: -4,
+            gbrPopularity: +4,
+            natoCohesion: -3,
+            stabilityBonus: +4,
+            prestigeDelta: -1,
+            summary: "国内动荡回落，但盟友质疑伦敦改革意志不足。"
+          }
+        },
+        {
+          tier: 2,
+          title: "依法对峙与有限对话窗口",
+          icon: "⚖️",
+          desc: "坚持关闭亏损矿井时间表，同时保持有限对话与能源替代预案，避免全面社会失序。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: 0,
+            gbrPopularity: +1,
+            natoCohesion: +1,
+            summary: "改革路线推进，同盟侧翼基本稳住。"
+          }
+        },
+        {
+          tier: 3,
+          title: "强硬清场与冷战叙事加码",
+          icon: "⚡",
+          desc: "扩大警力清场，公开把罢工定性为对自由世界秩序的挑战，寻求华盛顿政治背书。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +10,
+            gbrPopularity: -3,
+            natoCohesion: +4,
+            usaCongressApproval: +2,
+            prestigeDelta: +2,
+            summary: "同盟强硬叙事升温，但英国社会撕裂加深。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_inf_1987",
+      year: 1987,
+      month: 12,
+      title: "中导条约签署前后的信任考验",
+      headline: "陆基中导销毁、核查准入与欧洲安全安排",
+      region: "欧陆 / 华盛顿—莫斯科",
+      target: "DEU",
+      initiator: "USA",
+      actors: ["USA", "SUN", "DEU", "GBR"],
+      gate: { modulate: true },
+      desc: "美苏临近签署《中导条约》，销毁陆基中程导弹并引入现场核查。欧洲盟国既欢迎降级，又担心『双零方案』削弱前沿威慑。这与 1983 年优秀射手误判危机不同——此刻争的是裁军可信度，而非核误判螺旋。",
+      options: [
+        {
+          tier: 1,
+          title: "加速核查与更深裁减信号",
+          icon: "🕊️",
+          desc: "主动开放更多核查站点，推动配套信任措施，向欧洲保证裁军不等于解除防卫。",
+          badge: "信任加速",
+          effects: {
+            tensionDelta: -16,
+            defconRisk: -5,
+            natoCohesion: -2,
+            sunReformist: +4,
+            prestigeDelta: +3,
+            summary: "缓和红利显现，改革派得分，部分盟友忧虑威慑空洞。"
+          }
+        },
+        {
+          tier: 2,
+          title: "按约销毁并稳住同盟磋商",
+          icon: "⚖️",
+          desc: "严格执行条约时间表与核查条款，同步在北约内完成常规力量补偿磋商。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: -8,
+            defconRisk: -2,
+            natoCohesion: +2,
+            sunReformist: +2,
+            summary: "中导如约推进，欧洲安全磋商稳住同盟。"
+          }
+        },
+        {
+          tier: 3,
+          title: "挂钩条件与前沿补偿加码",
+          icon: "⚡",
+          desc: "把条约执行与更多地缘让步挂钩，同时加快前沿常规部署与演训，以防『裁军陷阱』。",
+          badge: "极限对冲",
+          effects: {
+            tensionDelta: +12,
+            defconRisk: +6,
+            natoCohesion: +5,
+            sunConservative: +3,
+            sunReformist: -2,
+            prestigeDelta: +1,
+            summary: "同盟对冲到位，但裁军互信受损、对抗读数回升。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_gulfprelude_1990",
+      year: 1990,
+      month: 7,
+      title: "海湾前奏：伊拉克陈兵科威特边境",
+      headline: "债务争执、油价施压与波斯湾战云",
+      region: "波斯湾 / 科威特边境",
+      // D：科威特成员键 KWT 可解析；可玩落点用 ARA（阿拉伯半岛联邦），与 MAP_FED_TARGET 一致。
+      target: "ARA",
+      initiator: "IRQ",
+      actors: ["IRQ", "USA", "SUN", "SAU", "KWT"],
+      gate: { modulate: true, minHeat: 0.26 },
+      desc: "伊拉克就债务与油价向科威特摊牌，共和国卫队向边境集结。这与 1980 两伊开战十字路口、1988 文森斯误击都不同——此刻是海湾战争爆发前夜的最后外交窗口。",
+      options: [
+        {
+          tier: 1,
+          title: "紧急调停与债务重组方案",
+          icon: "🕊️",
+          desc: "推动阿拉伯联盟斡旋，打包石油配额与债务重组，劝退边境集结。",
+          badge: "区域斡旋",
+          effects: {
+            tensionDelta: -8,
+            middleEastTension: -10,
+            usaCongressApproval: -2,
+            prestigeDelta: +1,
+            stabilityBonus: +2,
+            summary: "战云短暂后退，但被批评对萨达姆让步过多。"
+          }
+        },
+        {
+          tier: 2,
+          title: "外交警告与有限威慑部署",
+          icon: "⚖️",
+          desc: "公开警告不得侵犯主权，向海湾友邦预置有限海空资产，同时保留谈判桌。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: +5,
+            middleEastTension: +6,
+            usaCongressApproval: +2,
+            summary: "威慑与外交并行，边境危机未立即引爆。"
+          }
+        },
+        {
+          tier: 3,
+          title: "最后通牒与战备升级",
+          icon: "⚡",
+          desc: "发出明确军事后果通牒，加速航母与预置弹药部署，准备多国部队框架。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +16,
+            middleEastTension: +14,
+            usaCongressApproval: +5,
+            defconRisk: +5,
+            prestigeDelta: +3,
+            usSanctionPressure: true,
+            summary: "战争机器上膛，海湾对抗进入倒计时。"
+          }
+        }
+      ]
     }
+  ];
+
+  // Cri2 / Cri3 扩写卡 id（探针对齐；勿用「凡 gated 即 Cri2」，以免后批污染）
+  const CRI2_IDS = [
+    "crisis_ablearcher_1983",
+    "crisis_eldorado_1986",
+    "crisis_chernobyl_1986",
+    "crisis_rust_1987",
+    "crisis_berlinwall_1989"
+  ];
+  const CRI3_IDS = [
+    "crisis_olympics_1980",
+    "crisis_lebanon_1982",
+    "crisis_miners_1984",
+    "crisis_inf_1987",
+    "crisis_gulfprelude_1990"
   ];
 
   // 公共 API 工具库
@@ -725,14 +1039,19 @@
       });
     },
 
-    /** Cri2：是否声明国势门控（调制后果 / 软触发） */
+    /** Cri2/Cri3：是否声明国势门控（调制后果 / 软触发） */
     isGated: function (cr) {
       return !!(cr && cr.gate && typeof cr.gate === "object");
     },
 
-    /** Cri2 扩写卡 id 列表（探针与文档对齐） */
+    /** Cri2 扩写卡 id 列表（探针与文档对齐；固定五张，不受后批影响） */
     cri2Ids: function () {
-      return CRISES.filter(function (c) { return API.isGated(c); }).map(function (c) { return c.id; });
+      return CRI2_IDS.slice();
+    },
+
+    /** Cri3 扩写卡 id 列表 */
+    cri3Ids: function () {
+      return CRI3_IDS.slice();
     },
 
     cloneCrises: function () {

@@ -325,6 +325,7 @@ load().then(() => {
     mid3probe: runMid3AgendaProbe,
     bloc2probe: runBloc2Probe,
     mid4probe: runMid4AgendaProbe,
+    cri3probe: runCri3Probe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

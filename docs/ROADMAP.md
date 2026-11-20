@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 / Bloc2 / Hygμ / Mid4 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二/三/四批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批、阵营凝聚浅层、微型产物卫生、次极第四批
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1` / `?mid4probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 / Bloc2 / Hygμ / Mid4 / Cri3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二/三/四批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批、阵营凝聚浅层、微型产物卫生、次极第四批、危机卡再扩写
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1` / `?mid4probe=1` / `?cri3probe=1`）。
 
 ---
 
@@ -2069,11 +2069,48 @@ news/portraits 已在 Hyg 压过，本轮不再降质；纯搬运拆文件本轮
 > 标记名用 `MIDFOURPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?mid4probe=1`）。
 > 体积余量仍约 **168 KiB**，**不必**插 Hygμ2 即可续开 Cri3。
 
+### Phase Cri3：危机卡再扩写
+
+基准：`main` @ Mid4（`8eb12d0`）。再扩 **5** 张史实热点，走 Cri2 的
+词表效果 + 国势 `gate` 调制；日历仍是触发真理；旁观只记阶梯 2、零效果回写。
+刻意避开 Able Archer / 切尔诺贝利等同月同效果双计（中导卡放 1987-12，与
+1983-11 优秀射手分离；无 1986-04/05 核事故主题卡）。
+
+#### Cri3.1 五张新卡
+
+| id | 年月 | 主题 | 门控 |
+| --- | --- | --- | --- |
+| `crisis_olympics_1980` | 1980-07 | 莫斯科奥运抵制余波 | `minHeat: 0.22` |
+| `crisis_lebanon_1982` | 1982-06 | 加利利和平 / 黎巴嫩战火（target=`LEV`） | `minHeat: 0.24` |
+| `crisis_miners_1984` | 1984-03 | 英国矿工大罢工 | `minHeat: 0.18` |
+| `crisis_inf_1987` | 1987-12 | 中导条约信任考验 | modulate only |
+| `crisis_gulfprelude_1990` | 1990-07 | 海湾前奏（target=`ARA`） | `minHeat: 0.26` |
+
+#### Cri3.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 无纯文案卡 | 词表校验 + `?cri3probe=1` 每阶梯消费者断言 |
+| 旁观 / history | 到月记阶梯 2、零效果回写；无双触发 |
+| Cri2 API 不被污染 | `cri2Ids()` 固定五张；新增 `cri3Ids()` |
+| 主题避让 | 探针断言不与 Able Archer / 切尔诺贝利同月 |
+
+**实测（`?cri3probe=1`，41 条断言，标记 `CRITHREEPROBE`）**：扩写 / 词表 / 调制 / 软触发 / 旁观零回写 / 主题避让。
+
+| 量 | 值 |
+| --- | --- |
+| 危机卡 | **18**（8+5+5） |
+| 探针 | **52** 个（含 Cri3）；全量 **2046** 条断言；标记 `CRITHREEPROBE` |
+| 发布包 | **3.578** MiB（预算仍 **3.72**）；`CACHE_VERSION` v43 → **v44** |
+
+> 全量 `cmp`：**新增 `cri3`**；`domestic.__effectSites` 118→133；`crisisprobe` 计数 13→18；
+> `cri2` 总数断言改为 ≥13；history identical:3。
+> 标记名用 `CRITHREEPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?cri3probe=1`）。
+
 ### 后续可选方向
 
-**Mid4** 已交付；第三长程批余下 **Cri3 → End3**（见 `docs/next-long-batch-3-plan.md`）。
-体积余量约 **168 KiB**，暂不需要 Hygμ2。
-**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
+**Cri3** 已交付；第三长程批余下 **End3**（见 `docs/next-long-batch-3-plan.md`）。
+**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏；**勿**在本批未完前开 BlocP。
 
 ---
 

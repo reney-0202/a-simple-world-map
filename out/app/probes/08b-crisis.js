@@ -15,7 +15,7 @@ function runCrisisProbe() {
   try {
     // 1. 核心数据库与函数存在性
     assert("databaseLoaded", !!window.W1980_CRISES && Array.isArray(window.W1980_CRISES.list), "W1980_CRISES 数据库应成功载入");
-    assert("crisesCount13", window.W1980_CRISES && window.W1980_CRISES.list.length === 13, "突发危机总数应为 13（原 8 + Cri2 扩 5）");
+    assert("crisesCount18", window.W1980_CRISES && window.W1980_CRISES.list.length === 18, "突发危机总数应为 18（原 8 + Cri2 扩 5 + Cri3 扩 5）");
     assert("crisisPolandLoaded", !!window.W1980_CRISES.getCrisisById("crisis_poland_1981"), "1981 波兰戒严危机应存在");
     assert("crisisSouthGeorgiaLoaded", !!window.W1980_CRISES.getCrisisById("crisis_southgeorgia_1982"), "1982 南乔治亚岛危机应存在");
     assert("crisisKAL007Loaded", !!window.W1980_CRISES.getCrisisById("crisis_kal007_1983"), "1983 大韩航空 007 班机事件应存在");

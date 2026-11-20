@@ -39,7 +39,7 @@ function runCri2Probe() {
     if (!API || !EFF) throw new Error("cannot continue without crisis/effects API");
 
     // ---- 1. 扩写规模与 Cri2 id ----
-    assert("crisesCount13", API.list.length === 13, "危机总数应为 13（8+5），实为 " + API.list.length);
+    assert("crisesCountGte13", API.list.length >= 13, "危机总数应至少 13（8+Cri2），实为 " + API.list.length);
     assert("cri2IdsMatch", typeof API.cri2Ids === "function" &&
       API.cri2Ids().slice().sort().join(",") === CRI2_IDS.slice().sort().join(","),
       "cri2Ids 应正好对应 5 张门控卡");
