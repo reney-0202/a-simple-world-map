@@ -23,7 +23,7 @@
 // ---- End2：新轴小句（缺快照 → null，调用方跳过）----
 
 const END2_MID_KEYS = ["IND", "ITA", "BRA", "KOR", "TUR", "ESP", "EGY", "PAK",
-  "POL", "HUN", "CSK", "ROU"];
+  "POL", "HUN", "CSK", "ROU", "CAN", "AUS", "MEX", "SAU"];
 
 function endStoryAfg2Clause() {
   if (typeof afghanAiSnapshot !== "function") return null;

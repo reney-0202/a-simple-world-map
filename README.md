@@ -296,6 +296,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **Mid3** | 次极议程第三批 | ✅ | POL/HUN/CSK/ROU 数据声明式 2–3 步树；引擎零新分派；`aiMajors` 仍仅七大国。`?mid3probe=1`；`CACHE_VERSION` v40；history identical:3 |
 | **Bloc2** | 阵营凝聚浅层 | ✅ | 卫星离心 / 凝聚维稳 / 军援空转（确定性，零 RNG）；真实消费者（动荡 / `aidEff` / `credBonus` / 照会）；`?bloc2probe=1`；`CACHE_VERSION` v41；history identical:3 |
 | **Hygμ** | 微型产物卫生 | ✅ | zopfli 无损重压 `*_id.png` + UI/PWA PNG（≈−152 KiB）；`out/` 3.682 → 3.534 MiB；`CACHE_VERSION` v42；预算仍 3.72 MiB；history identical:3 |
+| **Mid4** | 次极议程第四批 | ✅ | CAN/AUS/MEX/SAU 数据声明式 2–3 步树；引擎零新分派；`aiMajors` 仍仅七大国。`?mid4probe=1`；`CACHE_VERSION` v43；history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：Hygμ 已交付；第三长程批 Hygμ → Mid4 → Cri3 → End3。
+后续可选方向见 `docs/ROADMAP.md` 末尾：Mid4 已交付；第三长程批余下 Cri3 → End3。
 

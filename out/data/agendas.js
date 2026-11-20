@@ -1402,6 +1402,295 @@
       }
     ],
 
+    // ---------------------------------------------------- Phase Mid4：次极议程第四批
+    // 同 Mid/Mid2/Mid3：纯数据 + 既有 onComplete / 门控词表；引擎不加国家分派。
+    // 地理补北美盟友 / 澳纽 / 墨西哥债务—美洲 / 海湾能源；aiMajors 仍仅七大国。
+
+    // ---------------------------------------------------- 加拿大 (CAN)
+    CAN: [
+      {
+        id: "can_resource_exports",
+        title: "资源粮油走廊与盟友供给",
+        category: "资源出口",
+        icon: "🌾",
+        desc: "巩固粮油矿产品对盟友的长期供给合同，把北美资源走廊做成经常账户与战略信用的底盘。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 13,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.16,
+          reserveMonthly: 1.1,
+          stabilityBonus: 5,
+          desc: "资源与粮油顺差抬升储备与安定 (+0.16pp/年，外汇流 +1.1亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "can_cusfta",
+        title: "加美自由贸易协定对接",
+        category: "北美一体化",
+        icon: "🤝",
+        desc: "完成与美国的自由贸易协定谈判与法规对接，以市场准入换取投资流入与生产率提升窗口。",
+        yearMin: 1987,
+        monthMin: 1,
+        duration: 14,
+        requires: "can_resource_exports",
+        conditionDesc: "需先稳住资源走廊，1987 年 FTA 窗口推进",
+        onComplete: {
+          legitimacy: 6,
+          sanctionStrain: -5,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.24,
+          reserveMonthly: 1.2,
+          stabilityBonus: 6,
+          desc: "北美市场准入与投资流入抬升产能 (+0.24pp/年，外汇流 +1.2亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "can_nato_north",
+        title: "北约北翼与北极警戒",
+        category: "联盟防务",
+        icon: "🛡️",
+        desc: "在足够防务开支支撑下加固北翼预警、巡逻与北极存在，换取联盟话语权与安全外溢。",
+        yearMin: 1989,
+        monthMin: 1,
+        duration: 12,
+        requires: "can_cusfta",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成加美自贸对接，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          legitimacy: 4,
+          stability: 5
+        },
+        effects: {
+          gdpBonus: 0.12,
+          stabilityBonus: 7,
+          techSecurity: 5,
+          desc: "北翼可信度提升带来安定与技术安全外溢 (+0.12pp/年，安定度 +7)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 澳大利亚 (AUS)
+    AUS: [
+      {
+        id: "aus_resources_boom",
+        title: "矿产资源繁荣与对日供给",
+        category: "资源繁荣",
+        icon: "⛏️",
+        desc: "扩大铁矿、煤与铝土对东亚的长期供给，把矿产繁荣兑现为储备与就业底盘。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 13,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.20,
+          reserveMonthly: 1.3,
+          stabilityBonus: 5,
+          desc: "矿产出口顺差抬升增长与储备 (+0.20pp/年，外汇流 +1.3亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "aus_anzus_anchor",
+        title: "澳新美同盟与太平洋锚点",
+        category: "联盟锚点",
+        icon: "⚓",
+        desc: "巩固 ANZUS 框架下的情报、基地与联合演训，把南太平洋锚点做成战略信用与安全外溢。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "aus_resources_boom",
+        conditionDesc: "需先稳住矿产繁荣，1983 年起推进",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -4
+        },
+        effects: {
+          gdpBonus: 0.14,
+          reserveMonthly: 0.8,
+          stabilityBonus: 6,
+          techSecurity: 6,
+          desc: "同盟信用改善抬升安定与技术安全 (+0.14pp/年，外汇流 +0.8亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "aus_asia_export",
+        title: "亚太出口转向与轻装军费",
+        category: "亚太开放",
+        icon: "🌏",
+        desc: "在轻装军费约束下深化对亚太制造业与服务业出口，把资源红利扩成多元经常账户。",
+        yearMin: 1987,
+        monthMin: 6,
+        duration: 14,
+        requires: "aus_anzus_anchor",
+        condition: "mil_le_3",
+        conditionDesc: "需先巩固澳新美锚点，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 6,
+          stability: 5,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.26,
+          reserveMonthly: 1.2,
+          desc: "亚太出口多元化抬升产能与储备 (+0.26pp/年，外汇流 +1.2亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 墨西哥 (MEX)
+    MEX: [
+      {
+        id: "mex_oil_debt_manage",
+        title: "石油繁荣后债务喘息",
+        category: "债务管理",
+        icon: "🛢️",
+        desc: "在石油繁荣回落与外债冲击后以出口创汇与债权人谈判换取财政喘息，稳住供给与合法性。",
+        yearMin: 1982,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1982 年债务危机窗口起可启动",
+        onComplete: {
+          legitimacy: 4,
+          sanctionStrain: -7,
+          unrest: 2
+        },
+        effects: {
+          gdpBonus: 0.10,
+          reserveMonthly: 1.2,
+          stabilityBonus: 4,
+          desc: "偿债谈判与出口创汇打开喘息 (+0.10pp/年，外汇流 +1.2亿/月)"
+        }
+      },
+      {
+        id: "mex_baker_brady",
+        title: "贝克—布雷迪重组与开放试水",
+        category: "债务重组",
+        icon: "📉",
+        desc: "对接贝克计划与布雷迪债券重组，以部分债务减免换取市场化改革与外资回流窗口。",
+        yearMin: 1986,
+        monthMin: 3,
+        duration: 13,
+        requires: "mex_oil_debt_manage",
+        conditionDesc: "需先稳住债务喘息，1986 年起推进",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -6,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.18,
+          reserveMonthly: 1.0,
+          stabilityBonus: 6,
+          desc: "债务重组与改革信号抬升信用 (+0.18pp/年，外汇流 +1.0亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "mex_maquiladora",
+        title: "保税加工与北美供应链",
+        category: "贸易开放",
+        icon: "🏭",
+        desc: "在轻装军费约束下扩大北部保税加工与对美供应链嵌入，把开放红利兑现为就业与增长。",
+        yearMin: 1989,
+        monthMin: 1,
+        duration: 14,
+        requires: "mex_baker_brady",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成债务重组，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 6,
+          stability: 5,
+          unrest: -4
+        },
+        effects: {
+          gdpBonus: 0.28,
+          reserveMonthly: 1.3,
+          desc: "保税加工与供应链嵌入抬升产能 (+0.28pp/年，外汇流 +1.3亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 沙特阿拉伯 (SAU)
+    SAU: [
+      {
+        id: "sau_oil_swing",
+        title: "石油摆动供应与市场份额",
+        category: "能源定价",
+        icon: "⛽",
+        desc: "以摆动供应角色调节产量与市场份额，把油价周期波动转成财政与储备缓冲。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 13,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -5
+        },
+        effects: {
+          gdpBonus: 0.18,
+          reserveMonthly: 1.6,
+          stabilityBonus: 4,
+          desc: "摆动供应顺差抬升储备缓冲 (+0.18pp/年，外汇流 +1.6亿/月，安定度 +4)"
+        }
+      },
+      {
+        id: "sau_petrodollar",
+        title: "石油美元回流与海湾建设",
+        category: "海湾发展",
+        icon: "🏗️",
+        desc: "扩大石油美元回流到基建、石化与主权资产，把能源租金转成经常账户之外的发展动能。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "sau_oil_swing",
+        conditionDesc: "需先稳住摆动供应角色，1983 年起推进",
+        onComplete: {
+          legitimacy: 5,
+          stability: 5
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 1.4,
+          stabilityBonus: 6,
+          desc: "回流投资与石化链条抬升增长 (+0.22pp/年，外汇流 +1.4亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "sau_gulf_security",
+        title: "海湾安全伞与战略工业",
+        category: "海湾安全",
+        icon: "🛡️",
+        desc: "在足够防务开支支撑下加固海湾安全合作与战略工业配套，换取外部信用与政权安定窗口。",
+        yearMin: 1987,
+        monthMin: 1,
+        duration: 14,
+        requires: "sau_petrodollar",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成石油美元回流，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          legitimacy: 4,
+          unrest: -3,
+          stability: 6
+        },
+        effects: {
+          gdpBonus: 0.14,
+          stabilityBonus: 8,
+          techSecurity: 6,
+          desc: "安全伞巩固安定并外溢技术安全 (+0.14pp/年，安定度 +8)"
+        }
+      }
+    ],
+
     // ---------------------------------------------------- 通用区域国家 (ALL / Default)
     DEFAULT: [
       {
