@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 58,
-    "pop": 196,
-    "ind": 58,
-    "province": 54,
-    "delta": 45,
-    "resource": 41
+    "bloc": 92,
+    "pop": 226,
+    "ind": 82,
+    "province": 73,
+    "delta": 67,
+    "resource": 66
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1373
+   "totalMs": 1662
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 144250,
+   "saveBytes": 144657,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -959,7 +959,7 @@
     "effectVocabRuntimeApi": "PASS",
     "__effectViolationsLive": 0,
     "effectVocabLivePathsClean": "PASS",
-    "__effectSites": 118,
+    "__effectSites": 133,
     "effectVocabAuditsAllSites": "PASS",
     "effectVocabDataClean": "PASS",
     "__effectCaught": "gdpBonux",
@@ -1165,7 +1165,7 @@
    "errors": [],
    "details": {
     "databaseLoaded": "PASS",
-    "crisesCount13": "PASS",
+    "crisesCount18": "PASS",
     "crisisPolandLoaded": "PASS",
     "crisisSouthGeorgiaLoaded": "PASS",
     "crisisKAL007Loaded": "PASS",
@@ -2453,7 +2453,7 @@
     "databaseLoaded": "PASS",
     "effectsVocabLoaded": "PASS",
     "gateHelpersExist": "PASS",
-    "crisesCount13": "PASS",
+    "crisesCountGte13": "PASS",
     "cri2IdsMatch": "PASS",
     "crisis_ablearcher_1983Loaded": "PASS",
     "crisis_ablearcher_1983Gated": "PASS",
@@ -2709,6 +2709,58 @@
     "mexCompleted": "PASS",
     "mexStabilityBonusConsumer": "PASS",
     "noEngineCountryDispatch": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "cri3": {
+  "marker": "CRITHREEPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "databaseLoaded": "PASS",
+    "effectsVocabLoaded": "PASS",
+    "gateHelpersExist": "PASS",
+    "crisesCount18": "PASS",
+    "cri3IdsMatch": "PASS",
+    "cri2IdsUntouched": "PASS",
+    "crisis_olympics_1980Loaded": "PASS",
+    "crisis_olympics_1980Gated": "PASS",
+    "crisis_olympics_1980ThreeTiers": "PASS",
+    "crisis_lebanon_1982Loaded": "PASS",
+    "crisis_lebanon_1982Gated": "PASS",
+    "crisis_lebanon_1982ThreeTiers": "PASS",
+    "crisis_miners_1984Loaded": "PASS",
+    "crisis_miners_1984Gated": "PASS",
+    "crisis_miners_1984ThreeTiers": "PASS",
+    "crisis_inf_1987Loaded": "PASS",
+    "crisis_inf_1987Gated": "PASS",
+    "crisis_inf_1987ThreeTiers": "PASS",
+    "crisis_gulfprelude_1990Loaded": "PASS",
+    "crisis_gulfprelude_1990Gated": "PASS",
+    "crisis_gulfprelude_1990ThreeTiers": "PASS",
+    "cri3EffectsInVocab": "PASS",
+    "cri3EachTierHasConsumer": "PASS",
+    "noAbleArcherMonthOverlap": "PASS",
+    "noChernobylMonthOverlap": "PASS",
+    "infDistinctFromAbleArcher": "PASS",
+    "hotAmplifiesCri3Hardline": "PASS",
+    "resolveOlympicsHard": "PASS",
+    "olympicsTensionConsumer": "PASS",
+    "olympicsCocomConsumer": "PASS",
+    "resolveMinersSoft": "PASS",
+    "minersGbrConsumer": "PASS",
+    "softAutoWhenCool": "PASS",
+    "softAutoRecordedTier2": "PASS",
+    "softAutoNoPendingModal": "PASS",
+    "spectatorCri3Recorded": "PASS",
+    "spectatorNoTensionDrift": "PASS",
+    "noDoubleFire": "PASS",
+    "infTensionConsumer": "PASS",
+    "infDefconConsumer": "PASS",
+    "gulfEscConsumer": "PASS"
    }
   },
   "failed": false
