@@ -833,6 +833,289 @@
       }
     ],
 
+    // ---------------------------------------------------- Phase Mid2：次极议程第二批
+    // 同 Mid：纯数据 + 既有 onComplete / 门控词表；引擎不加国家分派。
+    // aiMajors 仍仅七大国 —— 默认史实路径不自动启动。
+
+    // ---------------------------------------------------- 土耳其 (TUR)
+    TUR: [
+      {
+        id: "tur_ozal_export",
+        title: "厄扎尔出口导向与自由化",
+        category: "开放改革",
+        icon: "📦",
+        desc: "以出口补贴、汇率弹性与进口替代松绑推动制造业出海，把政变后的稳定窗口换成经常账户改善。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.24,
+          reserveMonthly: 1.0,
+          desc: "出口订单带动产能利用率与外汇流入 (+0.24pp/年，外汇流 +1.0亿/月)"
+        }
+      },
+      {
+        id: "tur_anatolian_tigers",
+        title: "安纳托利亚虎与侨汇网络",
+        category: "区域工业",
+        icon: "🐯",
+        desc: "扶持内地中小出口商与欧洲侨汇回流通道，把沿海增长扩散到安纳托利亚腹地，缓解区域裂隙。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "tur_ozal_export",
+        conditionDesc: "需先完成出口导向改革，1983 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          unrest: -4,
+          sanctionStrain: -5
+        },
+        effects: {
+          gdpBonus: 0.20,
+          reserveMonthly: 1.1,
+          stabilityBonus: 6,
+          desc: "内地工业与侨汇并进，外部施压弹性上升 (+0.20pp/年，外汇流 +1.1亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "tur_nato_southeast",
+        title: "北约东南翼防务加固",
+        category: "联盟防务",
+        icon: "🛡️",
+        desc: "在东南翼提高可部署兵力与基地保障，换取联盟内话语权与安全外溢，但须维持足够的防务开支。",
+        yearMin: 1986,
+        monthMin: 1,
+        duration: 12,
+        requires: "tur_anatolian_tigers",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成安纳托利亚虎，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          stability: 5,
+          legitimacy: 4
+        },
+        effects: {
+          gdpBonus: 0.12,
+          stabilityBonus: 8,
+          desc: "联盟可信度提升带来政治稳定红利 (+0.12pp/年，安定度 +8)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 西班牙 (ESP)
+    ESP: [
+      {
+        id: "esp_demo_consolidate",
+        title: "民主巩固与宪法秩序",
+        category: "政体巩固",
+        icon: "📜",
+        desc: "在后佛朗哥转型基础上巩固议会制与地方自治契约，以合法性换取改革推进空间，稳住投资预期。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 12,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 8,
+          unrest: -5,
+          stability: 6
+        },
+        effects: {
+          gdpBonus: 0.16,
+          stabilityBonus: 8,
+          desc: "政治不确定性下降，投资与消费信心回暖 (+0.16pp/年，安定度 +8)"
+        }
+      },
+      {
+        id: "esp_ec_accession",
+        title: "欧共体加入与单一市场对接",
+        category: "欧洲一体化",
+        icon: "🇪🇺",
+        desc: "完成加入欧共体谈判与法规对接，以结构性基金与市场准入换取工业现代化压力下的转型窗口。",
+        yearMin: 1986,
+        monthMin: 1,
+        duration: 14,
+        requires: "esp_demo_consolidate",
+        conditionDesc: "需先完成民主巩固，1986 年入盟窗口推进",
+        onComplete: {
+          legitimacy: 6,
+          sanctionStrain: -6
+        },
+        effects: {
+          gdpBonus: 0.26,
+          reserveMonthly: 1.2,
+          stabilityBonus: 5,
+          desc: "单一市场准入与基金流入抬升产能 (+0.26pp/年，外汇流 +1.2亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "esp_reconversion",
+        title: "工业重组与旅游创汇升级",
+        category: "结构转型",
+        icon: "🏖️",
+        desc: "在轻装军费约束下推进夕阳产业重组，并把海岸旅游与服务业出口做成经常账户支柱。",
+        yearMin: 1988,
+        monthMin: 6,
+        duration: 12,
+        requires: "esp_ec_accession",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成欧共体加入，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 5,
+          stability: 5,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 1.4,
+          desc: "旅游与服务业顺差巩固储备 (+0.22pp/年，外汇流 +1.4亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 埃及 (EGY)
+    EGY: [
+      {
+        id: "egy_camp_david_dividend",
+        title: "戴维营和平红利与美援轴",
+        category: "战略转向",
+        icon: "🕊️",
+        desc: "巩固与美战略伙伴关系与军经援助通道，把中东和平红利转化为财政喘息与外部信用。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 12,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -8
+        },
+        effects: {
+          gdpBonus: 0.14,
+          reserveMonthly: 1.3,
+          stabilityBonus: 5,
+          desc: "援助与信用改善抬升储备缓冲 (+0.14pp/年，外汇流 +1.3亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "egy_suez_tourism",
+        title: "苏伊士通道与旅游创汇",
+        category: "外汇支柱",
+        icon: "🚢",
+        desc: "扩大运河通行效率与尼罗河—红海旅游走廊，把过境费与游客美元做成经常账户主轴。",
+        yearMin: 1983,
+        monthMin: 3,
+        duration: 13,
+        requires: "egy_camp_david_dividend",
+        conditionDesc: "需先巩固美援轴，1983 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.20,
+          reserveMonthly: 1.5,
+          desc: "过境费与旅游顺差扩大 (+0.20pp/年，外汇流 +1.5亿/月)"
+        }
+      },
+      {
+        id: "egy_infitah_deepen",
+        title: "开放政策深化与轻装军费",
+        category: "经济开放",
+        icon: "🏗️",
+        desc: "在军费约束下深化私营部门与外资准入，把开放政策从口岸扩到制造业与服务业。",
+        yearMin: 1986,
+        monthMin: 6,
+        duration: 14,
+        requires: "egy_suez_tourism",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成苏伊士—旅游支柱，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 6,
+          stability: 5,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.25,
+          reserveMonthly: 1.0,
+          stabilityBonus: 7,
+          desc: "私营投资与外资流入抬升增长 (+0.25pp/年，外汇流 +1.0亿/月，安定度 +7)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 巴基斯坦 (PAK)
+    PAK: [
+      {
+        id: "pak_afghan_frontline",
+        title: "阿富汗前沿与美援杠杆",
+        category: "地缘窗口",
+        icon: "🏔️",
+        desc: "利用苏联入侵阿富汗的前沿地位换取美援与国际信用，稳住外汇储备并巩固执政联盟。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          sanctionStrain: -6
+        },
+        effects: {
+          gdpBonus: 0.15,
+          reserveMonthly: 1.2,
+          stabilityBonus: 4,
+          desc: "援助流入与信用改善打开财政喘息 (+0.15pp/年，外汇流 +1.2亿/月)"
+        }
+      },
+      {
+        id: "pak_remittance_textile",
+        title: "侨汇网络与纺织出口扩张",
+        category: "创汇产业",
+        icon: "🧵",
+        desc: "拓宽海湾侨汇通道与棉纺成衣出口配额，把人力红利转成经常账户顺差。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "pak_afghan_frontline",
+        conditionDesc: "需先稳住前沿美援窗口，1983 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 1.3,
+          stabilityBonus: 5,
+          desc: "侨汇与纺织顺差抬升储备 (+0.22pp/年，外汇流 +1.3亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "pak_heavy_chemical",
+        title: "重化工业与战略自主",
+        category: "产业自主",
+        icon: "⚙️",
+        desc: "在足够防务开支支撑下推进钢铁、化肥与战略工业配套，降低关键投入品的外部依附。",
+        yearMin: 1986,
+        monthMin: 1,
+        duration: 15,
+        requires: "pak_remittance_textile",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成纺织出口扩张，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.28,
+          reserveMonthly: 0.9,
+          techSecurity: 8,
+          desc: "重化配套降低进口依赖并外溢技术安全 (+0.28pp/年，外汇流 +0.9亿/月)"
+        }
+      }
+    ],
+
     // ---------------------------------------------------- 通用区域国家 (ALL / Default)
     DEFAULT: [
       {

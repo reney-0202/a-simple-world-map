@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程、产物与模块卫生、核风险 AI
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1`）。
 
 ---
 
@@ -1582,7 +1582,7 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 | **感召力的 AI 侧** | ✅ 已交付（Phase I2：对手四条决策规则 + 反向漂移） |
 | **隐蔽行动去 RNG + AI** | ✅ 已交付（Phase Cov2：确定性哈希 + 对手还手） |
 | **AI 外交主动** | ✅ 已交付（Phase Dip2：提议峰会 / 加压履约 / 拒绝空谈） |
-| **次极大国浅层议程** | ✅ 已交付（Phase Mid：IND/ITA/BRA/KOR 数据声明式 2–3 步树） |
+| **次极大国浅层议程** | ✅ 已交付（Phase Mid：IND/ITA/BRA/KOR；Phase Mid2：TUR/ESP/EGY/PAK） |
 
 ### Phase Dip2：AI 外交主动（仪式与谈判轴的对手侧）
 
@@ -1789,10 +1789,54 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 > 全量 `cmp`：**`afg2` 新增**（基线同步补上 N2）；既有 `afghanprobe` 白名单外 identical；
 > history identical:3。
 
+### Phase Mid2：次极议程第二批（战略地理再拉宽）
+
+基准：`main` @ Afg2（`ee44006`）。Mid 已证明「纯数据 + 词表、引擎零新分派」可安全拉宽；
+本切片再给 **TUR / ESP / EGY / PAK** 各加 **数据声明式 2–3 步树**，走现有
+`onComplete` / 门控词表（`mil_le_3` / `mil_ge_5` / `requires`），**`aiMajors` 仍仅七大国**。
+
+#### Mid2.1 四国浅层树
+
+| 实体 | 步骤（id） | 门控要点 |
+| --- | --- | --- |
+| **TUR** | `tur_ozal_export` → `tur_anatolian_tigers` → `tur_nato_southeast` | 末步 `mil_ge_5` |
+| **ESP** | `esp_demo_consolidate` → `esp_ec_accession` → `esp_reconversion` | 末步 `mil_le_3` |
+| **EGY** | `egy_camp_david_dividend` → `egy_suez_tourism` → `egy_infitah_deepen` | 末步 `mil_le_3` |
+| **PAK** | `pak_afghan_frontline` → `pak_remittance_textile` → `pak_heavy_chemical` | 末步 `mil_ge_5` |
+
+#### Mid2.2 真实消费者（禁止纯装饰）
+
+| 效果 | 消费者 |
+| --- | --- |
+| `gdpBonus` | `applyPlayerDecisions` → 玩家 `pmods` |
+| `reserveMonthly` | `updateMonthlyAgendas` → `ST.reserves[*].usd` |
+| `stabilityBonus` / `techSecurity` | 完成时写入 generals / 技术安全通道 |
+| `onComplete.{legitimacy,stability,unrest,sanctionStrain}` | `ONCOMPLETE_FIELDS` → `generals[*]` |
+
+#### Mid2.3 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；次极不进 `aiMajors` |
+| 效果进词表 | `effects.js` + `?mid2probe=1` / `agendaprobe` 双保险 |
+| 引擎零新分派 | 无 Mid2 专用 API；完成回馈仍走 `domesticStateOf` + generals 懒物化 |
+
+**实测（`?mid2probe=1`，47 条断言）**：专属树 / 词表 / 消费者 / 门控 / AI 不自动启动次极。
+
+| 量 | 值 |
+| --- | --- |
+| 次极实体 | 4（TUR / ESP / EGY / PAK），各 3 步 |
+| 探针 | 46 个（含 Afg2 + Mid2）；全量 **1794** 条断言 |
+| 发布包 | **3.589** MiB（预算仍 **3.72**）；`CACHE_VERSION` v36 → **v37** |
+
+> 全量 `cmp`：**只有 `mid2` 新增**；`domestic.__effectSites` 67→79、`agenda.__onCompleteSites` 26→38
+>（均来自 12 条新议程数据站点）；history identical:3。
+> 标记名用 `MIDTWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?mid2probe=1`）。
+
 ### 后续可选方向
 
-Afg2 已合入。下一批按计划串行：**Mid2（次极第二批）**。
-体积再次贴顶时允许再插一轮微型 Hyg。
+整批 **Hyg → N2 → Afg2 → Mid2** 已交付完毕。表内大战略切片已齐；
+体积贴顶时插入纯卫生轮。维护/内容扩张期可再扩次极数据树或微型 Hyg，**勿**把次极推进 `aiMajors`。
 
 ---
 
@@ -1805,7 +1849,7 @@ Afg2 已合入。下一批按计划串行：**Mid2（次极第二批）**。
 3. **效果词表**：新增 `effects` 键必须先进 `data/effects.js`，否则构建期判失败。
 4. **探针即契约**：`tools/baseline-probes.json` 是回归基线；差异必须能逐条解释，**绝不能丢失断言**。
 5. **发布**：任何发布文件变更都要 bump `out/sw.js` 的 `CACHE_VERSION`，并重跑 `node tools/sw_manifest.js out`。
-6. **产物体积与生成记录字段**：`out/` ≤ 3.72 MiB；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
+6. **产物体积与生成记录字段**：`out/` ≤ 3.72 MiB（Mid2 后仍保持；贴顶再抬须写明新上限）；省份记录只许携带 `PROVINCE_FIELDS` 声明的六个字段
    （`checkBundleHygiene` 自动门）。新增字段必须是**有意识的**改动。
 7. **政治经济学表**：新增实体必须在 `data/polecon.js` 的 `ANCHOR` 里给出
    `[史实均值, 史实标准差]`，否则该国永远算不出落差、永远没有政治后果。
