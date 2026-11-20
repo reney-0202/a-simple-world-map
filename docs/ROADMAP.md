@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 / Bloc2 / Hygμ / Mid4 / Cri3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二/三/四批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批、阵营凝聚浅层、微型产物卫生、次极第四批、危机卡再扩写
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1` / `?mid4probe=1` / `?cri3probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 / Bloc2 / Hygμ / Mid4 / Cri3 / End3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二/三/四批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批、阵营凝聚浅层、微型产物卫生、次极第四批、危机卡再扩写、史笔织入本批轴
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1` / `?bloc2probe=1` / `?mid4probe=1` / `?cri3probe=1` / `?end3probe=1`）。
 
 ---
 
@@ -2107,10 +2107,44 @@ news/portraits 已在 Hyg 压过，本轮不再降质；纯搬运拆文件本轮
 > `cri2` 总数断言改为 ≥13；history identical:3。
 > 标记名用 `CRITHREEPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?cri3probe=1`）。
 
+### Phase End3 — 史笔织入 Mid3 / Bloc2 / Mid4 / Cri3（✅ 已交付）
+
+基准：`main` @ Cri3（`3f0bb38`）。纯渲染层：把 Mid3 华约批、Bloc2 凝聚轴、
+Mid4 北美·澳纽·海湾批、Cri3 危机卡快照织进四幕连接词；缺轴降级；零 RNG / 零回写。
+
+#### End3.1 织入落点
+
+| 轴 | 幕 | 读什么 |
+| --- | --- | --- |
+| Mid3 / Mid4 | 第二幕 | `ST.agendas` 完成步；华约 / 北美·澳纽·海湾批注 |
+| Bloc2 | 第二幕 | `blocAiSnapshot`：离心 / 维稳 / 空转 + 终局凝聚 |
+| Cri3 | 第一幕 | `ST.crises.history` ∩ `cri3Ids()`；偏离基准阶梯计数 |
+
+#### End3.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 纯函数 | `endStoryOf` / End3 小句只读快照；探针断言零回写 agendas / blocAi / crises |
+| 缺轴降级 | Mid / Bloc2 / Cri3 缺失 → null，四幕不抛错 |
+| 既有不塌 | endstory / End2 判词与四幕标题探针保持 PASS |
+| 史实轨迹 | `cmp --class=history` identical:3 |
+
+**实测（`?end3probe=1`，27 条断言，标记 `ENDTHREEPROBE`）**：缺轴降级 / 判词不塌 / Mid3·Mid4·Bloc2·Cri3 织数 /
+零 RNG·零回写 / 端到端。
+
+| 量 | 值 |
+| --- | --- |
+| 探针 | **53** 个（含 End3）；全量 **2073** 条断言；标记 `ENDTHREEPROBE` |
+| 发布包 | **3.592** MiB（预算仍 **3.72**）；`CACHE_VERSION` v44 → **v45** |
+
+> 全量 `cmp`：**新增 `end3`**；history identical:3。
+> 标记名用 `ENDTHREEPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?end3probe=1`）。
+
 ### 后续可选方向
 
-**Cri3** 已交付；第三长程批余下 **End3**（见 `docs/next-long-batch-3-plan.md`）。
-**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏；**勿**在本批未完前开 BlocP。
+第三长程批 **Hygμ → Mid4 → Cri3 → End3** 已全部合入。
+维护 / 内容扩张期可选：BlocP（玩家凝聚杠杆）、再一批次极或危机卡；贴顶插微型 Hyg。
+**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
 

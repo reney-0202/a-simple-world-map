@@ -51,10 +51,13 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   crisisApplyGate: crisisApplyGate,
   crisisSoftAutoBaseline: crisisSoftAutoBaseline,
   runCri2Probe: runCri2Probe,
-  // End2（史笔织入新轴）
+  // End2 / End3（史笔织入新轴）
   endStoryAfg2Clause: endStoryAfg2Clause, endStoryMidClause: endStoryMidClause,
   endStoryN2Clause: endStoryN2Clause, endStoryCov2Clause: endStoryCov2Clause,
   endStoryDip2Clause: endStoryDip2Clause, runEnd2Probe: runEnd2Probe,
+  endStoryBloc2Clause: endStoryBloc2Clause, endStoryCri3Clause: endStoryCri3Clause,
+  endStoryMidBatchCount: endStoryMidBatchCount, runEnd3Probe: runEnd3Probe,
+  END3_MID3_KEYS: END3_MID3_KEYS, END3_MID4_KEYS: END3_MID4_KEYS,
   refreshSoundBtn: refreshSoundBtn, toggleSoundMute: toggleSoundMute, runSoundProbe: runSoundProbe,
   refreshLeaderCard: refreshLeaderCard, runAssetsProbe: runAssetsProbe,
   decSet: decSet, sanctionSet: sanctionSet, aidSet: aidSet, setPlayer: setPlayer, setMil: setMil, select: select, entKeys: entKeys, applyPlayerDecisions: applyPlayerDecisions,
