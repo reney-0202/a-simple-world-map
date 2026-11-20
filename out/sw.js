@@ -6,7 +6,7 @@
  * later still works offline after one visit.
  * Bump CACHE_VERSION whenever the shipped files change.
  */
-const CACHE_VERSION = 'w1980-v33';
+const CACHE_VERSION = 'w1980-v34';
 const PRECACHE = [
   "app/01-core.js",
   "app/02-sim.js",
@@ -29,6 +29,7 @@ const PRECACHE = [
   "app/08c-fuse.js",
   "app/08d-deception.js",
   "app/08e-covertai.js",
+  "app/08f-afghan.js",
   "app/09-endgame.js",
   "app/09a-endstory.js",
   "app/10-events-save.js",

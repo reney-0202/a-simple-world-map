@@ -6,8 +6,8 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程、产物与模块卫生
 > （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1`）。
 
 ---
@@ -1663,10 +1663,43 @@ L 的三按钮施政 + DEFAULT 两条并列议程。本切片给 **IND / ITA / B
 > 全量 `cmp`：**只有 `mid` 新增**；`domestic.__effectSites` 55→67、`agenda.__onCompleteSites` 14→26
 >（均来自 12 条新议程数据站点）；history identical:3。
 
+### Phase Hyg：产物与模块卫生
+
+基准：`main` @ Mid（`e630bba`）。Mid 后 `out/` ≈ 3.676 MiB / 预算 3.72（余量 ~44 KiB），
+撑不住后续带探针的机制切片。本轮**不算机制**：压图回落体积 + 把阿富汗从隐蔽模块纯搬运拆出，
+给 Afg2 腾地方。
+
+#### Hyg.1 压图
+
+| 资产 | 做法 |
+| --- | --- |
+| `assets/news` | 大户 JPEG 再压缩（progressive + optimize，质量约 64–78） |
+| `assets/portraits` | 领袖肖像再压缩（质量约 66） |
+
+合计约 **−176 KiB**；`out/` 从 ~3.676 → ~3.504 MiB（预算仍 **3.72**，余量约 **220 KiB**，给 N2/Afg2/Mid2 留头）。
+
+#### Hyg.2 模块拆分（纯搬运）
+
+| 从前 | 到 |
+| --- | --- |
+| `08-covert.js` 内 R13B 阿富汗整段（含 `runAfghanProbe`） | **`app/08f-afghan.js`** |
+
+`08-covert.js` 886 → 511 行；阿富汗 375 行独立文件。行为字节级不变：
+`cmp --class=history` → **identical:3**。
+
+#### Hyg.3 发布壳
+
+| 项 | 值 |
+| --- | --- |
+| `CACHE_VERSION` | `w1980-v33` → **`w1980-v34`** |
+| `sw_manifest` | PRECACHE 132 → **133**（+ `app/08f-afghan.js`） |
+| 探针 / 断言 | **不塌缩**（无新探针、无删断言） |
+| 预算 | 保持 **3.72 MiB**（压图已回落，无需上调） |
+
 ### 后续可选方向
 
-表内大战略切片已交付完毕。体积再贴顶时插入**纯卫生**轮（压图 / 拆文件 / 抬预算），
-不算机制切片，但应挡在下一机制之前。
+卫生门槛已过。下一批机制按计划串行：**N2（核风险 AI）→ Afg2（阿富汗可争夺）→ Mid2（次极第二批）**。
+体积再次贴顶时允许再插一轮微型 Hyg。
 
 ---
 

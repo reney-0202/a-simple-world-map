@@ -57,7 +57,8 @@ const BLOC_NET_BASE = {
 //   05-economy.js  tradeRoutes, reserves, cocom, chokepoints, smuggle
 //   06-ai.js       ai（含 tensions/cables/decisions）, panelTab
 //   07-domestic.js domestic, agendas, crises
-//   08-covert.js   intel, afghan, sound
+//   08-covert.js   intel, sound
+//   08f-afghan.js  afghan（Hyg：从 08-covert 纯搬运，给 Afg2 腾地方）
 //   09-endgame.js  endTab
 //   10-events-save.js lastNewsId（读侧过滤见同文件 showNews 处）、newsModalEnabled（读侧）
 // 迁移字段时：先改写主，再更新本表；不要把散落的 ST.x = ... 直接搬进其他模块。
