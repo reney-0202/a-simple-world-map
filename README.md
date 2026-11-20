@@ -290,6 +290,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **Hyg** | 产物与模块卫生 | ✅ | 压图 `assets/news`+`portraits`（≈−176 KiB）；阿富汗从 `08-covert.js` 纯搬运至 `08f-afghan.js`；`CACHE_VERSION` v34；预算仍 3.72 MiB |
 | **N2** | 核风险轴的 AI 侧 | ✅ | 对手管理升级/DEFCON：**高升级降温 / 中段照会 / 可信度吃紧拒强硬**（确定性，零 RNG）；真实消费者（`ST.nuke`/威望/张力/动荡）；`?n2probe=1`；`CACHE_VERSION` v35；history identical:3 |
 | **Afg2** | 阿富汗泥潭可争夺化 | ✅ | 史实基线 + 偏离计费；玩家/AI 方针改 `bleeding`/`air`/`resistance`；对手还手（毒刺/武装/施压 · 增兵/收缩/日内瓦）；`?afg2probe=1`；`CACHE_VERSION` v36；history identical:3 |
+| **Mid2** | 次极议程第二批 | ✅ | TUR/ESP/EGY/PAK 数据声明式 2–3 步树；引擎零新分派；`aiMajors` 仍仅七大国。`?mid2probe=1`；`CACHE_VERSION` v37；history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：**Mid2**。
+后续可选方向见 `docs/ROADMAP.md` 末尾：整批 Hyg→N2→Afg2→Mid2 已齐；维护期可微 Hyg / 内容扩张。
 

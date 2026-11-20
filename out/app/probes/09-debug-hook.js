@@ -43,6 +43,7 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   afghanBleedDrag: afghanBleedDrag, syncAfghanBleedDev: syncAfghanBleedDev,
   historicAfghanAt: historicAfghanAt, afghanAiSnapshot: afghanAiSnapshot,
   runAfghan2Probe: runAfghan2Probe,
+  runMid2AgendaProbe: runMid2AgendaProbe,
   refreshSoundBtn: refreshSoundBtn, toggleSoundMute: toggleSoundMute, runSoundProbe: runSoundProbe,
   refreshLeaderCard: refreshLeaderCard, runAssetsProbe: runAssetsProbe,
   decSet: decSet, sanctionSet: sanctionSet, aidSet: aidSet, setPlayer: setPlayer, setMil: setMil, select: select, entKeys: entKeys, applyPlayerDecisions: applyPlayerDecisions,

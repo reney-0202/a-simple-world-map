@@ -319,6 +319,7 @@ load().then(() => {
     midprobe: runMidAgendaProbe,
     n2probe: runNukeAiProbe,
     afg2probe: runAfghan2Probe,
+    mid2probe: runMid2AgendaProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };
