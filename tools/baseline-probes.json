@@ -2764,5 +2764,43 @@
    }
   },
   "failed": false
+ },
+ "end3": {
+  "marker": "ENDTHREEPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "apiPresent": "PASS",
+    "midKeysCoverBatches": "PASS",
+    "degradesWithoutNewAxes": "PASS",
+    "fourActsIntact": "PASS",
+    "actTitlesIntact": "PASS",
+    "verdictWinWinIntact": "PASS",
+    "verdictDoomsdayIntact": "PASS",
+    "end2ApisIntact": "PASS",
+    "midClausePresent": "PASS",
+    "midWeavesSteps": "PASS",
+    "mid3FlavorPresent": "PASS",
+    "mid4FlavorPresent": "PASS",
+    "bloc2ClausePresent": "PASS",
+    "bloc2WeavesCounts": "PASS",
+    "bloc2WeavesCohesion": "PASS",
+    "cri3ClausePresent": "PASS",
+    "cri3WeavesDeviant": "PASS",
+    "cri3MentionsArc": "PASS",
+    "act1WeavesCri3": "PASS",
+    "act2WeavesMidBatches": "PASS",
+    "act2WeavesBloc2": "PASS",
+    "deterministic": "PASS",
+    "consumesNoRng": "PASS",
+    "zeroWrites": "PASS",
+    "endToEndSane": "PASS",
+    "endToEndHtmlRenders": "PASS",
+    "spectatorComplete": "PASS"
+   }
+  },
+  "failed": false
  }
 }

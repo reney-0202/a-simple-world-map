@@ -1,29 +1,31 @@
 "use strict";
 
-// ---- 终局叙事升级：史笔 · 七轴合评（+ End2 新轴织入）--------------------------
+// ---- 终局叙事升级：史笔 · 七轴合评（+ End2 / End3 新轴织入）-----------------
 // 问题：七条轴的裁决行在评分页是**并列**的 —— 七段互不相认的 note，
 // 各自报各自的数字。但历史不是并列的：经济账单的到期与引信的引爆是同一条
 // 时间线，威望的较量与战线的推移是同一场对抗，核阴影与情报的迷雾是同一种
 // 不确定性。终局该回答的问题是「历史怎么写的你」，不是「七个仪表盘各是多少」。
 //
 // 本模块把七轴织成**四幕连贯叙事**：
-//   第一幕 · 国运的底盘 —— P1 经济账单 × E 长引信（时间性：到期与引爆）
-//   第二幕 · 棋盘上的较量 —— F/F2 威望 × D/D2 战争（+ Afg2 泥潭 / Mid 次极）
+//   第一幕 · 国运的底盘 —— P1 经济账单 × E 长引信（+ Cri3 危机卡日历）
+//   第二幕 · 棋盘上的较量 —— F/F2 威望 × D/D2 战争（+ Afg2 / Mid·Mid2·Mid3·Mid4 / Bloc2）
 //   第三幕 · 悬崖边的舞蹈 —— N1 核 × C/C2 情报（+ N2 核 AI / Cov2 谍战 / Dip2 照会）
 //   第四幕 · 旗帜与人心 —— S-17 意识形态 + 终局判词（意义：这一切为了什么）
 //
-// End2：史笔交付后又走了半圈机制 —— Cov2 / Dip2 / N2 / Afg2 / Mid·Mid2
-// 的快照字段织进连接词；缺轴降级不抛错；零 RNG / 零回写。
+// End2：Cov2 / Dip2 / N2 / Afg2 / Mid·Mid2 快照织进连接词。
+// End3：把 Mid3 / Bloc2 / Mid4 / Cri3 一次织完；缺轴降级；零 RNG / 零回写。
 //
 // 织法的关键不是排版，是**连接词跟着状态走**：经济兑现而威望失守时是
 // 「赢了里子输了面子」，双丰收时是「物质与名望互相成全」，双失时是
 // 「屋漏偏逢连夜雨」。句子的因果方向由真实快照的符号决定。
 //
 // 不变量（与渲染层同一约定）：纯函数读快照、零回写、零 RNG、确定性。
-// ---- End2：新轴小句（缺快照 → null，调用方跳过）----
+// ---- End2 / End3：新轴小句（缺快照 → null，调用方跳过）----
 
 const END2_MID_KEYS = ["IND", "ITA", "BRA", "KOR", "TUR", "ESP", "EGY", "PAK",
   "POL", "HUN", "CSK", "ROU", "CAN", "AUS", "MEX", "SAU"];
+const END3_MID3_KEYS = ["POL", "HUN", "CSK", "ROU"];
+const END3_MID4_KEYS = ["CAN", "AUS", "MEX", "SAU"];
 
 function endStoryAfg2Clause() {
   if (typeof afghanAiSnapshot !== "function") return null;
@@ -49,19 +51,82 @@ function endStoryAfg2Clause() {
   return null;
 }
 
-function endStoryMidClause() {
-  if (typeof ST === "undefined" || !ST.agendas) return null;
+function endStoryMidBatchCount(keys) {
+  if (typeof ST === "undefined" || !ST.agendas || !keys) return { countries: 0, steps: 0 };
   let countries = 0, steps = 0;
-  for (let i = 0; i < END2_MID_KEYS.length; i++) {
-    const st = ST.agendas[END2_MID_KEYS[i]];
+  for (let i = 0; i < keys.length; i++) {
+    const st = ST.agendas[keys[i]];
     if (st && Array.isArray(st.completed) && st.completed.length) {
       countries++;
       steps += st.completed.length;
     }
   }
-  if (!countries) return null;
-  return "次极议程树上，" + countries + " 个战略节点走完了共 " + steps +
+  return { countries: countries, steps: steps };
+}
+
+function endStoryMidClause() {
+  const all = endStoryMidBatchCount(END2_MID_KEYS);
+  if (!all.countries) return null;
+  let s = "次极议程树上，" + all.countries + " 个战略节点走完了共 " + all.steps +
     " 步 —— 冷战不只是两极的棋盘，侧翼也在写自己的剧本。";
+  // End3：华约批 / 北美·澳纽·海湾批有完成步时，点名地理侧翼（缺批则省略）
+  const mid3 = endStoryMidBatchCount(END3_MID3_KEYS);
+  const mid4 = endStoryMidBatchCount(END3_MID4_KEYS);
+  const flavors = [];
+  if (mid3.countries) {
+    flavors.push("华约侧翼 " + mid3.countries + " 国 " + mid3.steps + " 步");
+  }
+  if (mid4.countries) {
+    flavors.push("北美·澳纽·海湾 " + mid4.countries + " 国 " + mid4.steps + " 步");
+  }
+  if (flavors.length) s = s.slice(0, -1) + "（" + flavors.join("；") + "）。";
+  return s;
+}
+
+function endStoryBloc2Clause() {
+  // 纯读：ST.blocAi 缺失则降级；有槽时才调 snapshot（避免 init 写空白槽）
+  if (typeof ST === "undefined" || !ST.blocAi) return null;
+  let snap = null;
+  if (typeof blocAiSnapshot === "function") {
+    try { snap = blocAiSnapshot(); } catch (e) { return null; }
+  }
+  if (!snap) return null;
+  const spins = snap.spins || 0, glues = snap.glues || 0, hollows = snap.hollows || 0;
+  const moves = spins + glues + hollows;
+  if (moves === 0) return null;
+  const bits = [];
+  if (spins) bits.push("离心 " + spins + " 次");
+  if (glues) bits.push("维稳 " + glues + " 次");
+  if (hollows) bits.push("军援空转 " + hollows + " 次");
+  const coh = typeof snap.cohesion === "number" ? snap.cohesion : null;
+  return "铁幕内侧也不再静止 —— 阵营凝聚轴留下了" + bits.join("、") +
+    (coh !== null ? "，终局凝聚 " + coh.toFixed(0) : "") +
+    " —— 卫星的离心与粘合，改写了军援与可信度的账。";
+}
+
+function endStoryCri3Clause() {
+  if (typeof ST === "undefined" || !ST.crises || !Array.isArray(ST.crises.history)) return null;
+  let ids = null;
+  try {
+    if (typeof window !== "undefined" && window.W1980_CRISES &&
+        typeof window.W1980_CRISES.cri3Ids === "function") {
+      ids = window.W1980_CRISES.cri3Ids();
+    }
+  } catch (e) { return null; }
+  if (!ids || !ids.length) return null;
+  const set = {};
+  for (let i = 0; i < ids.length; i++) set[ids[i]] = true;
+  let n = 0, deviant = 0;
+  for (let i = 0; i < ST.crises.history.length; i++) {
+    const h = ST.crises.history[i];
+    if (!h || !set[h.id]) continue;
+    n++;
+    if (h.tier !== 2) deviant++;
+  }
+  if (!n) return null;
+  return "日历上的危机卡又翻过了 " + n + " 张新热点" +
+    (deviant ? "（其中 " + deviant + " 次走出了史实基准阶梯）" : "") +
+    " —— 从奥运抵制到海湾前奏，交叉路口被写进了史笔。";
 }
 
 function endStoryN2Clause() {
@@ -145,6 +210,10 @@ function endStoryAct1() {
     parts.push(fuseClause + "。");
   }
 
+  // End3：Cri3 危机卡日历织入国运幕（时间性交叉路口）
+  const cri3 = endStoryCri3Clause();
+  if (cri3) parts.push(cri3);
+
   return { title: "第一幕 · 国运的底盘", body: parts.join("") };
 }
 
@@ -183,11 +252,13 @@ function endStoryAct2() {
     parts.push(warClause + "。");
   }
 
-  // End2：阿富汗泥潭 + 次极议程树织入棋盘幕
+  // End2 / End3：阿富汗泥潭 + 次极议程树（含 Mid3/Mid4）+ 阵营凝聚织入棋盘幕
   const afg = endStoryAfg2Clause();
   if (afg) parts.push(afg);
   const mid = endStoryMidClause();
   if (mid) parts.push(mid);
+  const bloc2 = endStoryBloc2Clause();
+  if (bloc2) parts.push(bloc2);
 
   if (!parts.length) parts.push("棋盘上没有落子，也就没有输赢。");
   return { title: "第二幕 · 棋盘上的较量", body: parts.join("") };

@@ -298,6 +298,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **Hygμ** | 微型产物卫生 | ✅ | zopfli 无损重压 `*_id.png` + UI/PWA PNG（≈−152 KiB）；`out/` 3.682 → 3.534 MiB；`CACHE_VERSION` v42；预算仍 3.72 MiB；history identical:3 |
 | **Mid4** | 次极议程第四批 | ✅ | CAN/AUS/MEX/SAU 数据声明式 2–3 步树；引擎零新分派；`aiMajors` 仍仅七大国。`?mid4probe=1`；`CACHE_VERSION` v43；history identical:3 |
 | **Cri3** | 危机卡再扩写 | ✅ | 再扩 5 张（奥运抵制 / 黎巴嫩 / 矿工潮 / 中导 / 海湾前奏）；gate 调制；避开 Able Archer·切尔诺贝利双计。`?cri3probe=1`；`CACHE_VERSION` v44；history identical:3 |
+| **End3** | 史笔织入本批轴 | ✅ | 四幕连接词读 Mid3·Bloc2·Mid4·Cri3 快照；缺轴降级；零 RNG/零回写；`?end3probe=1`；`CACHE_VERSION` v45；history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：Cri3 已交付；第三长程批余下 End3。
+后续可选方向见 `docs/ROADMAP.md` 末尾：第三长程批 Hygμ→Mid4→Cri3→End3 已闭合。
 

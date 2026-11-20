@@ -63,7 +63,8 @@ window.W1980_PROBES={
   "mid3probe",
   "bloc2probe",
   "mid4probe",
-  "cri3probe"
+  "cri3probe",
+  "end3probe"
  ],
  "entries": {
   "selftest": {
@@ -375,6 +376,12 @@ window.W1980_PROBES={
   "cri3": {
    "qs": "cri3probe=1",
    "marker": "CRITHREEPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "end3": {
+   "qs": "end3probe=1",
+   "marker": "ENDTHREEPROBE",
    "budget": 60000,
    "class": "mechanics"
   }
