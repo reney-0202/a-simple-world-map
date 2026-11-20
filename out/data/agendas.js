@@ -1116,6 +1116,292 @@
       }
     ],
 
+    // ---------------------------------------------------- Phase Mid3：次极议程第三批（华约卫星）
+    // 同 Mid/Mid2：纯数据 + 既有 onComplete / 门控词表；引擎不加国家分派。
+    // aiMajors 仍仅七大国 —— 默认史实路径不自动启动；勿改默认史实 GDP 曲线。
+
+    // ---------------------------------------------------- 波兰 (POL)
+    POL: [
+      {
+        id: "pol_martial_credit",
+        title: "军管后稳定与西方信贷喘息",
+        category: "危机善后",
+        icon: "🛡️",
+        desc: "在戒严与团结工会冲击后以军管框架稳住供给链，并重新打开西方粮食与信贷窗口，换取财政喘息。",
+        yearMin: 1982,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1982 年军管善后窗口起可启动",
+        onComplete: {
+          legitimacy: 4,
+          unrest: -5,
+          sanctionStrain: -6
+        },
+        effects: {
+          gdpBonus: 0.12,
+          reserveMonthly: 0.9,
+          stabilityBonus: 6,
+          desc: "供给链回稳与信贷流入打开喘息空间 (+0.12pp/年，外汇流 +0.9亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "pol_round_table",
+        title: "圆桌会议与政治开放",
+        category: "政体转型",
+        icon: "🤝",
+        desc: "以圆桌协商重建社会契约，放开有限政党竞争与工会合法空间，用合法性换取改革推进窗口。",
+        yearMin: 1988,
+        monthMin: 1,
+        duration: 12,
+        requires: "pol_martial_credit",
+        conditionDesc: "需先稳住军管善后，1988 年圆桌窗口推进",
+        onComplete: {
+          legitimacy: 10,
+          unrest: -6,
+          stability: 5
+        },
+        effects: {
+          gdpBonus: 0.16,
+          stabilityBonus: 8,
+          desc: "政治不确定性下降，投资与消费信心回暖 (+0.16pp/年，安定度 +8)"
+        }
+      },
+      {
+        id: "pol_market_transition",
+        title: "价格自由化与轻装转型",
+        category: "市场转型",
+        icon: "📈",
+        desc: "在轻装军费约束下推进价格自由化与贸易开放，把短缺经济改成可计价的市场配置。",
+        yearMin: 1989,
+        monthMin: 6,
+        duration: 14,
+        requires: "pol_round_table",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成圆桌开放，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 6,
+          stability: 4,
+          unrest: -3
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 1.1,
+          desc: "价格信号恢复带动出口与储备回升 (+0.22pp/年，外汇流 +1.1亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 匈牙利 (HUN)
+    HUN: [
+      {
+        id: "hun_nem_deepen",
+        title: "新经济机制深化与小私有",
+        category: "改革深化",
+        icon: "🔧",
+        desc: "扩大企业自主权与小私有经营空间，把卡达尔式改革从农业副业推进到工业与服务业。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 13,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.18,
+          reserveMonthly: 0.8,
+          stabilityBonus: 5,
+          desc: "激励相容改善抬升产能利用率 (+0.18pp/年，外汇流 +0.8亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "hun_west_joint",
+        title: "对西合资与旅游创汇",
+        category: "开放窗口",
+        icon: "🌏",
+        desc: "扩大与西欧的合资与来访旅游，把多瑙河走廊做成经常账户与技术引进的窗口。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "hun_nem_deepen",
+        conditionDesc: "需先深化新经济机制，1983 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          sanctionStrain: -5
+        },
+        effects: {
+          gdpBonus: 0.22,
+          reserveMonthly: 1.2,
+          stabilityBonus: 5,
+          desc: "旅游与合资顺差抬升储备 (+0.22pp/年，外汇流 +1.2亿/月，安定度 +5)"
+        }
+      },
+      {
+        id: "hun_border_open",
+        title: "边境开放与市场导向",
+        category: "转型加速",
+        icon: "🚪",
+        desc: "在轻装军费约束下拆除铁幕边防惯性，加速价格与贸易自由化，把改革红利兑现为增长。",
+        yearMin: 1988,
+        monthMin: 6,
+        duration: 12,
+        requires: "hun_west_joint",
+        condition: "mil_le_3",
+        conditionDesc: "需先完成对西开放窗口，且国防军费占比 ≤ 3.0%",
+        onComplete: {
+          legitimacy: 7,
+          unrest: -4,
+          stability: 5
+        },
+        effects: {
+          gdpBonus: 0.26,
+          reserveMonthly: 1.0,
+          desc: "边境开放带动贸易与投资流入 (+0.26pp/年，外汇流 +1.0亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 捷克斯洛伐克 (CSK)
+    CSK: [
+      {
+        id: "csk_normalize_industry",
+        title: "正常化工业纪律与经互会分工",
+        category: "工业纪律",
+        icon: "🏭",
+        desc: "在正常化框架下巩固机械与军工配套产能，按经互会分工稳住出口配额与就业。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 4,
+          stability: 5
+        },
+        effects: {
+          gdpBonus: 0.16,
+          reserveMonthly: 0.7,
+          stabilityBonus: 6,
+          desc: "工业纪律回稳，配额出口与就业底线守住 (+0.16pp/年，外汇流 +0.7亿/月，安定度 +6)"
+        }
+      },
+      {
+        id: "csk_soft_export",
+        title: "软出口与旅游解冻",
+        category: "外汇窗口",
+        icon: "🧳",
+        desc: "扩大对西方的消费品软出口与布拉格旅游走廊，用有限开放换取硬通货与技术窗口。",
+        yearMin: 1984,
+        monthMin: 3,
+        duration: 13,
+        requires: "csk_normalize_industry",
+        conditionDesc: "需先稳住工业纪律，1984 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          sanctionStrain: -4
+        },
+        effects: {
+          gdpBonus: 0.20,
+          reserveMonthly: 1.1,
+          desc: "软出口与旅游顺差抬升储备 (+0.20pp/年，外汇流 +1.1亿/月)"
+        }
+      },
+      {
+        id: "csk_heavy_pact",
+        title: "华约重工配套与防务分担",
+        category: "联盟工业",
+        icon: "⚙️",
+        desc: "在足够防务开支支撑下强化华约机械—军工配套，以联盟内份额换取能源与市场配额。",
+        yearMin: 1987,
+        monthMin: 1,
+        duration: 14,
+        requires: "csk_soft_export",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成软出口解冻，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          legitimacy: 5,
+          stability: 4
+        },
+        effects: {
+          gdpBonus: 0.24,
+          reserveMonthly: 0.8,
+          techSecurity: 6,
+          desc: "重工配套巩固联盟份额并外溢技术安全 (+0.24pp/年，外汇流 +0.8亿/月)"
+        }
+      }
+    ],
+
+    // ---------------------------------------------------- 罗马尼亚 (ROU)
+    ROU: [
+      {
+        id: "rou_debt_payoff",
+        title: "外债清偿与紧缩自主",
+        category: "债务自主",
+        icon: "📉",
+        desc: "以出口创汇与国内紧缩加快清偿西方债务，换取政策自主与外部债权人压力下降。",
+        yearMin: 1980,
+        monthMin: 1,
+        duration: 14,
+        conditionDesc: "1980 年起即可启动",
+        onComplete: {
+          legitimacy: 3,
+          sanctionStrain: -8,
+          unrest: 2
+        },
+        effects: {
+          gdpBonus: 0.10,
+          reserveMonthly: 1.4,
+          stabilityBonus: 3,
+          desc: "偿债优先抬升储备、压缩外部施压 (+0.10pp/年，外汇流 +1.4亿/月)"
+        }
+      },
+      {
+        id: "rou_energy_autarky",
+        title: "能源与石化自主",
+        category: "产业自主",
+        icon: "🛢️",
+        desc: "加码本土油气与石化链条，降低对经互会能源配额的依附，把紧缩换来的自主落到产能上。",
+        yearMin: 1983,
+        monthMin: 6,
+        duration: 13,
+        requires: "rou_debt_payoff",
+        conditionDesc: "需先推进外债清偿，1983 年起推进",
+        onComplete: {
+          legitimacy: 4,
+          stability: 3
+        },
+        effects: {
+          gdpBonus: 0.18,
+          reserveMonthly: 1.0,
+          stabilityBonus: 4,
+          desc: "能源自主降低进口脆弱性 (+0.18pp/年，外汇流 +1.0亿/月，安定度 +4)"
+        }
+      },
+      {
+        id: "rou_securitate_fortress",
+        title: "安全机器与战略工业堡垒",
+        category: "政权加固",
+        icon: "🏰",
+        desc: "在高防务开支支撑下巩固安全机器与战略工业堡垒，以强制稳定换取政权存续窗口。",
+        yearMin: 1986,
+        monthMin: 1,
+        duration: 15,
+        requires: "rou_energy_autarky",
+        condition: "mil_ge_5",
+        conditionDesc: "需先完成能源自主，且国防军费占比 ≥ 5.0%",
+        onComplete: {
+          legitimacy: 2,
+          unrest: -4,
+          stability: 6
+        },
+        effects: {
+          gdpBonus: 0.14,
+          stabilityBonus: 8,
+          techSecurity: 5,
+          desc: "强制稳定抬升短期安定，工业堡垒外溢技术安全 (+0.14pp/年，安定度 +8)"
+        }
+      }
+    ],
+
     // ---------------------------------------------------- 通用区域国家 (ALL / Default)
     DEFAULT: [
       {

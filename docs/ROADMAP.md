@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 / End2 / Mid3 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二/三批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控、史笔织入新轴、次极第三批
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1` / `?end2probe=1` / `?mid3probe=1`）。
 
 ---
 
@@ -1582,7 +1582,7 @@ covertRoll(salt, y, m, actionId, target) → [0,1)   // FNV，与 C2/E 同族
 | **感召力的 AI 侧** | ✅ 已交付（Phase I2：对手四条决策规则 + 反向漂移） |
 | **隐蔽行动去 RNG + AI** | ✅ 已交付（Phase Cov2：确定性哈希 + 对手还手） |
 | **AI 外交主动** | ✅ 已交付（Phase Dip2：提议峰会 / 加压履约 / 拒绝空谈） |
-| **次极大国浅层议程** | ✅ 已交付（Phase Mid：IND/ITA/BRA/KOR；Phase Mid2：TUR/ESP/EGY/PAK） |
+| **次极大国浅层议程** | ✅ 已交付（Phase Mid：IND/ITA/BRA/KOR；Phase Mid2：TUR/ESP/EGY/PAK；Phase Mid3：POL/HUN/CSK/ROU） |
 
 ### Phase Dip2：AI 外交主动（仪式与谈判轴的对手侧）
 
@@ -1912,9 +1912,53 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 
 > 全量 `cmp`：history identical:3；mechanics 仅新增 `end2`（既有 47 探针逐位不变）。
 
+### Phase Mid3：次极议程第三批（华约卫星）
+
+基准：`main` @ End2（`7359fc1`）。再给 **POL / HUN / CSK / ROU** 各加
+**数据声明式 2–3 步树**，走现有 `onComplete` / 门控词表（`mil_le_3` / `mil_ge_5` / `requires`），
+**`aiMajors` 仍仅七大国**；叙事不改默认史实 GDP 曲线。
+
+#### Mid3.1 四国浅层树
+
+| 实体 | 步骤（id） | 门控要点 |
+| --- | --- | --- |
+| **POL** | `pol_martial_credit` → `pol_round_table` → `pol_market_transition` | 末步 `mil_le_3` |
+| **HUN** | `hun_nem_deepen` → `hun_west_joint` → `hun_border_open` | 末步 `mil_le_3` |
+| **CSK** | `csk_normalize_industry` → `csk_soft_export` → `csk_heavy_pact` | 末步 `mil_ge_5` |
+| **ROU** | `rou_debt_payoff` → `rou_energy_autarky` → `rou_securitate_fortress` | 末步 `mil_ge_5` |
+
+#### Mid3.2 真实消费者（禁止纯装饰）
+
+| 效果 | 消费者 |
+| --- | --- |
+| `gdpBonus` | `applyPlayerDecisions` → 玩家 `pmods` |
+| `reserveMonthly` | `updateMonthlyAgendas` → `ST.reserves[*].usd` |
+| `stabilityBonus` / `techSecurity` | 完成时写入 generals / 技术安全通道 |
+| `onComplete.{legitimacy,stability,unrest,sanctionStrain}` | `ONCOMPLETE_FIELDS` → `generals[*]` |
+
+#### Mid3.3 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；次极不进 `aiMajors` |
+| 效果进词表 | `effects.js` + `?mid3probe=1` / `agendaprobe` 双保险 |
+| 引擎零新分派 | 无 Mid3 专用 API；完成回馈仍走 `domesticStateOf` + generals 懒物化 |
+
+**实测（`?mid3probe=1`，47 条断言，标记 `MIDTHREEPROBE`）**：专属树 / 词表 / 消费者 / 门控 / AI 不自动启动次极。
+
+| 量 | 值 |
+| --- | --- |
+| 次极实体 | 4（POL / HUN / CSK / ROU），各 3 步 |
+| 探针 | **49** 个（含 Mid3）；全量 **1909** 条断言；标记 `MIDTHREEPROBE` |
+| 发布包 | **3.650** MiB（预算仍 **3.72**）；`CACHE_VERSION` v39 → **v40** |
+
+> 全量 `cmp`：**新增 `mid3`**；`domestic.__effectSites` 94→106、`agenda.__onCompleteSites` 38→50
+>（均来自 12 条新议程数据站点）；history identical:3。
+> 标记名用 `MIDTHREEPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?mid3probe=1`）。
+
 ### 后续可选方向
 
-**End2** 已交付。按批继续：**Mid3（次极第三批）→ Bloc2（阵营凝聚浅层）**；
+**Mid3** 已交付。按批继续：**Bloc2（阵营凝聚浅层）**；
 体积贴顶时插入微型 Hyg。**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
