@@ -292,6 +292,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **Afg2** | 阿富汗泥潭可争夺化 | ✅ | 史实基线 + 偏离计费；玩家/AI 方针改 `bleeding`/`air`/`resistance`；对手还手（毒刺/武装/施压 · 增兵/收缩/日内瓦）；`?afg2probe=1`；`CACHE_VERSION` v36；history identical:3 |
 | **Mid2** | 次极议程第二批 | ✅ | TUR/ESP/EGY/PAK 数据声明式 2–3 步树；引擎零新分派；`aiMajors` 仍仅七大国。`?mid2probe=1`；`CACHE_VERSION` v37；history identical:3 |
 | **Cri2** | 危机卡扩写 + 国势门控 | ✅ | 扩 5 张史实热点（Able Archer / 黄金峡谷 / 切尔诺贝利 / 鲁斯特 / 柏林墙）；`gate` 读张力·升级·动荡调制后果，软触发不改日历；`?cri2probe=1`；`CACHE_VERSION` v38；history identical:3 |
+| **End2** | 史笔织入新轴 | ✅ | 四幕连接词读 Cov2·Dip2·N2·Afg2·Mid 快照；缺轴降级；零 RNG/零回写；`?end2probe=1`；`CACHE_VERSION` v39；history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：Cri2 已交付；下一批 End2 → Mid3 → Bloc2。
+后续可选方向见 `docs/ROADMAP.md` 末尾：End2 已交付；下一批 Mid3 → Bloc2。
 

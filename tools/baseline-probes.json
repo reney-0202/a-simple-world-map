@@ -2495,5 +2495,40 @@
    }
   },
   "failed": false
+ },
+ "end2":  {
+  "marker": "ENDTWOPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "apiPresent": "PASS",
+    "degradesWithoutNewAxes": "PASS",
+    "fourActsIntact": "PASS",
+    "actTitlesIntact": "PASS",
+    "verdictWinWinIntact": "PASS",
+    "verdictDoomsdayIntact": "PASS",
+    "afg2ClausePresent": "PASS",
+    "afg2WeavesNumber": "PASS",
+    "midClausePresent": "PASS",
+    "midWeavesSteps": "PASS",
+    "n2ClausePresent": "PASS",
+    "n2WeavesCounts": "PASS",
+    "cov2ClausePresent": "PASS",
+    "cov2WeavesHits": "PASS",
+    "dip2ClausePresent": "PASS",
+    "dip2WeavesReject": "PASS",
+    "act2WeavesAfgOrMid": "PASS",
+    "act3WeavesNewAxes": "PASS",
+    "deterministic": "PASS",
+    "consumesNoRng": "PASS",
+    "zeroWrites": "PASS",
+    "endToEndSane": "PASS",
+    "endToEndHtmlRenders": "PASS",
+    "spectatorComplete": "PASS"
+   }
+  },
+  "failed": false
  }
 }

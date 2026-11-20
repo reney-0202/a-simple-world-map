@@ -1,6 +1,6 @@
 "use strict";
 
-// ---- 终局叙事升级：史笔 · 七轴合评 -------------------------------------------
+// ---- 终局叙事升级：史笔 · 七轴合评（+ End2 新轴织入）--------------------------
 // 问题：七条轴的裁决行在评分页是**并列**的 —— 七段互不相认的 note，
 // 各自报各自的数字。但历史不是并列的：经济账单的到期与引信的引爆是同一条
 // 时间线，威望的较量与战线的推移是同一场对抗，核阴影与情报的迷雾是同一种
@@ -8,15 +8,105 @@
 //
 // 本模块把七轴织成**四幕连贯叙事**：
 //   第一幕 · 国运的底盘 —— P1 经济账单 × E 长引信（时间性：到期与引爆）
-//   第二幕 · 棋盘上的较量 —— F/F2 威望 × D/D2 战争（对抗性：谁在赢）
-//   第三幕 · 悬崖边的舞蹈 —— N1 核风险 × C/C2 情报（不确定性：误判与迷雾）
+//   第二幕 · 棋盘上的较量 —— F/F2 威望 × D/D2 战争（+ Afg2 泥潭 / Mid 次极）
+//   第三幕 · 悬崖边的舞蹈 —— N1 核 × C/C2 情报（+ N2 核 AI / Cov2 谍战 / Dip2 照会）
 //   第四幕 · 旗帜与人心 —— S-17 意识形态 + 终局判词（意义：这一切为了什么）
+//
+// End2：史笔交付后又走了半圈机制 —— Cov2 / Dip2 / N2 / Afg2 / Mid·Mid2
+// 的快照字段织进连接词；缺轴降级不抛错；零 RNG / 零回写。
 //
 // 织法的关键不是排版，是**连接词跟着状态走**：经济兑现而威望失守时是
 // 「赢了里子输了面子」，双丰收时是「物质与名望互相成全」，双失时是
 // 「屋漏偏逢连夜雨」。句子的因果方向由真实快照的符号决定。
 //
 // 不变量（与渲染层同一约定）：纯函数读快照、零回写、零 RNG、确定性。
+// ---- End2：新轴小句（缺快照 → null，调用方跳过）----
+
+const END2_MID_KEYS = ["IND", "ITA", "BRA", "KOR", "TUR", "ESP", "EGY", "PAK"];
+
+function endStoryAfg2Clause() {
+  if (typeof afghanAiSnapshot !== "function") return null;
+  let snap = null;
+  try { snap = afghanAiSnapshot(); } catch (e) { return null; }
+  if (!snap) return null;
+  const bleed = typeof snap.bleedDev === "number" ? snap.bleedDev : 0;
+  const moves = (snap.stingers || 0) + (snap.arms || 0) + (snap.presses || 0) +
+    (snap.surges || 0) + (snap.cons || 0) + (snap.genevas || 0);
+  if (snap.contested && Math.abs(bleed) > 0.05) {
+    const sign = bleed > 0 ? "加深了" : "缓和了";
+    return "阿富汗泥潭已不再按史实剧本走完 —— 偏离失血 " +
+      (bleed > 0 ? "+" : "") + bleed.toFixed(2) + " 亿/月，" +
+      (moves > 0 ? "对手还手 " + moves + " 次，" : "") +
+      "帝国的伤口被" + sign + (Math.abs(bleed) >= 1 ? "一寸" : "半寸") + "。";
+  }
+  if (moves > 0) {
+    return "阿富汗棋盘上对手落了 " + moves + " 手（毒刺/武装/施压或增兵/收缩/日内瓦）—— 泥潭变成了可争夺的战场。";
+  }
+  if (snap.contested) {
+    return "阿富汗仍是可争夺的泥潭，但终局时偏离尚未在账上留下明显刻痕。";
+  }
+  return null;
+}
+
+function endStoryMidClause() {
+  if (typeof ST === "undefined" || !ST.agendas) return null;
+  let countries = 0, steps = 0;
+  for (let i = 0; i < END2_MID_KEYS.length; i++) {
+    const st = ST.agendas[END2_MID_KEYS[i]];
+    if (st && Array.isArray(st.completed) && st.completed.length) {
+      countries++;
+      steps += st.completed.length;
+    }
+  }
+  if (!countries) return null;
+  return "次极议程树上，" + countries + " 个战略节点走完了共 " + steps +
+    " 步 —— 冷战不只是两极的棋盘，侧翼也在写自己的剧本。";
+}
+
+function endStoryN2Clause() {
+  if (typeof nukeAiSnapshot !== "function") return null;
+  let snap = null;
+  try { snap = nukeAiSnapshot(); } catch (e) { return null; }
+  if (!snap) return null;
+  const cools = snap.cools || 0, warns = snap.warns || 0, rejects = snap.rejects || 0;
+  if (cools + warns + rejects === 0) return null;
+  const bits = [];
+  if (cools) bits.push("主动降温 " + cools + " 次");
+  if (warns) bits.push("中段照会 " + warns + " 次");
+  if (rejects) bits.push("拒强硬 " + rejects + " 次");
+  return "核悬崖的另一侧并非空转 —— 对手风险管理留下了" + bits.join("、") +
+    "，升级指数不再只由玩家单方面推高。";
+}
+
+function endStoryCov2Clause() {
+  if (typeof covertAiSnapshot !== "function") return null;
+  let snap = null;
+  try { snap = covertAiSnapshot(); } catch (e) { return null; }
+  if (!snap) return null;
+  const hits = snap.hits || 0, downs = snap.standDowns || 0;
+  if (hits + downs === 0) return null;
+  return hits > 0
+    ? "谍战迷雾里对手还了 " + hits + " 手" +
+      (downs > 0 ? "（另有 " + downs + " 次养不起收手）" : "") +
+      " —— 隐蔽行动不再是单方面的暗棋。"
+    : "对手的特情预算几次触底收手（" + downs + " 次）—— 养不起的暗战，自己会停。";
+}
+
+function endStoryDip2Clause() {
+  if (typeof dipAiSnapshot !== "function") return null;
+  let snap = null;
+  try { snap = dipAiSnapshot(); } catch (e) { return null; }
+  if (!snap) return null;
+  const proposes = snap.proposes || 0, presses = snap.presses || 0, rejects = snap.rejects || 0;
+  if (proposes + presses + rejects === 0) return null;
+  const bits = [];
+  if (proposes) bits.push("提议峰会 " + proposes + " 次");
+  if (presses) bits.push("加压履约 " + presses + " 次");
+  if (rejects) bits.push("拒绝空谈 " + rejects + " 次");
+  return "外交仪式轴上对手不再只是被动画押 —— " + bits.join("、") +
+    "，照会与拒签把悬崖边的谈判写成了双向的戏。";
+}
+
 // ---- 幕内小句构造（全部只读快照，缺轴时降级，不抛错）----
 
 // 第一幕：经济账单（P1）× 长引信（E）
@@ -92,6 +182,12 @@ function endStoryAct2() {
     parts.push(warClause + "。");
   }
 
+  // End2：阿富汗泥潭 + 次极议程树织入棋盘幕
+  const afg = endStoryAfg2Clause();
+  if (afg) parts.push(afg);
+  const mid = endStoryMidClause();
+  if (mid) parts.push(mid);
+
   if (!parts.length) parts.push("棋盘上没有落子，也就没有输赢。");
   return { title: "第二幕 · 棋盘上的较量", body: parts.join("") };
 }
@@ -128,6 +224,14 @@ function endStoryAct3() {
   } else if (de) {
     parts.push("旁观者看见的迷雾里没有人撒谎 —— 但那只是因为没有人需要撒谎。");
   }
+
+  // End2：N2 核 AI / Cov2 谍战还手 / Dip2 外交主动织入悬崖幕
+  const n2 = endStoryN2Clause();
+  if (n2) parts.push(n2);
+  const cov2 = endStoryCov2Clause();
+  if (cov2) parts.push(cov2);
+  const dip2 = endStoryDip2Clause();
+  if (dip2) parts.push(dip2);
 
   if (!parts.length) parts.push("悬崖边上什么也没有发生 —— 这本身就是最好的消息。");
   return { title: "第三幕 · 悬崖边的舞蹈", body: parts.join("") };
