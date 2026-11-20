@@ -64,4 +64,10 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   aiDipSlotOf: aiDipSlotOf, executeDipAiAction: executeDipAiAction,
   updateMonthlyDipAi: updateMonthlyDipAi, sanitizeDipAiState: sanitizeDipAiState,
   dipAiAcceptTreaty: dipAiAcceptTreaty, dipAiApplyReject: dipAiApplyReject,
-  dipAiSnapshot: dipAiSnapshot, runDipAiProbe: runDipAiProbe };
+  dipAiSnapshot: dipAiSnapshot, runDipAiProbe: runDipAiProbe,
+  // N2（核风险轴的 AI 侧）
+  nukeAiActive: nukeAiActive, aiPickNukeOp: aiPickNukeOp, nukeAiActors: nukeAiActors,
+  aiNukeSlotOf: aiNukeSlotOf, executeNukeAiAction: executeNukeAiAction,
+  updateMonthlyNukeAi: updateMonthlyNukeAi, sanitizeNukeAiState: sanitizeNukeAiState,
+  nukeAiAcceptHardline: nukeAiAcceptHardline, nukeAiApplyRejectHardline: nukeAiApplyRejectHardline,
+  nukeAiSnapshot: nukeAiSnapshot, runNukeAiProbe: runNukeAiProbe };

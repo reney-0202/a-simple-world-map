@@ -990,8 +990,45 @@ function checkNuke(ctx) {
     problems.push('nuke.js: TIER_ESC 最后一档必须大于第一档（否则「强硬」不推升级）');
   }
 
+  // N2：核风险 AI 策略表（与 Dip2 同族的粘性 / 消费者约束）
+  const AI = NK.AI_POLICY;
+  if (!AI || typeof AI !== 'object') {
+    problems.push('nuke.js: 缺 AI_POLICY（N2：对手没有核风险管理规则）');
+  } else {
+    if (!(typeof AI.MIN_MONTHS === 'number' && AI.MIN_MONTHS >= 1)) {
+      problems.push('nuke.js: AI_POLICY.MIN_MONTHS 必须 >=1（0 = 逐月翻烧饼）');
+    }
+    if (!(typeof AI.STRAIN_MAX === 'number' && AI.STRAIN_MAX > 0 && AI.STRAIN_MAX <= 1)) {
+      problems.push('nuke.js: AI_POLICY.STRAIN_MAX 必须落在 (0,1]');
+    }
+    if (!(typeof AI.WARN_ESC_MIN === 'number' && typeof AI.WARN_ESC_MAX === 'number'
+        && typeof AI.COOL_ESC_MIN === 'number'
+        && AI.WARN_ESC_MIN < AI.WARN_ESC_MAX && AI.WARN_ESC_MAX <= AI.COOL_ESC_MIN
+        && AI.COOL_ESC_MIN <= 100)) {
+      problems.push('nuke.js: AI_POLICY 必须满足 WARN_MIN < WARN_MAX ≤ COOL_ESC_MIN ≤ 100');
+    }
+    if (!(typeof AI.COOL_ESC_DELTA === 'number' && AI.COOL_ESC_DELTA < 0)) {
+      problems.push('nuke.js: AI_POLICY.COOL_ESC_DELTA 必须为负（降温）');
+    }
+    if (!(typeof AI.REJECT_CRED_MAX === 'number' && AI.REJECT_CRED_MAX > 0 && AI.REJECT_CRED_MAX < 80)) {
+      problems.push('nuke.js: AI_POLICY.REJECT_CRED_MAX 必须落在 (0,80)');
+    }
+    if (!(typeof AI.REJECT_FORCE_ESC === 'number' && AI.REJECT_FORCE_ESC < 0)) {
+      problems.push('nuke.js: AI_POLICY.REJECT_FORCE_ESC 必须为负（拒强硬强制降温）');
+    }
+    for (const k of ['COOL_PRESTIGE', 'WARN_PRESTIGE', 'WARN_UNREST', 'REJECT_PRESTIGE', 'REJECT_UNREST']) {
+      if (!(typeof AI[k] === 'number' && AI[k] > 0)) {
+        problems.push(`nuke.js: AI_POLICY.${k} 必须是正数（真实消费者，禁止纯装饰）`);
+      }
+    }
+    // 与 Dip2 边界：不得复用峰会/拒签字段
+    if (AI.PROPOSE_WINDOW_SLACK !== undefined || AI.REJECT_TENSION !== undefined) {
+      problems.push('nuke.js: AI_POLICY 不得复用 Dip2 峰会/拒签字段（边界污染）');
+    }
+  }
+
   notes.push(`nuke: ${D.length} DEFCON bands, ${INC.length} incidents / ${opts} options, `
-    + `${problems.length} problem(s)`);
+    + `AI_POLICY ${AI ? 'ok' : 'missing'}, ${problems.length} problem(s)`);
   return { problems, notes, stats: { defcon: D.length, incidents: INC.length, options: opts } };
 }
 

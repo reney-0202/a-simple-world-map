@@ -317,6 +317,7 @@ load().then(() => {
     cov2probe: runCovertAiProbe,
     dip2probe: runDipAiProbe,
     midprobe: runMidAgendaProbe,
+    n2probe: runNukeAiProbe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };

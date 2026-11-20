@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程、产物与模块卫生
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程、产物与模块卫生、核风险 AI
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1`）。
 
 ---
 
@@ -1696,9 +1696,48 @@ L 的三按钮施政 + DEFAULT 两条并列议程。本切片给 **IND / ITA / B
 | 探针 / 断言 | **不塌缩**（无新探针、无删断言） |
 | 预算 | 保持 **3.72 MiB**（压图已回落，无需上调） |
 
+### Phase N2：核风险轴的 AI 侧
+
+基准：`main` @ Hyg（`814898f`）。四侧面里唯一「玩家在悬崖边跳舞、对手不主动管理」的轴；
+Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规则让对手在升级高时主动降温、
+中段照会催降温、可信度吃紧时拒强硬。
+
+#### N2.1 三条（及以上）规则
+
+| 规则 | 触发 | 落点 |
+| --- | --- | --- |
+| **主动降温** | `esc ≥ COOL_ESC_MIN`（约 DEFCON 2–3） | `ST.nuke.esc` −、美苏张力 −、对手威望 +、照会 |
+| **照会催降温** | `WARN_ESC_MIN ≤ esc < WARN_ESC_MAX` | 玩家威望 −、动荡 +（不碰峰会/条约） |
+| **拒绝强硬** | `cred ≤ REJECT_CRED_MAX` 且事故强硬 / 危机高阶 | 挂在 `resolveNukeIncident` / 危机阶梯；强制降温 + 威望/动荡 |
+| **粘性 / 收手** | `MIN_MONTHS`；`polEconStrainOf` ≥ `STRAIN_MAX` | 防逐月翻烧饼；经济吃紧不主动管理 |
+
+#### N2.2 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | `cmp --class=history` identical:3；`nukeAiActive()` 白名单（`?n2probe=1`） |
+| 旁观零回写 | 无玩家：`nukeAiActors()` 空，月度推进立即返回 |
+| 决策确定 | 同状态同结果，不碰 `SIM.S.rngState` |
+| 不升存档版本 | `ST.nukeAi` 走 `sanitizeNukeAiState` |
+| 与 Dip2 边界 | 不提议峰会、不拒签条约；`AI_POLICY` 不得带 `REJECT_TENSION` 等仪式字段 |
+| 既有 nukeprobe | 白名单外 `nukeAiActive()===false` → 事故/阶梯路径可解释不变 |
+
+**实测（`?n2probe=1`，42 条断言）**：规则表 / 门控 / 三条+规则 / 消费者（`ST.nuke`/威望/张力/动荡）/
+存档清洗 / 旁观零回写 / 事故拒强硬接线 / 端到端。
+
+| 量 | 值 |
+| --- | --- |
+| 决策规则 | ≥3 条（降温 / 照会 / 拒强硬 + 粘性/收手） |
+| 探针 | 44 个（含 Mid + N2）；`?n2probe=1` 42 条断言 |
+| 新文件 | `app/07g-nukeai.js` + `probes/08u-nukeai.js` |
+| 发布包 | 3.532 MiB（预算仍 **3.72**）；`CACHE_VERSION` v34 → **v35** |
+
+> 全量 `cmp`：**只有 `n2` 新增**；既有 `nukeprobe` 白名单外可解释不变（`nukeAiActive()` 关）；
+> history identical:3。
+
 ### 后续可选方向
 
-卫生门槛已过。下一批机制按计划串行：**N2（核风险 AI）→ Afg2（阿富汗可争夺）→ Mid2（次极第二批）**。
+N2 已合入。下一批按计划串行：**Afg2（阿富汗可争夺）→ Mid2（次极第二批）**。
 体积再次贴顶时允许再插一轮微型 Hyg。
 
 ---

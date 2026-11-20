@@ -213,6 +213,13 @@ function cleanData() {
         CRED_MIL: 6, CRED_PRESTIGE: 0.4, CRED_COHESION: 0.35,
         RISK_BASE: 0.004, RISK_CAP: 0.02, DOOMSDAY_MONTHS: 3, LOG_MAX: 24,
       },
+      AI_POLICY: {
+        MIN_MONTHS: 2, STRAIN_MAX: 0.75,
+        COOL_ESC_MIN: 55, COOL_ESC_DELTA: -8, COOL_TENSION_DELTA: -4, COOL_PRESTIGE: 0.6,
+        WARN_ESC_MIN: 40, WARN_ESC_MAX: 55, WARN_PRESTIGE: 0.5, WARN_UNREST: 2,
+        REJECT_CRED_MAX: 38, HAWK_OPT_ESC_MIN: 8, HAWK_TIER_MIN: 2,
+        REJECT_FORCE_ESC: -6, REJECT_PRESTIGE: 1.0, REJECT_UNREST: 2, LOG_MAX: 24,
+      },
     },
     W1980_WARS: {
       WARS: {
@@ -1054,6 +1061,28 @@ test('ESC_MAX below the level-1 threshold is caught', () => {
 test('a zero doomsday window is caught', () => {
   const d = cleanData(); d.W1980_NUKE.PARAMS.DOOMSDAY_MONTHS = 0;
   assert.match(checks.checkNuke(makeCtx(d)).problems[0], /DOOMSDAY_MONTHS 必须 >= 1/);
+});
+test('a missing AI_POLICY is caught', () => {
+  const d = cleanData(); delete d.W1980_NUKE.AI_POLICY;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /缺 AI_POLICY/);
+});
+test('a zero sticky window in AI_POLICY is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.AI_POLICY.MIN_MONTHS = 0;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /MIN_MONTHS 必须 >=1/);
+});
+test('a broken warn\/cool window is caught', () => {
+  const d = cleanData();
+  d.W1980_NUKE.AI_POLICY.WARN_ESC_MIN = 60;
+  d.W1980_NUKE.AI_POLICY.WARN_ESC_MAX = 50;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /WARN_MIN < WARN_MAX/);
+});
+test('a zero consumer magnitude in AI_POLICY is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.AI_POLICY.COOL_PRESTIGE = 0;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /COOL_PRESTIGE 必须是正数/);
+});
+test('Dip2 field bleed into AI_POLICY is caught', () => {
+  const d = cleanData(); d.W1980_NUKE.AI_POLICY.REJECT_TENSION = 86;
+  assert.match(checks.checkNuke(makeCtx(d)).problems[0], /不得复用 Dip2/);
 });
 
 // ---- 8j. intelligence estimation table (C) -----------------------------------

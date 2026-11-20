@@ -99,6 +99,9 @@ function evRun(y, m, silent) {
   // 放在战争与威望之后 —— 它要读这两者的当期结果（进行中的战争、威望落差）。
   // 无执政者时它只做只读计算：不掷骰、不触发事故、不写内政。
   updateNukeRisk(y, m, silent);
+  // N2：对手核风险管理（高升级降温 / 中段照会 / 拒强硬挂在裁决路径）。
+  // 紧跟 N1 之后：它读当月刚算完的 esc/cred，白名单门控，旁观零回写。
+  if (typeof updateMonthlyNukeAi === "function") updateMonthlyNukeAi(y, m, silent);
   // F（威望竞赛）：史实威望梯子 + 玩家工程 + 第三世界漂移。
   // 放在最后是刻意的：它读的是上面刚算完的内政字段（动荡/合法性），
   // 并且它的漂移会改 ST.blocOverride，随后 refreshAIBox/地图重烘会反映出来。
@@ -347,6 +350,7 @@ function simSave(slot) {
     intel: ST.intel ? JSON.parse(JSON.stringify(ST.intel)) : null,   // R13A：全球谍战与隐蔽行动状态
     covertAi: ST.covertAi ? JSON.parse(JSON.stringify(ST.covertAi)) : null, // Cov2：对手隐蔽还手槽
     dipAi: ST.dipAi ? JSON.parse(JSON.stringify(ST.dipAi)) : null, // Dip2：对手外交主动槽
+    nukeAi: ST.nukeAi ? JSON.parse(JSON.stringify(ST.nukeAi)) : null, // N2：对手核风险管理槽
     afghan: ST.afghan ? JSON.parse(JSON.stringify(ST.afghan)) : null, // R13B：阿富汗战区态势与帝国失血槽状态
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
     mode: ST.mode, layers: ST.layers, sel: ST.sel,
@@ -548,6 +552,9 @@ function loadSocietyStates(d) {
   // Dip2：还原对手外交主动槽（旧档缺该项 → 空状态）
   ST.dipAi = (typeof sanitizeDipAiState === "function")
     ? sanitizeDipAiState(d.dipAi) : { slots: {}, log: [], pending: null };
+  // N2：还原对手核风险管理槽（旧档缺该项 → 空状态）
+  ST.nukeAi = (typeof sanitizeNukeAiState === "function")
+    ? sanitizeNukeAiState(d.nukeAi) : { slots: {}, log: [] };
   // R13B：还原阿富汗战区态势与帝国失血槽
   if (d.afghan && typeof d.afghan === "object") {
     ST.afghan = sanitizeAfghanState(d.afghan);
