@@ -87,4 +87,9 @@ window.__W1980 = { view: view, render: render, drawOverlay: drawOverlay, drawMin
   aiNukeSlotOf: aiNukeSlotOf, executeNukeAiAction: executeNukeAiAction,
   updateMonthlyNukeAi: updateMonthlyNukeAi, sanitizeNukeAiState: sanitizeNukeAiState,
   nukeAiAcceptHardline: nukeAiAcceptHardline, nukeAiApplyRejectHardline: nukeAiApplyRejectHardline,
-  nukeAiSnapshot: nukeAiSnapshot, runNukeAiProbe: runNukeAiProbe };
+  nukeAiSnapshot: nukeAiSnapshot, runNukeAiProbe: runNukeAiProbe,
+  // Bloc2（阵营凝聚 / 卫星离心）
+  blocAiActive: blocAiActive, aiPickBlocOp: aiPickBlocOp, blocAiActors: blocAiActors,
+  aiBlocSlotOf: aiBlocSlotOf, executeBlocAiAction: executeBlocAiAction,
+  updateMonthlyBlocAi: updateMonthlyBlocAi, sanitizeBlocAiState: sanitizeBlocAiState,
+  blocAidEff: blocAidEff, blocAiSnapshot: blocAiSnapshot, runBloc2Probe: runBloc2Probe };

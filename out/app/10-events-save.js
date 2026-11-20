@@ -92,6 +92,8 @@ function evRun(y, m, silent) {
   if (typeof updateMonthlyCovertAi === "function") updateMonthlyCovertAi(y, m, silent);
   // Dip2：对手外交主动（峰会提议 / 履约加压；白名单门控；旁观零回写）
   if (typeof updateMonthlyDipAi === "function") updateMonthlyDipAi(y, m, silent);
+  // Bloc2：阵营凝聚 / 卫星离心（白名单门控；旁观零回写；不进 aiMajors）
+  if (typeof updateMonthlyBlocAi === "function") updateMonthlyBlocAi(y, m, silent);
   // C（情报估算）：专项评估到期（无执政者时它自己就返回 —— 旁观没有情报行动）
   updateMonthlyEstimates(y, m, silent);
   updateMonthlyAfghan(y, m, silent);        // R13B：阿富汗战区态势与帝国失血槽月度结算
@@ -354,6 +356,7 @@ function simSave(slot) {
     covertAi: ST.covertAi ? JSON.parse(JSON.stringify(ST.covertAi)) : null, // Cov2：对手隐蔽还手槽
     dipAi: ST.dipAi ? JSON.parse(JSON.stringify(ST.dipAi)) : null, // Dip2：对手外交主动槽
     nukeAi: ST.nukeAi ? JSON.parse(JSON.stringify(ST.nukeAi)) : null, // N2：对手核风险管理槽
+    blocAi: ST.blocAi ? JSON.parse(JSON.stringify(ST.blocAi)) : null, // Bloc2：阵营凝聚 / 卫星离心槽
     afghan: ST.afghan ? JSON.parse(JSON.stringify(ST.afghan)) : null, // R13B：阿富汗战区态势与帝国失血槽状态
     afghanAi: ST.afghanAi ? JSON.parse(JSON.stringify(ST.afghanAi)) : null, // Afg2：对手方针槽
     sound: ST.sound ? { muted: !!ST.sound.muted, vol: typeof ST.sound.vol === "number" ? ST.sound.vol : 0.6 } : { muted: false, vol: 0.6 }, // R13C：时代音效
@@ -559,6 +562,9 @@ function loadSocietyStates(d) {
   // N2：还原对手核风险管理槽（旧档缺该项 → 空状态）
   ST.nukeAi = (typeof sanitizeNukeAiState === "function")
     ? sanitizeNukeAiState(d.nukeAi) : { slots: {}, log: [] };
+  // Bloc2：还原阵营凝聚槽（旧档缺该项 → 空状态）
+  ST.blocAi = (typeof sanitizeBlocAiState === "function")
+    ? sanitizeBlocAiState(d.blocAi) : { cohesion: 50, aidEff: 1, slots: {}, log: [] };
   // R13B：还原阿富汗战区态势与帝国失血槽
   if (d.afghan && typeof d.afghan === "object") {
     ST.afghan = sanitizeAfghanState(d.afghan);
