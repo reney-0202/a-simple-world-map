@@ -1,6 +1,9 @@
 "use strict";
 
-// ---- R12C: 中局突发危机抉择卡与升级阶梯系统 ----
+// ---- R12C + Cri2: 中局突发危机抉择卡与升级阶梯系统 ----
+// Cri2：日历仍是触发真理；国势（张力 / 核升级 / 动荡）只调制门控卡的后果幅度，
+// 并在玩家路径上可「软触发」（热度不足 → 自动史实阶梯 2）。旁观 / 探针快进仍只记
+// 史实阶梯 2、不落效果 —— history 不变量不受国势门控影响。
 let crisisResumePlay = false;
 function initCrisisState() {
   ST.crises = {
@@ -8,6 +11,65 @@ function initCrisisState() {
     pending: null
   };
   return ST.crises;
+}
+
+/** Cri2：读取当期国势热度 ∈ [0,1]（张力 + 核升级 + 执政/默认动荡） */
+function crisisSituationHeat() {
+  let tension = 50;
+  if (ST.ai && ST.ai.tensions && typeof ST.ai.tensions["USA:SUN"] === "number") {
+    tension = ST.ai.tensions["USA:SUN"];
+  }
+  let esc = 0;
+  if (ST.nuke && typeof ST.nuke.esc === "number") esc = ST.nuke.esc;
+  let unrest = 40;
+  const who = ST.player || null;
+  if (who && typeof polEconDomesticOf === "function") {
+    const dom = polEconDomesticOf(who);
+    if (dom && typeof dom.unrest === "number") unrest = dom.unrest;
+  }
+  const tN = clamp(tension / 100, 0, 1);
+  const eN = clamp(esc / 100, 0, 1);
+  const uN = clamp(unrest / 100, 0, 1);
+  return clamp(0.45 * tN + 0.35 * eN + 0.20 * uN, 0, 1);
+}
+
+/**
+ * Cri2：按国势热度调制门控卡数值效果。
+ * 高热放大强硬阶梯（tier 3）、压缩克制阶梯（tier 1）；低热相反；tier 2 近似恒等。
+ * 无 gate / 未开 modulate → 原样返回（旧 8 卡行为不变）。
+ */
+function crisisApplyGate(eff, cr, tier) {
+  if (!eff || typeof eff !== "object") return eff;
+  if (!window.W1980_CRISES || !window.W1980_CRISES.isGated(cr)) return eff;
+  if (!cr.gate.modulate) return eff;
+  const heat = crisisSituationHeat();
+  const centered = heat - 0.5;
+  const tierBias = tier === 3 ? 1 : (tier === 1 ? -1 : 0);
+  const scale = 1 + centered * tierBias * 0.6;
+  const out = {};
+  for (const k in eff) out[k] = eff[k];
+  const KEYS = [
+    "tensionDelta", "prestigeDelta", "sunConservative", "sunReformist",
+    "sunShortage", "usaCongressApproval", "stabilityBonus", "defconRisk",
+    "natoCohesion", "middleEastTension", "gbrPopularity", "cubanTension"
+  ];
+  for (let i = 0; i < KEYS.length; i++) {
+    const k = KEYS[i];
+    if (typeof out[k] === "number" && out[k] !== 0 && isFinite(out[k])) {
+      out[k] = Math.round(out[k] * scale * 10) / 10;
+    }
+  }
+  out.__gateHeat = Math.round(heat * 1000) / 1000;
+  out.__gateScale = Math.round(scale * 1000) / 1000;
+  return out;
+}
+
+/** Cri2：玩家路径软触发 —— 热度低于 minHeat 则自动史实阶梯 2（仍落效果） */
+function crisisSoftAutoBaseline(cr) {
+  if (!window.W1980_CRISES || !window.W1980_CRISES.isGated(cr)) return false;
+  const min = cr.gate.minHeat;
+  if (typeof min !== "number" || !isFinite(min)) return false;
+  return crisisSituationHeat() < min;
 }
 
 function sanitizeCrisisState(data) {
@@ -119,15 +181,13 @@ function resolveCrisis(crId, tier, silent) {
   });
   ST.crises.pending = null;
 
-  const eff = opt.effects || {};
-
-  // D（数据层评审）/ I（数据层工具链）：统一效果词表自检 —— 数据里出现表外键 = 拼错或过期，
-  // 静默无效最危险。词表见 data/effects.js（W1980_EFFECTS）：构建期由 tools/validate_data.js
-  // 直接判失败；运行期登记进 W1980_EFFECTS.violations（探针断言其为空），
-  // 并在探针/开发模式下同时打到控制台。
+  // Cri2：门控卡按当期国势调制数值后果；旧卡无 gate → 恒等。
+  // 词表审计仍用原始 effects（__gate* 诊断字段不进词表）。
+  const rawEff = opt.effects || {};
   if (window.W1980_EFFECTS && window.W1980_EFFECTS.report) {
-    window.W1980_EFFECTS.report("crisis " + cr.id + " tier" + tier, eff);
+    window.W1980_EFFECTS.report("crisis " + cr.id + " tier" + tier, rawEff);
   }
+  const eff = crisisApplyGate(rawEff, cr, tier);
 
   // 1. 双边张力影响 (R10A)
   if (typeof eff.tensionDelta === "number" && eff.tensionDelta !== 0 && ST.ai && ST.ai.tensions) {
@@ -228,7 +288,8 @@ function updateMonthlyCrises(y, m, silent) {
     const cr = crises[i];
     if (ST.crises.history.some((h) => h.id === cr.id)) continue;
 
-    // 旁观模式 或 探针测试模式：自动执行史实基准阶梯 2（对等均势反制），零暂停、零 pmods 注入、零漂移
+    // 旁观模式 或 探针测试模式：自动记史实基准阶梯 2，零暂停、零效果回写、零漂移
+    // （Cri2 国势门控不得让 history 丢事件或双触发）
     if (!ST.player || CR.probeMode) {
       ST.crises.history.push({
         id: cr.id,
@@ -248,6 +309,11 @@ function updateMonthlyCrises(y, m, silent) {
       cr.actors.includes(ST.player) || cr.target === ST.player || cr.initiator === ST.player ||
       ST.player === "SUN" || ST.player === "USA";
     if (isPlayerInvolved) {
+      // Cri2 软触发：国势未热 → 自动史实阶梯 2（落效果，不弹窗）
+      if (crisisSoftAutoBaseline(cr)) {
+        resolveCrisis(cr.id, 2, true);
+        continue;
+      }
       if (silent === true && !CR.probeMode) {
         CR.resumePlay = SIM.playing;
         SIM.playing = false;

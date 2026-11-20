@@ -320,6 +320,7 @@ load().then(() => {
     n2probe: runNukeAiProbe,
     afg2probe: runAfghan2Probe,
     mid2probe: runMid2AgendaProbe,
+    cri2probe: runCri2Probe,
     soundprobe: runSoundProbe,
     assetsprobe: runAssetsProbe
   };
