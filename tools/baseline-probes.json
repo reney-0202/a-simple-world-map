@@ -7,12 +7,12 @@
    "colorConflicts": 0,
    "modeSwitchMs": {
     "political": 0,
-    "bloc": 65,
-    "pop": 202,
-    "ind": 61,
-    "province": 70,
-    "delta": 51,
-    "resource": 48
+    "bloc": 63,
+    "pop": 238,
+    "ind": 82,
+    "province": 73,
+    "delta": 68,
+    "resource": 62
    },
    "modeCount": 7,
    "layerCount": 5,
@@ -29,7 +29,7 @@
    "landNoAta": "1.356",
    "exportPng": "data:image/png; len=385178",
    "checksumOk": true,
-   "totalMs": 1510
+   "totalMs": 1883
   },
   "failed": false
  },
@@ -143,7 +143,7 @@
     "somalia_crisis_1983"
    ],
    "saved": true,
-   "saveBytes": 144093,
+   "saveBytes": 144236,
    "sunAfterReset": 1202,
    "tamperedMil": 0,
    "loaded": true,
@@ -959,7 +959,7 @@
     "effectVocabRuntimeApi": "PASS",
     "__effectViolationsLive": 0,
     "effectVocabLivePathsClean": "PASS",
-    "__effectSites": 79,
+    "__effectSites": 94,
     "effectVocabAuditsAllSites": "PASS",
     "effectVocabDataClean": "PASS",
     "__effectCaught": "gdpBonux",
@@ -1165,7 +1165,7 @@
    "errors": [],
    "details": {
     "databaseLoaded": "PASS",
-    "crisesCount8": "PASS",
+    "crisesCount13": "PASS",
     "crisisPolandLoaded": "PASS",
     "crisisSouthGeorgiaLoaded": "PASS",
     "crisisKAL007Loaded": "PASS",
@@ -1174,6 +1174,8 @@
     "crisisAchilleLoaded": "PASS",
     "crisisVincennesLoaded": "PASS",
     "crisisRomaniaLoaded": "PASS",
+    "crisisAbleArcherLoaded": "PASS",
+    "crisisBerlinWallLoaded": "PASS",
     "allCrisesHave3Tiers": "PASS",
     "allCrisesHaveEffects": "PASS",
     "initCrisisStateExists": "PASS",
@@ -2437,6 +2439,59 @@
     "egyCompleted": "PASS",
     "egyStabilityBonusConsumer": "PASS",
     "noEngineCountryDispatch": "PASS"
+   }
+  },
+  "failed": false
+ },
+ "cri2": {
+  "marker": "CRITWOPROBE",
+  "class": "mechanics",
+  "result": {
+   "pass": true,
+   "errors": [],
+   "details": {
+    "databaseLoaded": "PASS",
+    "effectsVocabLoaded": "PASS",
+    "gateHelpersExist": "PASS",
+    "crisesCount13": "PASS",
+    "cri2IdsMatch": "PASS",
+    "crisis_ablearcher_1983Loaded": "PASS",
+    "crisis_ablearcher_1983Gated": "PASS",
+    "crisis_ablearcher_1983ThreeTiers": "PASS",
+    "crisis_eldorado_1986Loaded": "PASS",
+    "crisis_eldorado_1986Gated": "PASS",
+    "crisis_eldorado_1986ThreeTiers": "PASS",
+    "crisis_chernobyl_1986Loaded": "PASS",
+    "crisis_chernobyl_1986Gated": "PASS",
+    "crisis_chernobyl_1986ThreeTiers": "PASS",
+    "crisis_rust_1987Loaded": "PASS",
+    "crisis_rust_1987Gated": "PASS",
+    "crisis_rust_1987ThreeTiers": "PASS",
+    "crisis_berlinwall_1989Loaded": "PASS",
+    "crisis_berlinwall_1989Gated": "PASS",
+    "crisis_berlinwall_1989ThreeTiers": "PASS",
+    "cri2EffectsInVocab": "PASS",
+    "cri2EachTierHasConsumer": "PASS",
+    "legacyUngatedIdentity": "PASS",
+    "heatHotHigh": "PASS",
+    "hotAmplifiesHardline": "PASS",
+    "hotDampensRestraint": "PASS",
+    "heatCoolLow": "PASS",
+    "coolDampensHardline": "PASS",
+    "resolveAbleArcherHard": "PASS",
+    "ableArcherTensionConsumer": "PASS",
+    "ableArcherEscConsumer": "PASS",
+    "ableArcherPrestigeConsumer": "PASS",
+    "softAutoWhenCool": "PASS",
+    "softAutoRecordedTier2": "PASS",
+    "softAutoNoPendingModal": "PASS",
+    "modalWhenHot": "PASS",
+    "hotOpensModal": "PASS",
+    "spectatorCri2Recorded": "PASS",
+    "spectatorNoTensionDrift": "PASS",
+    "noDoubleFire": "PASS",
+    "chernobylReformConsumer": "PASS",
+    "chernobylShortageConsumer": "PASS"
    }
   },
   "failed": false

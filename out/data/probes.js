@@ -57,7 +57,8 @@ window.W1980_PROBES={
   "midprobe",
   "n2probe",
   "afg2probe",
-  "mid2probe"
+  "mid2probe",
+  "cri2probe"
  ],
  "entries": {
   "selftest": {
@@ -333,6 +334,12 @@ window.W1980_PROBES={
   "mid2": {
    "qs": "mid2probe=1",
    "marker": "MIDTWOPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "cri2": {
+   "qs": "cri2probe=1",
+   "marker": "CRITWOPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

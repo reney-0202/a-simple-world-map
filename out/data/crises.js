@@ -1,6 +1,8 @@
 /**
- * world1980 - 冷战中局突发危机抉择卡与升级阶梯数据库 (R12C)
- * 涵盖 1981-1989 年间 8 大历史突发微观地缘危机与三级博弈升级阶梯
+ * world1980 - 冷战中局突发危机抉择卡与升级阶梯数据库 (R12C + Cri2)
+ * 涵盖 1981-1989 年间史实热点：原 8 张 + Cri2 扩写 5 张（Able Archer / 黄金峡谷 /
+ * 切尔诺贝利 / 鲁斯特红场 / 柏林墙）。Cri2 卡带 gate 字段：日历仍是触发真理，
+ * 国势（张力 / 升级 / 动荡）只调制后果幅度与玩家是否弹窗，旁观仍按月记史实阶梯 2。
  */
 (function (global) {
   "use strict";
@@ -416,6 +418,295 @@
           }
         }
       ]
+    },
+    // ---- Phase Cri2：扩写 5 张史实热点（带国势门控）---------------------------
+    {
+      id: "crisis_ablearcher_1983",
+      year: 1983,
+      month: 11,
+      title: "优秀射手-83 核误判危机",
+      headline: "北约指挥所演习与华约最高战备误读",
+      region: "中欧 / 北约指挥链",
+      target: "DEU",
+      initiator: "USA",
+      actors: ["USA", "SUN", "DEU", "GBR"],
+      gate: { modulate: true, minHeat: 0.28 },
+      desc: "北约『优秀射手-83』指挥所演习逼近实战通信形态，克里姆林宫部分情报评估误判为核打击前奏，华约战略火箭军进入高度戒备。华盛顿与莫斯科的热线窗口骤然收窄。",
+      options: [
+        {
+          tier: 1,
+          title: "透明通报与演习降级",
+          icon: "🕊️",
+          desc: "提前向苏方通报演习脚本与终止时间表，压缩核指挥演练科目，热线保持高频通畅。",
+          badge: "危机降温",
+          effects: {
+            tensionDelta: -18,
+            defconRisk: -6,
+            natoCohesion: -3,
+            prestigeDelta: -2,
+            summary: "成功避免核误判螺旋，但盟友批评演练可信度受损。"
+          }
+        },
+        {
+          tier: 2,
+          title: "按既定脚本完成并加强热线",
+          icon: "⚖️",
+          desc: "按计划完成指挥所科目，同时加密热线通报与观察员通道，维持威慑可信而不主动加码。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: +4,
+            defconRisk: +3,
+            natoCohesion: +2,
+            summary: "演习按期收束，双边张力微升但核指挥链未失控。"
+          }
+        },
+        {
+          tier: 3,
+          title: "实战化加码与前沿警戒提升",
+          icon: "⚡",
+          desc: "将部分实弹警戒与机动科目并入演练窗口，向前沿战区下达更高戒备等级以展示北约决心。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +28,
+            defconRisk: +12,
+            natoCohesion: +5,
+            usaCongressApproval: +4,
+            prestigeDelta: +3,
+            summary: "同盟凝聚力上升，但核误判风险骤增，美苏对抗逼近事故边缘。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_eldorado_1986",
+      year: 1986,
+      month: 4,
+      title: "黄金峡谷行动与的黎波里空袭",
+      headline: "美利冲突升级与地中海空袭摊牌",
+      region: "北非 / 的黎波里",
+      target: "LBY",
+      initiator: "USA",
+      actors: ["USA", "LBY", "SUN", "GBR"],
+      gate: { modulate: true, minHeat: 0.24 },
+      desc: "柏林迪斯科厅爆炸牵出利比亚情报线，里根政府决定对卡扎菲指挥与防空节点实施『黄金峡谷』空袭。莫斯科与不结盟阵营强烈抗议，地中海战云密布。",
+      options: [
+        {
+          tier: 1,
+          title: "多边制裁与定向通缉",
+          icon: "🕊️",
+          desc: "推动安理会与欧共体定向制裁，冻结相关资产并扩大国际刑警通缉，避免直接空袭。",
+          badge: "多边施压",
+          effects: {
+            tensionDelta: -8,
+            usaCongressApproval: -4,
+            prestigeDelta: -2,
+            stabilityBonus: +3,
+            summary: "避开直接交火，但国内鹰派指责白宫软弱。"
+          }
+        },
+        {
+          tier: 2,
+          title: "有限打击军事与恐袭设施",
+          icon: "⚖️",
+          desc: "精确打击防空与训练营地，避开民用目标，事后向盟国通报法理依据。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: +8,
+            usaCongressApproval: +3,
+            middleEastTension: +6,
+            summary: "展示反恐决心，地中海张力可控上升。"
+          }
+        },
+        {
+          tier: 3,
+          title: "扩大打击与政权更迭施压",
+          icon: "⚡",
+          desc: "扩大目标清单至指挥核心与港口设施，公开暗示政权更迭选项，航母战斗群抵近威慑。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +22,
+            usaCongressApproval: +6,
+            middleEastTension: +14,
+            prestigeDelta: +4,
+            usSanctionPressure: true,
+            summary: "美国国内支持上升，但美苏与中东对抗急剧升温。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_chernobyl_1986",
+      year: 1986,
+      month: 5,
+      title: "切尔诺贝利核灾难与信息公开",
+      headline: "核电站熔毁、放射性尘埃与改革派压力",
+      region: "东欧 / 普里皮亚季",
+      target: "SUN",
+      initiator: "SUN",
+      actors: ["SUN", "USA", "POL", "DEU"],
+      gate: { modulate: true },
+      desc: "切尔诺贝利四号机组爆炸后，放射性尘埃越过国境。克里姆林宫面临封锁消息与公开改革的十字路口——保守派要维稳，改革派要透明，西方则借机施压。",
+      options: [
+        {
+          tier: 1,
+          title: "全面公开与国际援助通道",
+          icon: "🕊️",
+          desc: "向国际原子能机构开放现场，接受医疗与技术援助，加速信息公开与疏散。",
+          badge: "透明改革",
+          effects: {
+            tensionDelta: -12,
+            sunReformist: +7,
+            sunConservative: -5,
+            sunShortage: +4,
+            prestigeDelta: +2,
+            summary: "赢得国际同情与改革派支持，但短期物资与政治代价高昂。"
+          }
+        },
+        {
+          tier: 2,
+          title: "有限通报与内部抢险优先",
+          icon: "⚖️",
+          desc: "对邻国做最低限度通报，集中力量封堆与疏散，对外口径保持克制。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: 0,
+            sunReformist: +2,
+            sunShortage: +3,
+            summary: "抢险优先稳住局面，信息公开仍滞后但未全面对抗。"
+          }
+        },
+        {
+          tier: 3,
+          title: "封锁消息与强硬维稳",
+          icon: "⚡",
+          desc: "严格管制境外报道与国内舆论，以国家安全名义压制异议，拒绝西方『干涉性』援助。",
+          badge: "极限维稳",
+          effects: {
+            tensionDelta: +15,
+            sunConservative: +6,
+            sunReformist: -6,
+            sunShortage: +6,
+            prestigeDelta: -4,
+            summary: "保守派短期得势，但国际孤立与国内信任危机加深。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_rust_1987",
+      year: 1987,
+      month: 5,
+      title: "马蒂亚斯·鲁斯特红场降落事件",
+      headline: "西德少年驾机穿越防空网降落莫斯科",
+      region: "东欧 / 红场",
+      target: "SUN",
+      initiator: "DEU",
+      actors: ["SUN", "DEU", "USA"],
+      gate: { modulate: true, minHeat: 0.20 },
+      desc: "西德少年鲁斯特驾轻型飞机穿越苏联防空识别区，降落红场。国防与防空军高层颜面扫地，戈尔巴乔夫借机整肃军内保守派，西方则观察苏军戒备是否松弛。",
+      options: [
+        {
+          tier: 1,
+          title: "人道审判与防务改革公开化",
+          icon: "🕊️",
+          desc: "从轻处置飞行员，公开检讨防空指挥漏洞，推动文官对军队的监督改革。",
+          badge: "改革借力",
+          effects: {
+            tensionDelta: -10,
+            sunReformist: +6,
+            sunConservative: -4,
+            prestigeDelta: +1,
+            summary: "改革派借势整肃防务，东西方缓和信号增强。"
+          }
+        },
+        {
+          tier: 2,
+          title: "军法处置与有限人事调整",
+          icon: "⚖️",
+          desc: "军法审判涉事军官，撤换防空军主官，对外强调『孤立事故』与制度自纠。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: -2,
+            sunReformist: +3,
+            sunConservative: -2,
+            summary: "人事整肃完成，防空信誉受损但未引发全面对抗。"
+          }
+        },
+        {
+          tier: 3,
+          title: "强硬定罪并提升全国防空戒备",
+          icon: "⚡",
+          desc: "以间谍嫌疑重判并全面提升防空战备，借机回击西方『渗透』叙事。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +16,
+            sunConservative: +5,
+            sunReformist: -3,
+            defconRisk: +5,
+            prestigeDelta: -2,
+            summary: "强硬姿态提振保守派，但改革受阻、对抗风险回升。"
+          }
+        }
+      ]
+    },
+    {
+      id: "crisis_berlinwall_1989",
+      year: 1989,
+      month: 11,
+      title: "柏林墙开放与德意志命运抉择",
+      headline: "东德边境开放令与欧洲终局震荡",
+      region: "中欧 / 柏林",
+      target: "DDR",
+      initiator: "DDR",
+      actors: ["DDR", "DEU", "SUN", "USA"],
+      gate: { modulate: true },
+      desc: "东德边防开放令引发柏林人潮冲关，冷战最醒目的地理分割线一夜松动。莫斯科、波恩与华盛顿必须在数周内决定：护送统一、冻结分裂，还是以阵营安全为由重新收紧。",
+      options: [
+        {
+          tier: 1,
+          title: "护送和平统一与安全安排",
+          icon: "🕊️",
+          desc: "支持两德加速谈判，同步讨论北约/中立安全安排与苏军有序撤离时间表。",
+          badge: "和平统一",
+          effects: {
+            tensionDelta: -22,
+            sunReformist: +5,
+            sunConservative: -6,
+            natoCohesion: +4,
+            prestigeDelta: +4,
+            stabilityBonus: +4,
+            summary: "欧洲终局软着陆，改革派与西方同声赞誉，保守派痛失前沿屏障。"
+          }
+        },
+        {
+          tier: 2,
+          title: "有序开放与分阶段谈判",
+          icon: "⚖️",
+          desc: "承认既成开放事实，推动四方与两德分阶段谈判，避免边境再度封锁或军事对峙。",
+          badge: "史实基准",
+          effects: {
+            tensionDelta: -8,
+            sunReformist: +2,
+            natoCohesion: +2,
+            summary: "柏林墙事实开放，谈判框架稳住欧洲，未触发军事摊牌。"
+          }
+        },
+        {
+          tier: 3,
+          title: "重新收紧与阵营安全红线",
+          icon: "⚡",
+          desc: "以华约安全红线为由推动临时边境管制与联合声明，警告北约不得借机东扩。",
+          badge: "极限升级",
+          effects: {
+            tensionDelta: +24,
+            sunConservative: +7,
+            sunReformist: -5,
+            natoCohesion: -4,
+            prestigeDelta: -3,
+            summary: "阵营对峙回潮，东欧转型转入对抗深水区，统一前景蒙阴。"
+          }
+        }
+      ]
     }
   ];
 
@@ -432,6 +723,16 @@
       return CRISES.filter(function (c) {
         return c.year === year && c.month === month;
       });
+    },
+
+    /** Cri2：是否声明国势门控（调制后果 / 软触发） */
+    isGated: function (cr) {
+      return !!(cr && cr.gate && typeof cr.gate === "object");
+    },
+
+    /** Cri2 扩写卡 id 列表（探针与文档对齐） */
+    cri2Ids: function () {
+      return CRISES.filter(function (c) { return API.isGated(c); }).map(function (c) { return c.id; });
     },
 
     cloneCrises: function () {

@@ -6,9 +6,9 @@
 > **探针分类**：`cmp --class=history`（3 个，史实轨迹）是 CI **硬门**，必须逐位一致；
 > 全量 `cmp` 只报告差异，不阻塞 —— `mechanics` 类的差异必须逐条写进提交信息。
 >
-> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
-> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批
-> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1`）。
+> **Phase E2 / T / I2 / Cov2 / Dip2 / Mid / Hyg / N2 / Afg2 / Mid2 / Cri2 已交付**：长引信 AI、触控窄屏、感召力 AI、隐蔽行动去 RNG + 对手还手、
+> AI 外交主动、次极大国浅层议程（含第二批）、产物与模块卫生、核风险 AI、阿富汗可争夺、次极第二批、危机卡扩写 + 国势门控
+> （`?e2probe=1` / `?touchprobe=1` / `?i2probe=1` / `?cov2probe=1` / `?dip2probe=1` / `?midprobe=1` / `?n2probe=1` / `?afg2probe=1` / `?mid2probe=1` / `?cri2probe=1`）。
 
 ---
 
@@ -1833,10 +1833,58 @@ Dip2 只管仪式/条约窗口，不碰 DEFCON/事故。本切片用确定性规
 >（均来自 12 条新议程数据站点）；history identical:3。
 > 标记名用 `MIDTWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?mid2probe=1`）。
 
+### Phase Cri2 — 危机卡扩写 + 国势门控（✅ 已交付）
+
+> 目标：闭合仍悬挂的「日历内容机」——原 8 张固定月危机与当期张力 / 升级 / 动荡几乎脱节。
+> Cri2 扩 5 张史实热点，并用 `gate` 让**后果**读国势；日历仍是触发真理，旁观/history 不因门控丢事件。
+
+#### Cri2.1 扩写卡
+
+| id | 年月 | 主题 |
+| --- | --- | --- |
+| `crisis_ablearcher_1983` | 1983-11 | 优秀射手-83 核误判 |
+| `crisis_eldorado_1986` | 1986-04 | 黄金峡谷 / 的黎波里空袭 |
+| `crisis_chernobyl_1986` | 1986-05 | 切尔诺贝利信息公开 |
+| `crisis_rust_1987` | 1987-05 | 鲁斯特红场降落 |
+| `crisis_berlinwall_1989` | 1989-11 | 柏林墙开放 |
+
+每卡三级阶梯；效果键全在 `effects.js` 词表内，且每阶梯至少一条真实消费者
+（张力 / 威望 / 核升级 / 派系 / 国会 / 安定 / 短缺等既有通道）。
+
+#### Cri2.2 国势门控
+
+| 机制 | 行为 |
+| --- | --- |
+| `crisisSituationHeat()` | 读美苏张力 + `ST.nuke.esc` + 执政动荡 → 热度 ∈ [0,1] |
+| `crisisApplyGate` | 仅对 `gate.modulate` 卡：高热放大强硬阶梯、压缩克制；旧 8 卡恒等 |
+| 软触发 `minHeat` | **仅玩家路径**：热度不足 → 自动史实阶梯 2（落效果、不弹窗） |
+| 旁观 / probeMode | 到月只记阶梯 2、**零效果回写**；不因门控跳过或双触发 |
+
+#### Cri2.3 不变量
+
+| 不变量 | 怎么保证 |
+| --- | --- |
+| 史实轨迹一字不变 | 旁观不落危机效果；`cmp --class=history` identical:3 |
+| 无纯文案卡 | 词表校验 + `?cri2probe=1` 每阶梯消费者断言 |
+| 日历真理唯一 | 触发年月仍写在数据里；门控只调制后果 / 弹窗 |
+
+**实测（`?cri2probe=1`，42 条断言）**：扩写 / 词表 / 调制方向 / 软触发 / 旁观零回写 / 无双触发。
+
+| 量 | 值 |
+| --- | --- |
+| 危机卡 | 8 → **13** |
+| 探针 | **47** 个（含 Cri2）；全量 **1838** 条断言；标记 `CRITWOPROBE` |
+| 发布包 | **3.614** MiB（预算仍 **3.72**）；`CACHE_VERSION` v37 → **v38** |
+
+> 全量 `cmp`：history identical:3；`domestic.__effectSites` 79→94（+15 = 5×3 新危机站点）；
+> `crisis` 断言名 `crisesCount8`→`crisesCount13` 并增 AbleArcher/BerlinWall；**新增 `cri2`**。
+
+> 标记名用 `CRITWOPROBE`（runner 的 `[A-Z]+PROBE` 不含数字；URL 仍为 `?cri2probe=1`）。
+
 ### 后续可选方向
 
-整批 **Hyg → N2 → Afg2 → Mid2** 已交付完毕。表内大战略切片已齐；
-体积贴顶时插入纯卫生轮。维护/内容扩张期可再扩次极数据树或微型 Hyg，**勿**把次极推进 `aiMajors`。
+**Cri2** 已交付。按批继续：**End2（史笔织入新轴）→ Mid3（次极第三批）→ Bloc2（阵营凝聚浅层）**；
+体积贴顶时插入微型 Hyg。**勿**把次极推进 `aiMajors`；**勿**开全面贸易迷你游戏。
 
 ---
 

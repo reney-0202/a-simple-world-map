@@ -15,7 +15,7 @@ function runCrisisProbe() {
   try {
     // 1. 核心数据库与函数存在性
     assert("databaseLoaded", !!window.W1980_CRISES && Array.isArray(window.W1980_CRISES.list), "W1980_CRISES 数据库应成功载入");
-    assert("crisesCount8", window.W1980_CRISES && window.W1980_CRISES.list.length === 8, "突发危机总数应为 8 大历史危机");
+    assert("crisesCount13", window.W1980_CRISES && window.W1980_CRISES.list.length === 13, "突发危机总数应为 13（原 8 + Cri2 扩 5）");
     assert("crisisPolandLoaded", !!window.W1980_CRISES.getCrisisById("crisis_poland_1981"), "1981 波兰戒严危机应存在");
     assert("crisisSouthGeorgiaLoaded", !!window.W1980_CRISES.getCrisisById("crisis_southgeorgia_1982"), "1982 南乔治亚岛危机应存在");
     assert("crisisKAL007Loaded", !!window.W1980_CRISES.getCrisisById("crisis_kal007_1983"), "1983 大韩航空 007 班机事件应存在");
@@ -24,6 +24,8 @@ function runCrisisProbe() {
     assert("crisisAchilleLoaded", !!window.W1980_CRISES.getCrisisById("crisis_achille_1985"), "1985 阿基莱·劳伦号游轮危机应存在");
     assert("crisisVincennesLoaded", !!window.W1980_CRISES.getCrisisById("crisis_vincennes_1988"), "1988 文森斯号海湾误击事件应存在");
     assert("crisisRomaniaLoaded", !!window.W1980_CRISES.getCrisisById("crisis_romania_1989"), "1989 罗马尼亚蒂米什瓦拉剧变应存在");
+    assert("crisisAbleArcherLoaded", !!window.W1980_CRISES.getCrisisById("crisis_ablearcher_1983"), "Cri2：1983 优秀射手核误判应存在");
+    assert("crisisBerlinWallLoaded", !!window.W1980_CRISES.getCrisisById("crisis_berlinwall_1989"), "Cri2：1989 柏林墙开放应存在");
 
     // 2. 危机数据结构与阶梯完整性
     assert("allCrisesHave3Tiers", window.W1980_CRISES.list.every((c) => c.options && c.options.length === 3), "每个危机均严格配备三级博弈应对阶梯");
