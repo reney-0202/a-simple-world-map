@@ -236,6 +236,33 @@ function resolveNukeIncident(optionId, silent) {
   for (const o of def.options) if (o.id === optionId) opt = o;
   if (!opt) return { ok: false, reason: "unknown-option" };
 
+  // N2：可信度吃紧时拒强硬 —— 清空待裁决，强制降温，不给强硬的威慑收益。
+  // 门控关闭（旁观 / 非 n2probe）时一律走原路径，既有 nukeprobe 不受影响。
+  const y = SIM.S ? SIM.S.year : 1980;
+  const m = SIM.S ? Math.max(1, SIM.S.month) : 1;
+  if (typeof nukeAiAcceptHardline === "function") {
+    const verdict = nukeAiAcceptHardline({ kind: "incident", esc: opt.esc || 0, optId: opt.id });
+    if (verdict && verdict.ok === false) {
+      const actor = (typeof nukeAiActors === "function" && nukeAiActors()[0]) || "USA";
+      if (typeof nukeAiApplyRejectHardline === "function") {
+        nukeAiApplyRejectHardline(actor, verdict.reason || "cred", y, m, silent);
+      }
+      nukeRecord("incident", def.zh + "：强硬遭拒", { opt: opt.id, rejected: true });
+      s.pending = null;
+      s.lastIncidentM = curNukeMonth();
+      if (!silent) {
+        const item = { y: y, m: m,
+          zh: "【核危机处置】" + def.icon + " " + def.zh,
+          note: "对方拒绝与贵国对等升级。强硬空谈已被驳回，升级强制回落。" };
+        EV.items.push(item);
+        EV.unread++;
+        renderInbox();
+        toast(item);
+      }
+      return { ok: true, def: def, opt: opt, rejected: true };
+    }
+  }
+
   s.esc = clamp(s.esc + (opt.esc || 0), 0, 100);
   if (opt.cred) s.credBonus = clamp(s.credBonus + opt.cred, -100, 100);
   nukeRecord("incident", def.zh + "：" + opt.zh, { opt: opt.id, esc: opt.esc || 0 });
@@ -243,7 +270,7 @@ function resolveNukeIncident(optionId, silent) {
   s.lastIncidentM = curNukeMonth();
 
   if (!silent) {
-    const item = { y: SIM.S ? SIM.S.year : 1980, m: SIM.S ? Math.max(1, SIM.S.month) : 1,
+    const item = { y: y, m: m,
       zh: "【核危机处置】" + def.icon + " " + def.zh,
       note: opt.zh + "。" + opt.note + "（升级 " + ((opt.esc || 0) >= 0 ? "+" : "") + (opt.esc || 0) +
         "，威慑 " + ((opt.cred || 0) >= 0 ? "+" : "") + (opt.cred || 0) + "）" };

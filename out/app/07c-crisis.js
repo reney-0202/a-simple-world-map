@@ -179,7 +179,21 @@ function resolveCrisis(crId, tier, silent) {
   // 3c. N1（核风险轴）：把此前只存在于数据里的 6 个「展示用」键接上真实消费者 ——
   // 阶梯选择推升级、同盟凝聚推威慑、民意落回英国国内动荡。
   // gbrPopularity 落点与玩家国无关（它描述英国），所以不受 ST.player 限制。
-  if (typeof nukeEscalateByTier === "function") nukeEscalateByTier(tier);
+  // N2：可信度吃紧时拒高阶强硬 —— 不推升级，改走拒强硬消费者。
+  if (typeof nukeEscalateByTier === "function") {
+    let blocked = false;
+    if (typeof nukeAiAcceptHardline === "function") {
+      const verdict = nukeAiAcceptHardline({ kind: "crisis", tier: tier });
+      if (verdict && verdict.ok === false) {
+        blocked = true;
+        const actor = (typeof nukeAiActors === "function" && nukeAiActors()[0]) || "USA";
+        if (typeof nukeAiApplyRejectHardline === "function") {
+          nukeAiApplyRejectHardline(actor, verdict.reason || "cred", y, m, silent);
+        }
+      }
+    }
+    if (!blocked) nukeEscalateByTier(tier);
+  }
   if (typeof nukeApplyEffect === "function" && eff) nukeApplyEffect(eff, cr.id);
 
   // 4. 收件箱入账与即时反馈

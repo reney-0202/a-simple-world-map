@@ -288,6 +288,7 @@ install/activate/缓存生命周期会与虚拟时钟交互、使探针时序不
 | **Dip2** | AI 外交主动 | ✅ | 对手在窗口期**提议峰会 / 加压履约 / 拒绝空谈**（确定性，零 RNG）；真实消费者（威望/动荡/合法性）；`signTreaty` 拒签接线。`?dip2probe=1` 39 条断言；42 探针 / history identical:3 |
 | **Mid** | 次极大国浅层议程 | ✅ | IND/ITA/BRA/KOR 数据声明式 2–3 步树；引擎零新分派。`?midprobe=1`；43 探针 / history identical:3 |
 | **Hyg** | 产物与模块卫生 | ✅ | 压图 `assets/news`+`portraits`（≈−176 KiB）；阿富汗从 `08-covert.js` 纯搬运至 `08f-afghan.js`；`CACHE_VERSION` v34；预算仍 3.72 MiB |
+| **N2** | 核风险轴的 AI 侧 | ✅ | 对手管理升级/DEFCON：**高升级降温 / 中段照会 / 可信度吃紧拒强硬**（确定性，零 RNG）；真实消费者（`ST.nuke`/威望/张力/动荡）；`?n2probe=1`；`CACHE_VERSION` v35；history identical:3 |
 
-后续可选方向见 `docs/ROADMAP.md` 末尾：**N2 → Afg2 → Mid2**。
+后续可选方向见 `docs/ROADMAP.md` 末尾：**Afg2 → Mid2**。
 

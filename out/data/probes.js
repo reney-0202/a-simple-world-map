@@ -54,7 +54,8 @@ window.W1980_PROBES={
   "i2probe",
   "cov2probe",
   "dip2probe",
-  "midprobe"
+  "midprobe",
+  "n2probe"
  ],
  "entries": {
   "selftest": {
@@ -312,6 +313,12 @@ window.W1980_PROBES={
   "mid": {
    "qs": "midprobe=1",
    "marker": "MIDPROBE",
+   "budget": 60000,
+   "class": "mechanics"
+  },
+  "n2": {
+   "qs": "n2probe=1",
+   "marker": "NUKEAIPROBE",
    "budget": 60000,
    "class": "mechanics"
   }

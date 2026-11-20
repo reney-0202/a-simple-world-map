@@ -59,6 +59,30 @@
     LOG_MAX: 24
   };
 
+  // N2：核风险轴的 AI 侧（确定性规则，零 RNG，与 F2/E2/I2/Cov2/Dip2 同族）。
+  // Dip2 只管峰会/条约/安理会仪式；本表只管升级 / 可信度 / 事故 / DEFCON。
+  // 三条（及以上）规则：高升级主动降温、中段照会催降温、可信度吃紧拒强硬；
+  // 附粘性与经济收手。量级必须喂真实消费者（ST.nuke / 威望 / 张力 / 动荡）。
+  const AI_POLICY = {
+    MIN_MONTHS: 2,              // 粘性：两次核风险管理至少隔 2 个月
+    STRAIN_MAX: 0.75,           // 经济压力过高 → 收手
+    COOL_ESC_MIN: 55,           // 升级 ≥ 此值 → 主动降温（约 DEFCON 2–3）
+    COOL_ESC_DELTA: -8,         // 降温直接改 ST.nuke.esc
+    COOL_TENSION_DELTA: -4,     // 同步压低美苏张力
+    COOL_PRESTIGE: 0.6,         // 对手因克制得分
+    WARN_ESC_MIN: 40,           // 中段升级 → 照会催降温
+    WARN_ESC_MAX: 55,           // 与降温档互斥（半开）
+    WARN_PRESTIGE: 0.5,         // 照会扣玩家威望
+    WARN_UNREST: 2,             // 照会抬玩家动荡
+    REJECT_CRED_MAX: 38,        // 可信度 ≤ 此值 → 拒强硬
+    HAWK_OPT_ESC_MIN: 8,        // 事故选项 esc ≥ 此值算强硬
+    HAWK_TIER_MIN: 2,           // 危机阶梯 ≥ 此值算强硬
+    REJECT_FORCE_ESC: -6,       // 拒强硬后强制降温幅度
+    REJECT_PRESTIGE: 1.0,       // 拒强硬扣玩家威望
+    REJECT_UNREST: 2,           // 拒强硬抬动荡
+    LOG_MAX: 24
+  };
+
   // 事故类型。每次触发一个，玩家必须选应对 —— 这就是「误判」的可玩形态：
   // 真正杀死人的不是爆炸，是有人在压力下把雷达上的鸟群当成导弹。
   const INCIDENTS = [
@@ -95,5 +119,5 @@
       ] }
   ];
 
-  global.W1980_NUKE = { DEFCON: DEFCON, PARAMS: PARAMS, INCIDENTS: INCIDENTS };
+  global.W1980_NUKE = { DEFCON: DEFCON, PARAMS: PARAMS, INCIDENTS: INCIDENTS, AI_POLICY: AI_POLICY };
 })(typeof window !== "undefined" ? window : globalThis);
